@@ -53,3 +53,6 @@
 // Phase 8: Type Hash System
 #include "datagram/type_hash/type_hash.hpp"
 #include "datagram/type_hash/type_name.hpp"
+
+// Phase 9: Endian Handling
+#include "datagram/core/endian.hpp"
