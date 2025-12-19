@@ -1,0 +1,278 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "arrow-cpp@latest": {
+      "last_modified": "2025-11-23T21:50:36Z",
+      "resolved": "github:NixOS/nixpkgs/ee09932cedcef15aaf476f9343d1dea2cb77e261#arrow-cpp",
+      "source": "devbox-search",
+      "version": "20.0.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/4fy1lq5pp28wrvjfdym1i8wcnpa7q9c5-arrow-cpp-20.0.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/4fy1lq5pp28wrvjfdym1i8wcnpa7q9c5-arrow-cpp-20.0.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qcpfbr9bwrswmkqbyyhvqly3vs4b72if-arrow-cpp-20.0.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/qcpfbr9bwrswmkqbyyhvqly3vs4b72if-arrow-cpp-20.0.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/iacsinwcfg8xj67viqpwvsv30j3ds9w7-arrow-cpp-20.0.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/iacsinwcfg8xj67viqpwvsv30j3ds9w7-arrow-cpp-20.0.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/2fp6b85bfbwbb6vcx4c545sywvlv3qa0-arrow-cpp-20.0.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/2fp6b85bfbwbb6vcx4c545sywvlv3qa0-arrow-cpp-20.0.0"
+        }
+      }
+    },
+    "clang-tools@latest": {
+      "last_modified": "2025-11-23T21:50:36Z",
+      "resolved": "github:NixOS/nixpkgs/ee09932cedcef15aaf476f9343d1dea2cb77e261#clang-tools",
+      "source": "devbox-search",
+      "version": "21.1.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/a6bhq5sc3nkllijzxgmjsmd43yh57k3r-clang-tools-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/a6bhq5sc3nkllijzxgmjsmd43yh57k3r-clang-tools-21.1.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/hwqmvqh7xs89kljqr4c9frpfy322iwz2-clang-tools-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/hwqmvqh7xs89kljqr4c9frpfy322iwz2-clang-tools-21.1.2"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ng4myhcq0aiqar1kz0wnzw158lyvjkfp-clang-tools-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ng4myhcq0aiqar1kz0wnzw158lyvjkfp-clang-tools-21.1.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/v6bx0d4690d8bklp18wvjdk566873sgs-clang-tools-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/v6bx0d4690d8bklp18wvjdk566873sgs-clang-tools-21.1.2"
+        }
+      }
+    },
+    "clang@latest": {
+      "last_modified": "2025-11-23T21:50:36Z",
+      "resolved": "github:NixOS/nixpkgs/ee09932cedcef15aaf476f9343d1dea2cb77e261#clang",
+      "source": "devbox-search",
+      "version": "21.1.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qk20nysrc2170f1mal5k6r0axqn6jmfj-clang-wrapper-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/qk20nysrc2170f1mal5k6r0axqn6jmfj-clang-wrapper-21.1.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/wkcizi40n6zh5yiq0kvhyzw3yxrvlg2z-clang-wrapper-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/wkcizi40n6zh5yiq0kvhyzw3yxrvlg2z-clang-wrapper-21.1.2"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/fvj17s7clsf2n4rhyq0qqcrqhzybdqrz-clang-wrapper-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/fvj17s7clsf2n4rhyq0qqcrqhzybdqrz-clang-wrapper-21.1.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/sqlnjj8c3n3si3sjnadhdbcwgrk97g2w-clang-wrapper-21.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/sqlnjj8c3n3si3sjnadhdbcwgrk97g2w-clang-wrapper-21.1.2"
+        }
+      }
+    },
+    "cmake@latest": {
+      "last_modified": "2025-11-23T21:50:36Z",
+      "resolved": "github:NixOS/nixpkgs/ee09932cedcef15aaf476f9343d1dea2cb77e261#cmake",
+      "source": "devbox-search",
+      "version": "4.1.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/0v5vpvwbl94qv9447jz995i4n9mx4l63-cmake-4.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/0v5vpvwbl94qv9447jz995i4n9mx4l63-cmake-4.1.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ipjw0mbzcycidbw62gsz47cgivqxm2lv-cmake-4.1.2",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/4m6l2qb5s7vyirybbn3c5k1rv2dww1vy-cmake-4.1.2-debug"
+            }
+          ],
+          "store_path": "/nix/store/ipjw0mbzcycidbw62gsz47cgivqxm2lv-cmake-4.1.2"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/i7c7r2g0zycvi7wh3rnw1dx3aglbvw2d-cmake-4.1.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/i7c7r2g0zycvi7wh3rnw1dx3aglbvw2d-cmake-4.1.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/w9jm660dykns6hzrdhxmqfywnc9ail8g-cmake-4.1.2",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/pnizhra0882ijp3nilvzdzbaa0ayq4hd-cmake-4.1.2-debug"
+            }
+          ],
+          "store_path": "/nix/store/w9jm660dykns6hzrdhxmqfywnc9ail8g-cmake-4.1.2"
+        }
+      }
+    },
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2025-12-11T04:04:52Z",
+      "resolved": "github:NixOS/nixpkgs/5d6bdbddb4695a62f0d00a3620b37a15275a5093?lastModified=1765425892&narHash=sha256-jlQpSkg2sK6IJVzTQBDyRxQZgKADC2HKMRfGCSgNMHo%3D"
+    },
+    "rerun@latest": {
+      "last_modified": "2025-12-11T04:04:52Z",
+      "resolved": "github:NixOS/nixpkgs/5d6bdbddb4695a62f0d00a3620b37a15275a5093#rerun",
+      "source": "devbox-search",
+      "version": "0.27.3",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/lmx1ficn4jgxjcdbjv7zmmyzcgnfdm10-rerun-0.27.3",
+              "default": true
+            },
+            {
+              "name": "dev",
+              "path": "/nix/store/9747l0q0qxs2c8sb720sm8p8s4j4h4h8-rerun-0.27.3-dev"
+            }
+          ],
+          "store_path": "/nix/store/lmx1ficn4jgxjcdbjv7zmmyzcgnfdm10-rerun-0.27.3"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/sdlxhi24bzq9vvnghhj19nb9a0hyv0ky-rerun-0.27.3",
+              "default": true
+            },
+            {
+              "name": "dev",
+              "path": "/nix/store/f6xykfglf7pwxjhyp0pi2xlaf96kny33-rerun-0.27.3-dev"
+            }
+          ],
+          "store_path": "/nix/store/sdlxhi24bzq9vvnghhj19nb9a0hyv0ky-rerun-0.27.3"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/hscxfinzlk4xxnrdf47hl4fswp5967i7-rerun-0.27.3",
+              "default": true
+            },
+            {
+              "name": "dev",
+              "path": "/nix/store/2i1csxr3dsajpgji2kg7mc704cgzkfmj-rerun-0.27.3-dev"
+            }
+          ],
+          "store_path": "/nix/store/hscxfinzlk4xxnrdf47hl4fswp5967i7-rerun-0.27.3"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ga0zbvyycza4s7rjcs2fdakjr930jbl9-rerun-0.27.3",
+              "default": true
+            },
+            {
+              "name": "dev",
+              "path": "/nix/store/4lh1nh2bajaq3f1qsd2d8a49ax91yiz7-rerun-0.27.3-dev"
+            }
+          ],
+          "store_path": "/nix/store/ga0zbvyycza4s7rjcs2fdakjr930jbl9-rerun-0.27.3"
+        }
+      }
+    },
+    "stdenv@latest": {
+      "last_modified": "2023-02-24T09:01:09Z",
+      "resolved": "github:NixOS/nixpkgs/7d0ed7f2e5aea07ab22ccb338d27fbe347ed2f11#stdenv",
+      "source": "devbox-search"
+    }
+  }
+}
