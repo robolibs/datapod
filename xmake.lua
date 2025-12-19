@@ -38,6 +38,12 @@ if pkg_config then
             local prefix_dir = path.directory(lib_dir)      -- .../
             local include_dir = path.join(prefix_dir, "include")
 
+            -- Avoid pulling in host headers/libs (breaks hermetic Nix builds by
+            -- mixing /usr headers with Nix's glibc headers).
+            if prefix_dir == "/usr" or prefix_dir == "/usr/local" then
+                goto continue
+            end
+
             if os.isdir(lib_dir) then
                 add_linkdirs(lib_dir)
             end
@@ -45,6 +51,7 @@ if pkg_config then
                 add_includedirs(include_dir)
             end
         end
+        ::continue::
     end
 end
 
