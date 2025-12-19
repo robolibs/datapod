@@ -20,6 +20,7 @@
 #include "datagram/reflection/for_each_field.hpp"
 #include "datagram/serialization/buf.hpp"
 #include "datagram/serialization/serialized_size.hpp"
+#include "datagram/type_hash/type_hash.hpp"
 
 namespace datagram {
 
@@ -169,6 +170,13 @@ namespace datagram {
     template <Mode M = Mode::NONE, typename T> ByteBuf serialize(T &el) {
         auto b = Buf{};
         auto ctx = SerializationContext<Buf<ByteBuf>, M>{b};
+
+        // Write version hash if requested
+        if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
+            auto const h = convert_endian<M>(type_hash<decay_t<T>>());
+            ctx.write(&h, sizeof(h), alignof(hash_t));
+        }
+
         serialize<M>(ctx, el);
         return std::move(b.buf_);
     }
@@ -347,6 +355,16 @@ namespace datagram {
     template <Mode M = Mode::NONE, typename T> T deserialize(ByteBuf const &buf) {
         T result{};
         auto ctx = DeserializationContext<M>{buf.data(), buf.size()};
+
+        // Verify version hash if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
+            hash_t stored_hash;
+            ctx.align(alignof(hash_t));
+            ctx.read(&stored_hash, sizeof(hash_t));
+            auto const expected_hash = type_hash<decay_t<T>>();
+            verify(convert_endian<M>(stored_hash) == expected_hash, "version mismatch: type schema changed");
+        }
+
         deserialize<M>(ctx, result);
         return result;
     }
@@ -354,6 +372,16 @@ namespace datagram {
     template <Mode M = Mode::NONE, typename T> T deserialize(std::uint8_t const *data, std::size_t size) {
         T result{};
         auto ctx = DeserializationContext<M>{data, size};
+
+        // Verify version hash if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
+            hash_t stored_hash;
+            ctx.align(alignof(hash_t));
+            ctx.read(&stored_hash, sizeof(hash_t));
+            auto const expected_hash = type_hash<decay_t<T>>();
+            verify(convert_endian<M>(stored_hash) == expected_hash, "version mismatch: type schema changed");
+        }
+
         deserialize<M>(ctx, result);
         return result;
     }
@@ -364,6 +392,22 @@ namespace datagram {
 
     template <Mode M = Mode::NONE, typename T> T deserialize(std::string_view buf) {
         return deserialize<M, T>(reinterpret_cast<std::uint8_t const *>(buf.data()), buf.size());
+    }
+
+    // Overload for deserialize with explicit type parameter (alternative syntax)
+    template <Mode M = Mode::NONE, typename T> void deserialize(ByteBuf const &buf, T &result) {
+        auto ctx = DeserializationContext<M>{buf.data(), buf.size()};
+
+        // Verify version hash if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
+            hash_t stored_hash;
+            ctx.align(alignof(hash_t));
+            ctx.read(&stored_hash, sizeof(hash_t));
+            auto const expected_hash = type_hash<decay_t<T>>();
+            verify(convert_endian<M>(stored_hash) == expected_hash, "version mismatch: type schema changed");
+        }
+
+        deserialize<M>(ctx, result);
     }
 
     // =============================================================================
