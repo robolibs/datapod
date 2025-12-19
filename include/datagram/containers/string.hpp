@@ -116,6 +116,9 @@ namespace datagram {
 
         char const *c_str() const noexcept { return data(); }
 
+        // Zero-copy view into string data (for flatsim compatibility)
+        std::string_view view() const noexcept { return std::string_view(data(), size_); }
+
         // Capacity
         bool empty() const noexcept { return size_ == 0; }
 

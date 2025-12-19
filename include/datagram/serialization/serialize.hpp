@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <string_view>
 #include <type_traits>
 
 #include "datagram/containers/optional.hpp"
@@ -246,6 +247,53 @@ namespace datagram {
         auto ctx = DeserializationContext<M>{data, size};
         deserialize<M>(ctx, result);
         return result;
+    }
+
+    // =============================================================================
+    // std::string_view overload
+    // =============================================================================
+
+    template <Mode M = Mode::NONE, typename T> T deserialize(std::string_view buf) {
+        return deserialize<M, T>(reinterpret_cast<std::uint8_t const *>(buf.data()), buf.size());
+    }
+
+    // =============================================================================
+    // Unaligned Deserialization (Safe for Network Buffers)
+    // =============================================================================
+
+    // Check if a pointer is aligned to a given boundary
+    inline bool is_aligned(void const *ptr, std::size_t alignment) noexcept {
+        return (reinterpret_cast<std::uintptr_t>(ptr) % alignment) == 0;
+    }
+
+    // Safe deserialization from potentially unaligned memory (string_view)
+    // This is critical for network buffers (ZeroMQ, UDP, TCP) which may not
+    // be aligned to required boundaries (4-byte for int, 8-byte for double).
+    // On ARM and strict x86, unaligned reads cause hardware faults (SIGBUS).
+    template <Mode M = Mode::NONE, typename T> T copy_from_potentially_unaligned(std::string_view buf) {
+        // Use max_align_t for maximum portable alignment
+        constexpr std::size_t max_alignment = alignof(std::max_align_t);
+
+        // Check if buffer is already aligned
+        if (is_aligned(buf.data(), max_alignment)) {
+            // Fast path: deserialize in place (zero-copy)
+            return deserialize<M, T>(buf);
+        }
+
+        // Slow path: copy to aligned buffer first
+        ByteBuf aligned_buf(buf.begin(), buf.end());
+        return deserialize<M, T>(aligned_buf);
+    }
+
+    // Overload for uint8_t pointer
+    template <Mode M = Mode::NONE, typename T>
+    T copy_from_potentially_unaligned(std::uint8_t const *data, std::size_t size) {
+        return copy_from_potentially_unaligned<M, T>(std::string_view(reinterpret_cast<char const *>(data), size));
+    }
+
+    // Overload for char pointer (for convenience)
+    template <Mode M = Mode::NONE, typename T> T copy_from_potentially_unaligned(char const *data, std::size_t size) {
+        return copy_from_potentially_unaligned<M, T>(std::string_view(data, size));
     }
 
 } // namespace datagram
