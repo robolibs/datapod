@@ -5,6 +5,8 @@
 #include <type_traits>
 
 #include "datagram/containers/array.hpp"
+#include "datagram/containers/hash_map.hpp"
+#include "datagram/containers/hash_set.hpp"
 #include "datagram/containers/optional.hpp"
 #include "datagram/containers/pair.hpp"
 #include "datagram/containers/string.hpp"
@@ -62,6 +64,10 @@ namespace datagram {
     template <typename T, std::size_t N> struct is_datagram_container<Array<T, N>> : std::true_type {};
     template <typename... Ts> struct is_datagram_container<Tuple<Ts...>> : std::true_type {};
     template <typename... Ts> struct is_datagram_container<Variant<Ts...>> : std::true_type {};
+    // HashMap and HashSet are type aliases for HashStorage
+    template <typename T, template <typename> typename Ptr, typename GetKey, typename GetValue, typename Hash,
+              typename Eq>
+    struct is_datagram_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
     template <typename T> constexpr bool is_datagram_container_v = is_datagram_container<decay_t<T>>::value;
 
     // Serialize aggregate types (structs) using reflection
@@ -139,6 +145,20 @@ namespace datagram {
         // Serialize active value
         if (value.valid()) {
             value.apply([&](auto &v) { serialize<M>(ctx, v); });
+        }
+    }
+
+    // Serialize HashStorage (used by HashMap and HashSet)
+    template <Mode M, typename Ctx, typename T, template <typename> typename Ptr, typename GetKey, typename GetValue,
+              typename Hash, typename Eq>
+    void serialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {
+        // Write size
+        auto const sz = value.size();
+        serialize<M>(ctx, const_cast<std::size_t &>(sz));
+
+        // Write all entries
+        for (auto &entry : value) {
+            serialize<M>(ctx, const_cast<T &>(entry));
         }
     }
 
@@ -299,6 +319,25 @@ namespace datagram {
 
         // Deserialize value at the correct index
         deserialize_variant_at_index<M, 0>(ctx, value, idx);
+    }
+
+    // Deserialize HashStorage (used by HashMap and HashSet)
+    template <Mode M, typename Ctx, typename T, template <typename> typename Ptr, typename GetKey, typename GetValue,
+              typename Hash, typename Eq>
+    void deserialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {
+        // Read size
+        std::size_t sz = 0;
+        deserialize<M>(ctx, sz);
+
+        // Clear existing entries
+        value.clear();
+
+        // Read all entries
+        for (std::size_t i = 0; i < sz; ++i) {
+            T entry;
+            deserialize<M>(ctx, entry);
+            value.insert(std::move(entry));
+        }
     }
 
     // =============================================================================
