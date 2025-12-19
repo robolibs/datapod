@@ -1,4 +1,4 @@
-set_project("concord")
+set_project("datagram")
 set_version("2.5.0")
 set_xmakever("2.7.0")
 
@@ -109,14 +109,14 @@ if has_config("tests") then
 end
 
 -- Main library target
-target("concord")
+target("datagram")
     set_kind("static")
 
     -- Add source files
-    add_files("src/concord/**.cpp")
+    add_files("src/datagram/**.cpp")
 
     -- Add header files
-    add_headerfiles("include/(concord/**.hpp)")
+    add_headerfiles("include/(datagram/**.hpp)")
     add_includedirs("include", {public = true})
 
     -- Conditional rerun support (only if package is found)
@@ -130,21 +130,21 @@ target("concord")
     end
 
     -- Set install files
-    add_installfiles("include/(concord/**.hpp)")
+    add_installfiles("include/(datagram/**.hpp)")
     on_install(function (target)
         local installdir = target:installdir()
         os.cp(target:targetfile(), path.join(installdir, "lib", path.filename(target:targetfile())))
     end)
 target_end()
 
--- Examples (only build when concord is the main project)
+-- Examples (only build when datagram is the main project)
 if has_config("examples") and os.projectdir() == os.curdir() then
     for _, filepath in ipairs(os.files("examples/*.cpp")) do
         local filename = path.basename(filepath)
         target(filename)
             set_kind("binary")
             add_files(filepath)
-            add_deps("concord")
+            add_deps("datagram")
 
             -- Always try to add rerun_sdk for examples (matching CMake behavior)
             on_load(function (target)
@@ -159,14 +159,14 @@ if has_config("examples") and os.projectdir() == os.curdir() then
     end
 end
 
--- Tests (only build when concord is the main project)
+-- Tests (only build when datagram is the main project)
 if has_config("tests") and os.projectdir() == os.curdir() then
     for _, filepath in ipairs(os.files("test/*.cpp")) do
         local filename = path.basename(filepath)
         target(filename)
             set_kind("binary")
             add_files(filepath)
-            add_deps("concord")
+            add_deps("datagram")
             add_packages("doctest")
             add_includedirs("include")
             add_defines("DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN")

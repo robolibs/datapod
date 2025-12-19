@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(project_name concord)
+set(project_name datagram)
 project(${project_name} VERSION 2.5.0 LANGUAGES CXX)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
