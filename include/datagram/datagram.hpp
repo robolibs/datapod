@@ -28,3 +28,14 @@
 #include "datagram/reflection/comparable.hpp"
 #include "datagram/reflection/for_each_field.hpp"
 #include "datagram/reflection/to_tuple.hpp"
+
+// Phase 5: Basic Containers
+#include "datagram/containers/array.hpp"
+#include "datagram/containers/optional.hpp"
+#include "datagram/containers/pair.hpp"
+#include "datagram/containers/string.hpp"
+#include "datagram/containers/unique_ptr.hpp"
+#include "datagram/containers/vector.hpp"
+
+// Hashing (depends on containers and reflection)
+#include "datagram/hashing.hpp"
