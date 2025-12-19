@@ -3,3 +3,6 @@
 # Datagram
 
 Serialization/Deserialization framework without source code generation
+
+# Acknowledgements
+ Made possibel thanks to [those amazing projects](./Acknowledgements.md)
