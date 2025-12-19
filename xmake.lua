@@ -1,5 +1,5 @@
 set_project("datagram")
-set_version("2.5.0")
+set_version("0.0.1")
 set_xmakever("2.7.0")
 
 -- Set C++ standard
