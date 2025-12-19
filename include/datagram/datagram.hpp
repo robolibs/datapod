@@ -17,3 +17,8 @@
 #include "datagram/core/mmap.hpp"
 #include "datagram/core/next_power_of_2.hpp"
 #include "datagram/core/strong.hpp"
+
+// Phase 3: Pointer System
+#include "datagram/containers/allocator.hpp"
+#include "datagram/containers/offset_ptr.hpp"
+#include "datagram/containers/ptr.hpp"
