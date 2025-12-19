@@ -56,3 +56,7 @@
 
 // Phase 9: Endian Handling
 #include "datagram/core/endian.hpp"
+
+// Phase 10: Serialization Infrastructure
+#include "datagram/serialization/buf.hpp"
+#include "datagram/serialization/serialized_size.hpp"
