@@ -170,6 +170,7 @@ if has_config("tests") and os.projectdir() == os.curdir() then
             add_packages("doctest")
             add_includedirs("include")
             add_defines("DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN")
+            add_syslinks("pthread")
 
             -- Add as test
             add_tests("default", {rundir = os.projectdir()})
