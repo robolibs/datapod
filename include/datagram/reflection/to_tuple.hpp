@@ -94,4 +94,10 @@ namespace datagram {
         return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(t);
     }
 
+    // Const overload
+    template <typename T> constexpr auto to_tuple(T const &t) {
+        using Type = std::remove_cv_t<std::remove_reference_t<T>>;
+        return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(const_cast<T &>(t));
+    }
+
 } // namespace datagram

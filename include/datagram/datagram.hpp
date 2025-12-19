@@ -38,4 +38,14 @@
 #include "datagram/containers/vector.hpp"
 
 // Hashing (depends on containers and reflection)
+#include "datagram/core/equal_to.hpp"
 #include "datagram/hashing.hpp"
+
+// Phase 6: Hash Containers (Swiss Tables)
+#include "datagram/containers/hash_map.hpp"
+#include "datagram/containers/hash_set.hpp"
+#include "datagram/containers/hash_storage.hpp"
+
+// Phase 7: Advanced Containers
+#include "datagram/containers/tuple.hpp"
+#include "datagram/containers/variant.hpp"
