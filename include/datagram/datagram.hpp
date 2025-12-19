@@ -49,3 +49,7 @@
 // Phase 7: Advanced Containers
 #include "datagram/containers/tuple.hpp"
 #include "datagram/containers/variant.hpp"
+
+// Phase 8: Type Hash System
+#include "datagram/type_hash/type_hash.hpp"
+#include "datagram/type_hash/type_name.hpp"
