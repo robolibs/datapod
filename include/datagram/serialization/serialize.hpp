@@ -4,9 +4,12 @@
 #include <string_view>
 #include <type_traits>
 
+#include "datagram/containers/array.hpp"
 #include "datagram/containers/optional.hpp"
 #include "datagram/containers/pair.hpp"
 #include "datagram/containers/string.hpp"
+#include "datagram/containers/tuple.hpp"
+#include "datagram/containers/variant.hpp"
 #include "datagram/containers/vector.hpp"
 #include "datagram/core/endian.hpp"
 #include "datagram/core/equal_to.hpp"
@@ -56,6 +59,9 @@ namespace datagram {
     template <typename T> struct is_datagram_container<Vector<T>> : std::true_type {};
     template <typename T> struct is_datagram_container<Optional<T>> : std::true_type {};
     template <typename A, typename B> struct is_datagram_container<Pair<A, B>> : std::true_type {};
+    template <typename T, std::size_t N> struct is_datagram_container<Array<T, N>> : std::true_type {};
+    template <typename... Ts> struct is_datagram_container<Tuple<Ts...>> : std::true_type {};
+    template <typename... Ts> struct is_datagram_container<Variant<Ts...>> : std::true_type {};
     template <typename T> constexpr bool is_datagram_container_v = is_datagram_container<decay_t<T>>::value;
 
     // Serialize aggregate types (structs) using reflection
@@ -110,6 +116,30 @@ namespace datagram {
     template <Mode M, typename Ctx, typename A, typename B> void serialize(Ctx &ctx, Pair<A, B> &value) {
         serialize<M>(ctx, value.first);
         serialize<M>(ctx, value.second);
+    }
+
+    // Serialize Array (fixed-size array)
+    template <Mode M, typename Ctx, typename T, std::size_t N> void serialize(Ctx &ctx, Array<T, N> &value) {
+        for (auto &elem : value) {
+            serialize<M>(ctx, elem);
+        }
+    }
+
+    // Serialize Tuple
+    template <Mode M, typename Ctx, typename... Ts> void serialize(Ctx &ctx, Tuple<Ts...> &value) {
+        apply([&](auto &...elems) { (serialize<M>(ctx, elems), ...); }, value);
+    }
+
+    // Serialize Variant
+    template <Mode M, typename Ctx, typename... Ts> void serialize(Ctx &ctx, Variant<Ts...> &value) {
+        // Serialize index
+        auto idx = value.index();
+        serialize<M>(ctx, idx);
+
+        // Serialize active value
+        if (value.valid()) {
+            value.apply([&](auto &v) { serialize<M>(ctx, v); });
+        }
     }
 
     // =============================================================================
@@ -229,6 +259,46 @@ namespace datagram {
     template <Mode M, typename Ctx, typename A, typename B> void deserialize(Ctx &ctx, Pair<A, B> &value) {
         deserialize<M>(ctx, value.first);
         deserialize<M>(ctx, value.second);
+    }
+
+    // Deserialize Array (fixed-size array)
+    template <Mode M, typename Ctx, typename T, std::size_t N> void deserialize(Ctx &ctx, Array<T, N> &value) {
+        for (auto &elem : value) {
+            deserialize<M>(ctx, elem);
+        }
+    }
+
+    // Deserialize Tuple
+    template <Mode M, typename Ctx, typename... Ts> void deserialize(Ctx &ctx, Tuple<Ts...> &value) {
+        apply([&](auto &...elems) { (deserialize<M>(ctx, elems), ...); }, value);
+    }
+
+    // Helper to deserialize Variant at runtime index
+    template <Mode M, std::size_t I, typename Ctx, typename... Ts>
+    void deserialize_variant_at_index(Ctx &ctx, Variant<Ts...> &value, std::size_t idx) {
+        if constexpr (I < sizeof...(Ts)) {
+            if (I == idx) {
+                using T = type_at_index_t<I, Ts...>;
+                T temp{};
+                deserialize<M>(ctx, temp);
+                value = std::move(temp);
+            } else {
+                deserialize_variant_at_index<M, I + 1>(ctx, value, idx);
+            }
+        }
+    }
+
+    // Deserialize Variant
+    template <Mode M, typename Ctx, typename... Ts> void deserialize(Ctx &ctx, Variant<Ts...> &value) {
+        // Deserialize index
+        std::size_t idx;
+        deserialize<M>(ctx, idx);
+
+        // Verify index is valid
+        verify(idx < sizeof...(Ts), "variant index out of bounds");
+
+        // Deserialize value at the correct index
+        deserialize_variant_at_index<M, 0>(ctx, value, idx);
     }
 
     // =============================================================================
