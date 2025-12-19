@@ -59,4 +59,5 @@
 
 // Phase 10: Serialization Infrastructure
 #include "datagram/serialization/buf.hpp"
+#include "datagram/serialization/serialize.hpp"
 #include "datagram/serialization/serialized_size.hpp"
