@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "datagram/containers/fws_multimap.hpp"
+#include "datagram/containers/paged.hpp"
 
 using namespace datagram;
 
@@ -178,6 +179,93 @@ TEST(FwsMultimapEmptyMap) {
         ++count;
     }
     ASSERT(count == 0);
+}
+
+// ============================================================================
+// Paged Tests
+// ============================================================================
+
+TEST(PagedCreatePage) {
+    using PagedInt = Paged<Vector<int>>;
+    PagedInt paged;
+
+    auto page1 = paged.create_page(10);
+    ASSERT(page1.valid());
+    ASSERT(page1.size() == 10);
+    ASSERT(page1.capacity_ >= 10);
+
+    // Write some data
+    for (std::size_t i = 0; i < page1.size(); ++i) {
+        paged.data(page1)[i] = static_cast<int>(i * 2);
+    }
+
+    // Verify data
+    for (std::size_t i = 0; i < page1.size(); ++i) {
+        ASSERT(paged.data(page1)[i] == static_cast<int>(i * 2));
+    }
+}
+
+TEST(PagedResizePage) {
+    using PagedInt = Paged<Vector<int>>;
+    PagedInt paged;
+
+    auto page = paged.create_page(5);
+    for (std::size_t i = 0; i < 5; ++i) {
+        paged.data(page)[i] = static_cast<int>(i);
+    }
+
+    // Resize larger
+    page = paged.resize_page(page, 10);
+    ASSERT(page.size() == 10);
+
+    // Original data should be preserved
+    for (std::size_t i = 0; i < 5; ++i) {
+        ASSERT(paged.data(page)[i] == static_cast<int>(i));
+    }
+
+    // Resize smaller
+    page = paged.resize_page(page, 3);
+    ASSERT(page.size() == 3);
+}
+
+TEST(PagedFreeAndReuse) {
+    using PagedInt = Paged<Vector<int>>;
+    PagedInt paged;
+
+    auto page1 = paged.create_page(8);
+    auto start1 = page1.start_;
+
+    paged.free_page(page1);
+
+    // Create another page with same size - should reuse freed space
+    auto page2 = paged.create_page(8);
+    ASSERT(page2.start_ == start1); // Should reuse same memory
+}
+
+TEST(PagedReadWrite) {
+    using PagedInt = Paged<Vector<int>>;
+    PagedInt paged;
+
+    auto page = paged.create_page(10);
+
+    // Write using write() method
+    paged.write(page.start_ + 0, 42);
+    paged.write(page.start_ + 1, 99);
+
+    // Read back
+    ASSERT(paged.read<int>(page.start_ + 0) == 42);
+    ASSERT(paged.read<int>(page.start_ + 1) == 99);
+}
+
+TEST(PagedClear) {
+    using PagedInt = Paged<Vector<int>>;
+    PagedInt paged;
+
+    paged.create_page(10);
+    paged.create_page(20);
+
+    paged.clear();
+    ASSERT(paged.data_.size() == 0);
 }
 
 int main() {
