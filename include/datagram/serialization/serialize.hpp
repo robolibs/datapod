@@ -171,6 +171,13 @@ namespace datagram {
         auto b = Buf{};
         auto ctx = SerializationContext<Buf<ByteBuf>, M>{b};
 
+        // Write integrity checksum placeholder if requested
+        offset_t integrity_offset = 0;
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            hash_t placeholder = 0;
+            integrity_offset = ctx.write(&placeholder, sizeof(hash_t), alignof(hash_t));
+        }
+
         // Write version hash if requested
         if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
             auto const h = convert_endian<M>(type_hash<decay_t<T>>());
@@ -178,6 +185,15 @@ namespace datagram {
         }
 
         serialize<M>(ctx, el);
+
+        // Calculate and write integrity checksum
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            auto const checksum_start = integrity_offset + static_cast<offset_t>(sizeof(hash_t));
+            auto const csum = b.checksum(checksum_start);
+            auto const csum_converted = convert_endian<M>(csum);
+            ctx.write(static_cast<std::size_t>(integrity_offset), csum_converted);
+        }
+
         return std::move(b.buf_);
     }
 
@@ -356,6 +372,20 @@ namespace datagram {
         T result{};
         auto ctx = DeserializationContext<M>{buf.data(), buf.size()};
 
+        // Verify integrity checksum if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            hash_t stored_checksum;
+            ctx.align(alignof(hash_t));
+            auto const checksum_start = ctx.pos_ + sizeof(hash_t);
+            ctx.read(&stored_checksum, sizeof(hash_t));
+
+            // Calculate checksum of data after the stored checksum
+            auto const calculated_checksum = hash(std::string_view{
+                reinterpret_cast<char const *>(buf.data() + checksum_start), buf.size() - checksum_start});
+
+            verify(convert_endian<M>(stored_checksum) == calculated_checksum, "integrity check failed: data corrupted");
+        }
+
         // Verify version hash if present
         if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
             hash_t stored_hash;
@@ -372,6 +402,20 @@ namespace datagram {
     template <Mode M = Mode::NONE, typename T> T deserialize(std::uint8_t const *data, std::size_t size) {
         T result{};
         auto ctx = DeserializationContext<M>{data, size};
+
+        // Verify integrity checksum if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            hash_t stored_checksum;
+            ctx.align(alignof(hash_t));
+            auto const checksum_start = ctx.pos_ + sizeof(hash_t);
+            ctx.read(&stored_checksum, sizeof(hash_t));
+
+            // Calculate checksum of data after the stored checksum
+            auto const calculated_checksum =
+                hash(std::string_view{reinterpret_cast<char const *>(data + checksum_start), size - checksum_start});
+
+            verify(convert_endian<M>(stored_checksum) == calculated_checksum, "integrity check failed: data corrupted");
+        }
 
         // Verify version hash if present
         if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
@@ -397,6 +441,20 @@ namespace datagram {
     // Overload for deserialize with explicit type parameter (alternative syntax)
     template <Mode M = Mode::NONE, typename T> void deserialize(ByteBuf const &buf, T &result) {
         auto ctx = DeserializationContext<M>{buf.data(), buf.size()};
+
+        // Verify integrity checksum if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            hash_t stored_checksum;
+            ctx.align(alignof(hash_t));
+            auto const checksum_start = ctx.pos_ + sizeof(hash_t);
+            ctx.read(&stored_checksum, sizeof(hash_t));
+
+            // Calculate checksum of data after the stored checksum
+            auto const calculated_checksum = hash(std::string_view{
+                reinterpret_cast<char const *>(buf.data() + checksum_start), buf.size() - checksum_start});
+
+            verify(convert_endian<M>(stored_checksum) == calculated_checksum, "integrity check failed: data corrupted");
+        }
 
         // Verify version hash if present
         if constexpr (is_mode_enabled(M, Mode::WITH_VERSION)) {
