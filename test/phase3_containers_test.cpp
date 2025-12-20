@@ -4,6 +4,7 @@
 
 #include "datagram/containers/fws_multimap.hpp"
 #include "datagram/containers/paged.hpp"
+#include "datagram/containers/paged_vecvec.hpp"
 
 using namespace datagram;
 
@@ -266,6 +267,111 @@ TEST(PagedClear) {
 
     paged.clear();
     ASSERT(paged.data_.size() == 0);
+}
+
+// ============================================================================
+// PagedVecvec Tests
+// ============================================================================
+
+TEST(PagedVecvecBasic) {
+    using MyKey = Strong<std::size_t, struct KeyTag>;
+    using MyPagedVecvec = PagedVecvec<Vector<Page<std::size_t, std::uint16_t>>, Paged<Vector<int>>, MyKey>;
+
+    MyPagedVecvec pvv;
+
+    // Add buckets
+    std::vector<int> bucket1 = {1, 2, 3};
+    pvv.emplace_back(bucket1);
+
+    std::vector<int> bucket2 = {4, 5};
+    pvv.emplace_back(bucket2);
+
+    ASSERT(pvv.size() == 2);
+    ASSERT(!pvv.empty());
+
+    // Access buckets
+    auto b0 = pvv[MyKey{0}];
+    ASSERT(b0.size() == 3);
+    ASSERT(b0[0] == 1);
+    ASSERT(b0[1] == 2);
+    ASSERT(b0[2] == 3);
+
+    auto b1 = pvv[MyKey{1}];
+    ASSERT(b1.size() == 2);
+    ASSERT(b1[0] == 4);
+    ASSERT(b1[1] == 5);
+}
+
+TEST(PagedVecvecBucketPushBack) {
+    using MyKey = Strong<std::size_t, struct KeyTag2>;
+    using MyPagedVecvec = PagedVecvec<Vector<Page<std::size_t, std::uint16_t>>, Paged<Vector<int>>, MyKey>;
+
+    MyPagedVecvec pvv;
+
+    std::vector<int> bucket1 = {1, 2};
+    pvv.emplace_back(bucket1);
+
+    // Get bucket and push_back
+    auto b = pvv[MyKey{0}];
+    b.push_back(3);
+    b.push_back(4);
+
+    // Verify
+    auto b_verify = pvv[MyKey{0}];
+    ASSERT(b_verify.size() == 4);
+    ASSERT(b_verify[0] == 1);
+    ASSERT(b_verify[1] == 2);
+    ASSERT(b_verify[2] == 3);
+    ASSERT(b_verify[3] == 4);
+}
+
+TEST(PagedVecvecIteration) {
+    using MyKey = Strong<std::size_t, struct KeyTag3>;
+    using MyPagedVecvec = PagedVecvec<Vector<Page<std::size_t, std::uint16_t>>, Paged<Vector<int>>, MyKey>;
+
+    MyPagedVecvec pvv;
+
+    pvv.emplace_back(std::vector<int>{10, 20});
+    pvv.emplace_back(std::vector<int>{30, 40, 50});
+
+    int bucket_count = 0;
+    for (auto bucket : pvv) {
+        if (bucket_count == 0) {
+            ASSERT(bucket.size() == 2);
+        } else if (bucket_count == 1) {
+            ASSERT(bucket.size() == 3);
+        }
+        ++bucket_count;
+    }
+    ASSERT(bucket_count == 2);
+}
+
+TEST(PagedVecvecEmptyBucket) {
+    using MyKey = Strong<std::size_t, struct KeyTag4>;
+    using MyPagedVecvec = PagedVecvec<Vector<Page<std::size_t, std::uint16_t>>, Paged<Vector<int>>, MyKey>;
+
+    MyPagedVecvec pvv;
+
+    pvv.emplace_back_empty();
+    ASSERT(pvv.size() == 1);
+
+    auto b = pvv[MyKey{0}];
+    ASSERT(b.empty());
+    ASSERT(b.size() == 0);
+}
+
+TEST(PagedVecvecClear) {
+    using MyKey = Strong<std::size_t, struct KeyTag5>;
+    using MyPagedVecvec = PagedVecvec<Vector<Page<std::size_t, std::uint16_t>>, Paged<Vector<int>>, MyKey>;
+
+    MyPagedVecvec pvv;
+
+    pvv.emplace_back(std::vector<int>{1, 2, 3});
+    pvv.emplace_back(std::vector<int>{4, 5});
+
+    pvv.clear();
+    ASSERT(pvv.empty());
+    ASSERT(pvv.size() == 0);
 }
 
 int main() {
