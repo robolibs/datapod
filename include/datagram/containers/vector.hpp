@@ -7,15 +7,18 @@
 #include <utility>
 
 #include "datagram/containers/allocator.hpp"
+#include "datagram/core/strong.hpp"
 
 namespace datagram {
 
     // Dynamic array container templated on pointer type
-    template <typename T, typename Ptr = T *, typename Alloc = Allocator<T>> class BasicVector {
+    template <typename T, typename Ptr = T *, typename Alloc = Allocator<T>, typename AccessType = std::size_t>
+    class BasicVector {
       public:
         using value_type = T;
         using allocator_type = Alloc;
         using size_type = std::size_t;
+        using access_type = AccessType;
         using difference_type = std::ptrdiff_t;
         using reference = T &;
         using const_reference = T const &;
@@ -88,6 +91,18 @@ namespace datagram {
         reference operator[](size_type pos) noexcept { return data_[pos]; }
 
         const_reference operator[](size_type pos) const noexcept { return data_[pos]; }
+
+        // Element access with access_type (supports Strong types via to_idx)
+        // Only enabled when access_type is different from size_type to avoid ambiguity
+        template <typename AT = access_type, typename = std::enable_if_t<!std::is_same_v<AT, size_type>>>
+        reference operator[](access_type const &index) noexcept {
+            return data_[to_idx(index)];
+        }
+
+        template <typename AT = access_type, typename = std::enable_if_t<!std::is_same_v<AT, size_type>>>
+        const_reference operator[](access_type const &index) const noexcept {
+            return data_[to_idx(index)];
+        }
 
         reference at(size_type pos) {
             if (pos >= size_) {
@@ -222,6 +237,31 @@ namespace datagram {
             }
         }
 
+        // Erase single element at position
+        T *erase(T *pos) {
+            auto const r = pos;
+            T *last = end() - 1;
+            while (pos < last) {
+                std::swap(*pos, *(pos + 1));
+                pos = pos + 1;
+            }
+            alloc_.destroy(pos);
+            --size_;
+            return r;
+        }
+
+        // Erase range [first, last)
+        T *erase(T *first, T *last) {
+            if (first != last) {
+                auto const new_end = std::move(last, end(), first);
+                for (auto it = new_end; it != end(); ++it) {
+                    alloc_.destroy(it);
+                }
+                size_ -= static_cast<size_type>(std::distance(new_end, end()));
+            }
+            return end();
+        }
+
         void resize(size_type count) {
             if (count < size_) {
                 for (size_type i = count; i < size_; ++i) {
@@ -267,6 +307,9 @@ namespace datagram {
 
     // Type aliases
     template <typename T> using Vector = BasicVector<T, T *, Allocator<T>>;
+
+    // VectorMap - vector indexed by Key type (supports Strong types)
+    template <typename Key, typename Value> using VectorMap = BasicVector<Value, Value *, Allocator<Value>, Key>;
 
     // Comparison operators
     template <typename T, typename Ptr, typename Alloc>

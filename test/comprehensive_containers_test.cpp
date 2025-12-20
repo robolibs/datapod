@@ -295,26 +295,161 @@ TEST(test_nvec_access) {
 // ============================================================================
 // Rtree Tests (R-Tree spatial index)
 // ============================================================================
-// NOTE: Rtree tests are commented out because BasicRtree requires a VectorType
-// that supports operator[] with a Strong<> key type (like cista's basic_vector
-// with IndexPointers template parameter), but datagram's BasicVector doesn't
-// have this capability. The Rtree typedef in datagram/containers/rtree.hpp
-// needs to be fixed to use a compatible vector type.
 
-// TEST(test_rtree_basic_insert_2d) {
-//     using RtreeType = BasicRtree<std::size_t, VectorMap, 2, float, 64, std::uint32_t>;
-//     RtreeType tree;
-//
-//     typename RtreeType::coord_t min1 = {0.0f, 0.0f};
-//     typename RtreeType::coord_t max1 = {1.0f, 1.0f};
-//     tree.insert(min1, max1, 1);
-//
-//     typename RtreeType::coord_t min2 = {2.0f, 2.0f};
-//     typename RtreeType::coord_t max2 = {3.0f, 3.0f};
-//     tree.insert(min2, max2, 2);
-//
-//     ASSERT(tree.nodes_.size() > 0);
-// }
+TEST(test_rtree_basic_insert_2d) {
+    Rtree<std::size_t, 2> tree;
+
+    typename Rtree<std::size_t, 2>::coord_t min1 = {0.0f, 0.0f};
+    typename Rtree<std::size_t, 2>::coord_t max1 = {1.0f, 1.0f};
+    tree.insert(min1, max1, 100);
+
+    typename Rtree<std::size_t, 2>::coord_t min2 = {2.0f, 2.0f};
+    typename Rtree<std::size_t, 2>::coord_t max2 = {3.0f, 3.0f};
+    tree.insert(min2, max2, 200);
+
+    ASSERT(tree.nodes_.size() > 0);
+}
+
+TEST(test_rtree_search_2d) {
+    Rtree<std::size_t, 2> tree;
+
+    // Insert some rectangles
+    typename Rtree<std::size_t, 2>::coord_t min1 = {0.0f, 0.0f};
+    typename Rtree<std::size_t, 2>::coord_t max1 = {1.0f, 1.0f};
+    tree.insert(min1, max1, 100);
+
+    typename Rtree<std::size_t, 2>::coord_t min2 = {0.5f, 0.5f};
+    typename Rtree<std::size_t, 2>::coord_t max2 = {1.5f, 1.5f};
+    tree.insert(min2, max2, 200);
+
+    typename Rtree<std::size_t, 2>::coord_t min3 = {5.0f, 5.0f};
+    typename Rtree<std::size_t, 2>::coord_t max3 = {6.0f, 6.0f};
+    tree.insert(min3, max3, 300);
+
+    // Search overlapping region
+    Vector<std::size_t> results;
+    typename Rtree<std::size_t, 2>::coord_t search_min = {0.0f, 0.0f};
+    typename Rtree<std::size_t, 2>::coord_t search_max = {2.0f, 2.0f};
+
+    tree.search(search_min, search_max, [&](auto const &min, auto const &max, std::size_t const &val) {
+        (void)min;
+        (void)max;
+        results.push_back(val);
+        return true;
+    });
+
+    // Should find at least the first two rectangles
+    ASSERT(results.size() >= 2);
+}
+
+TEST(test_rtree_3d) {
+    Rtree<std::size_t, 3> tree;
+
+    typename Rtree<std::size_t, 3>::coord_t min1 = {0.0f, 0.0f, 0.0f};
+    typename Rtree<std::size_t, 3>::coord_t max1 = {1.0f, 1.0f, 1.0f};
+    tree.insert(min1, max1, 1);
+
+    typename Rtree<std::size_t, 3>::coord_t min2 = {2.0f, 2.0f, 2.0f};
+    typename Rtree<std::size_t, 3>::coord_t max2 = {3.0f, 3.0f, 3.0f};
+    tree.insert(min2, max2, 2);
+
+    ASSERT(tree.nodes_.size() > 0);
+}
+
+TEST(test_rtree_bulk_insert) {
+    Rtree<std::size_t, 2> tree;
+
+    // Insert 50 rectangles
+    for (std::size_t i = 0; i < 50; ++i) {
+        float x = static_cast<float>(i);
+        typename Rtree<std::size_t, 2>::coord_t min_c = {x, x};
+        typename Rtree<std::size_t, 2>::coord_t max_c = {x + 1.0f, x + 1.0f};
+        tree.insert(min_c, max_c, i);
+    }
+
+    // Search a region
+    Vector<std::size_t> results;
+    typename Rtree<std::size_t, 2>::coord_t search_min = {10.0f, 10.0f};
+    typename Rtree<std::size_t, 2>::coord_t search_max = {20.0f, 20.0f};
+
+    tree.search(search_min, search_max, [&](auto const &min, auto const &max, std::size_t const &val) {
+        (void)min;
+        (void)max;
+        results.push_back(val);
+        return true;
+    });
+
+    ASSERT(results.size() > 0);
+}
+
+// ============================================================================
+// MutableFwsMultimap Tests
+// ============================================================================
+
+TEST(test_mutable_fws_multimap_basic) {
+    MutableFwsMultimap<std::uint32_t, int> mm;
+
+    ASSERT_EQ(mm.element_count(), 0);
+    ASSERT_EQ(mm.size(), 0);
+
+    mm[0].push_back(42);
+    ASSERT_EQ(mm.element_count(), 1);
+    ASSERT_EQ(mm.size(), 1);
+    ASSERT_EQ(mm[0].size(), 1);
+    ASSERT_EQ(mm[0][0], 42);
+}
+
+TEST(test_mutable_fws_multimap_multiple_buckets) {
+    MutableFwsMultimap<std::uint32_t, int> mm;
+
+    mm[0].push_back(4);
+    mm[0].push_back(8);
+
+    mm[1].push_back(15);
+    mm[1].push_back(16);
+    mm[1].push_back(23);
+    mm[1].push_back(42);
+
+    mm[2].push_back(100);
+    mm[2].push_back(200);
+
+    ASSERT_EQ(mm.size(), 3);
+    ASSERT_EQ(mm[0].size(), 2);
+    ASSERT_EQ(mm[1].size(), 4);
+    ASSERT_EQ(mm[2].size(), 2);
+
+    ASSERT_EQ(mm[0][0], 4);
+    ASSERT_EQ(mm[0][1], 8);
+    ASSERT_EQ(mm[1][3], 42);
+    ASSERT_EQ(mm[2][1], 200);
+}
+
+TEST(test_mutable_fws_multimap_iteration) {
+    MutableFwsMultimap<std::uint32_t, int> mm;
+
+    mm[0].push_back(10);
+    mm[0].push_back(20);
+    mm[1].push_back(30);
+
+    int sum = 0;
+    for (auto const &bucket : mm) {
+        for (auto val : bucket) {
+            sum += val;
+        }
+    }
+    ASSERT_EQ(sum, 60);
+}
+
+TEST(test_mutable_fws_multimap_clear) {
+    MutableFwsMultimap<std::uint32_t, int> mm;
+
+    mm[0].push_back(1);
+    mm[1].push_back(2);
+
+    mm[0].clear();
+    ASSERT_EQ(mm[0].size(), 0);
+    ASSERT_EQ(mm[1].size(), 1);
+}
 
 // ============================================================================
 // OffsetPtr Tests

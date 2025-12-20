@@ -528,9 +528,9 @@ namespace datagram {
         VectorType<node_idx_t, node> nodes_;
     };
 
-    // Convenience alias - using Vector as the default container
+    // Convenience alias - using VectorMap as the default container
     template <typename T, std::uint32_t Dims = 2U, typename NumType = float, std::uint32_t MaxItems = 64U,
               typename SizeType = std::uint32_t>
-    using Rtree = BasicRtree<T, Vector, Dims, NumType, MaxItems, SizeType>;
+    using Rtree = BasicRtree<T, VectorMap, Dims, NumType, MaxItems, SizeType>;
 
 } // namespace datagram
