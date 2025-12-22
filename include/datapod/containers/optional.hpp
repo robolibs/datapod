@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace datapod {
@@ -167,10 +169,93 @@ namespace datapod {
             }
         }
 
+        // Monadic operations (C++23)
+        template <typename F> constexpr auto and_then(F &&f) & {
+            using U = std::invoke_result_t<F, T &>;
+            static_assert(is_optional_impl<std::remove_cvref_t<U>>::value, "F must return an Optional");
+            if (has_value_) {
+                return std::invoke(std::forward<F>(f), **this);
+            } else {
+                return std::remove_cvref_t<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto and_then(F &&f) const & {
+            using U = std::invoke_result_t<F, T const &>;
+            static_assert(is_optional_impl<std::remove_cvref_t<U>>::value, "F must return an Optional");
+            if (has_value_) {
+                return std::invoke(std::forward<F>(f), **this);
+            } else {
+                return std::remove_cvref_t<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto and_then(F &&f) && {
+            using U = std::invoke_result_t<F, T &&>;
+            static_assert(is_optional_impl<std::remove_cvref_t<U>>::value, "F must return an Optional");
+            if (has_value_) {
+                return std::invoke(std::forward<F>(f), std::move(**this));
+            } else {
+                return std::remove_cvref_t<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto transform(F &&f) & {
+            using U = std::invoke_result_t<F, T &>;
+            if (has_value_) {
+                return Optional<U>{std::invoke(std::forward<F>(f), **this)};
+            } else {
+                return Optional<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto transform(F &&f) const & {
+            using U = std::invoke_result_t<F, T const &>;
+            if (has_value_) {
+                return Optional<U>{std::invoke(std::forward<F>(f), **this)};
+            } else {
+                return Optional<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto transform(F &&f) && {
+            using U = std::invoke_result_t<F, T &&>;
+            if (has_value_) {
+                return Optional<U>{std::invoke(std::forward<F>(f), std::move(**this))};
+            } else {
+                return Optional<U>{};
+            }
+        }
+
+        template <typename F> constexpr auto or_else(F &&f) const & {
+            using U = std::invoke_result_t<F>;
+            static_assert(std::is_same_v<std::remove_cvref_t<U>, Optional>, "F must return Optional<T>");
+            if (has_value_) {
+                return *this;
+            } else {
+                return std::invoke(std::forward<F>(f));
+            }
+        }
+
+        template <typename F> constexpr auto or_else(F &&f) && {
+            using U = std::invoke_result_t<F>;
+            static_assert(std::is_same_v<std::remove_cvref_t<U>, Optional>, "F must return Optional<T>");
+            if (has_value_) {
+                return std::move(*this);
+            } else {
+                return std::invoke(std::forward<F>(f));
+            }
+        }
+
         // Serialization support
         auto members() noexcept { return std::tie(has_value_, storage_); }
 
       private:
+        // Helper trait to detect Optional types
+        template <typename> struct is_optional_impl : std::false_type {};
+        template <typename U> struct is_optional_impl<Optional<U>> : std::true_type {};
+        template <typename U> static constexpr bool is_optional = is_optional_impl<std::remove_cvref_t<U>>::value;
+
         bool has_value_;
         alignas(T) unsigned char storage_[sizeof(T)];
     };

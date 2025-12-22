@@ -147,7 +147,40 @@ namespace datapod {
             return reinterpret_cast<char const *>(&mem_) + get_offset<Ts...>(I);
         }
 
+        // Member apply() - invokes a callable with tuple elements as arguments
+        template <typename F> constexpr decltype(auto) apply(F &&f) & {
+            return apply_impl(Indices, std::forward<F>(f), *this);
+        }
+
+        template <typename F> constexpr decltype(auto) apply(F &&f) const & {
+            return apply_impl(Indices, std::forward<F>(f), *this);
+        }
+
+        template <typename F> constexpr decltype(auto) apply(F &&f) && {
+            return apply_impl(Indices, std::forward<F>(f), std::move(*this));
+        }
+
+        // Member for_each() - invokes a callable for each element
+        template <typename F> constexpr void for_each(F &&f) & { for_each_impl(Indices, std::forward<F>(f)); }
+
+        template <typename F> constexpr void for_each(F &&f) const & { for_each_impl(Indices, std::forward<F>(f)); }
+
+        template <typename F> constexpr void for_each(F &&f) && { for_each_impl_move(Indices, std::forward<F>(f)); }
+
         std::aligned_storage_t<get_total_size<Ts...>(), max_align_of<Ts...>()> mem_;
+
+      private:
+        template <std::size_t... Is, typename F> constexpr void for_each_impl(seq_t<Is...>, F &&f) {
+            (std::invoke(std::forward<F>(f), get<Is>(*this)), ...);
+        }
+
+        template <std::size_t... Is, typename F> constexpr void for_each_impl(seq_t<Is...>, F &&f) const {
+            (std::invoke(std::forward<F>(f), get<Is>(*this)), ...);
+        }
+
+        template <std::size_t... Is, typename F> constexpr void for_each_impl_move(seq_t<Is...>, F &&f) {
+            (std::invoke(std::forward<F>(f), std::move(get<Is>(*this))), ...);
+        }
     };
 
     template <typename Head, typename... Tail> Tuple(Head &&first, Tail &&...tail) -> Tuple<Head, Tail...>;
@@ -177,12 +210,12 @@ namespace datapod {
 
     template <typename F, typename Tuple, std::size_t... I>
     constexpr decltype(auto) apply_impl(std::index_sequence<I...>, F &&f, Tuple const &a, Tuple const &b) {
-        return (std::invoke(std::forward<F>(f), get<I>(std::forward<Tuple>(a)), get<I>(std::forward<Tuple>(b))), ...);
+        return (std::invoke(std::forward<F>(f), get<I>(a), get<I>(b)), ...);
     }
 
     template <typename F, typename Tuple> constexpr decltype(auto) apply(F &&f, Tuple const &a, Tuple const &b) {
         return apply_impl(std::make_index_sequence<tuple_size_v<std::remove_reference_t<Tuple>>>{}, std::forward<F>(f),
-                          std::forward<Tuple>(a), std::forward<Tuple>(b));
+                          a, b);
     }
 
     template <typename T1, typename T2, std::size_t... I>
