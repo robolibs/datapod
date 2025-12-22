@@ -70,6 +70,128 @@ TEST_CASE("Segment - for_each_field iteration") {
 }
 
 // ============================================================================
+// TEST: Geometric Properties
+// ============================================================================
+
+TEST_CASE("Segment - length of zero segment") {
+    Segment s{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
+    CHECK(s.length() == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - length on X axis") {
+    Segment s{{0.0, 0.0, 0.0}, {5.0, 0.0, 0.0}};
+    CHECK(s.length() == doctest::Approx(5.0));
+}
+
+TEST_CASE("Segment - length 3-4-5 triangle") {
+    Segment s{{0.0, 0.0, 0.0}, {3.0, 4.0, 0.0}};
+    CHECK(s.length() == doctest::Approx(5.0));
+}
+
+TEST_CASE("Segment - length 3D") {
+    Segment s{{1.0, 2.0, 3.0}, {4.0, 6.0, 3.0}};
+    CHECK(s.length() == doctest::Approx(5.0));
+}
+
+TEST_CASE("Segment - midpoint on X axis") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point mid = s.midpoint();
+    CHECK(mid.x == doctest::Approx(5.0));
+    CHECK(mid.y == doctest::Approx(0.0));
+    CHECK(mid.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - midpoint 3D") {
+    Segment s{{1.0, 2.0, 3.0}, {5.0, 6.0, 7.0}};
+    Point mid = s.midpoint();
+    CHECK(mid.x == doctest::Approx(3.0));
+    CHECK(mid.y == doctest::Approx(4.0));
+    CHECK(mid.z == doctest::Approx(5.0));
+}
+
+// ============================================================================
+// TEST: Distance Queries
+// ============================================================================
+
+TEST_CASE("Segment - closest_point on segment") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{5.0, 5.0, 0.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(5.0));
+    CHECK(closest.y == doctest::Approx(0.0));
+    CHECK(closest.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - closest_point before start") {
+    Segment s{{5.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{0.0, 0.0, 0.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(5.0));
+    CHECK(closest.y == doctest::Approx(0.0));
+    CHECK(closest.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - closest_point after end") {
+    Segment s{{0.0, 0.0, 0.0}, {5.0, 0.0, 0.0}};
+    Point p{10.0, 0.0, 0.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(5.0));
+    CHECK(closest.y == doctest::Approx(0.0));
+    CHECK(closest.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - closest_point at start") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{0.0, 5.0, 0.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(0.0));
+    CHECK(closest.y == doctest::Approx(0.0));
+    CHECK(closest.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - closest_point at end") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{10.0, 5.0, 0.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(10.0));
+    CHECK(closest.y == doctest::Approx(0.0));
+    CHECK(closest.z == doctest::Approx(0.0));
+}
+
+TEST_CASE("Segment - closest_point degenerate segment") {
+    Segment s{{5.0, 5.0, 5.0}, {5.0, 5.0, 5.0}};
+    Point p{10.0, 10.0, 10.0};
+    Point closest = s.closest_point(p);
+    CHECK(closest.x == doctest::Approx(5.0));
+    CHECK(closest.y == doctest::Approx(5.0));
+    CHECK(closest.z == doctest::Approx(5.0));
+}
+
+TEST_CASE("Segment - distance_to point on segment") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{5.0, 3.0, 0.0};
+    CHECK(s.distance_to(p) == doctest::Approx(3.0));
+}
+
+TEST_CASE("Segment - distance_to point at perpendicular") {
+    Segment s{{0.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{5.0, 4.0, 3.0};
+    CHECK(s.distance_to(p) == doctest::Approx(5.0)); // 3-4-5 triangle
+}
+
+TEST_CASE("Segment - distance_to point before start") {
+    Segment s{{5.0, 0.0, 0.0}, {10.0, 0.0, 0.0}};
+    Point p{0.0, 0.0, 0.0};
+    CHECK(s.distance_to(p) == doctest::Approx(5.0));
+}
+
+TEST_CASE("Segment - distance_to point after end") {
+    Segment s{{0.0, 0.0, 0.0}, {5.0, 0.0, 0.0}};
+    Point p{10.0, 0.0, 0.0};
+    CHECK(s.distance_to(p) == doctest::Approx(5.0));
+}
+
+// ============================================================================
 // TEST: POD properties
 // ============================================================================
 
