@@ -430,35 +430,46 @@ namespace datapod {
 
         template <typename Key> std::pair<size_type, bool> find_or_prepare_insert(Key &&key) {
             auto const hash = compute_hash(key);
+            // Search for key - if found, return its position
             for (auto seq = probe_seq{h1(hash), capacity_}; true; seq.next()) {
                 group g{ctrl_ + seq.offset_};
+                // Check if key already exists in this group
                 for (auto const i : g.match(h2(hash))) {
                     if (Eq{}(GetKey()(entries_[seq.offset(i)]), key)) {
-                        return {seq.offset(i), false};
+                        return {seq.offset(i), false}; // Found existing key
                     }
                 }
+                // Check if we've found an empty slot (means key doesn't exist)
                 if (g.match_empty()) {
-                    break;
+                    break; // Key not found, proceed to insertion
                 }
             }
+            // Key doesn't exist - prepare slot for insertion
             return {prepare_insert(hash), true};
         }
 
         find_info find_first_non_full(size_type const hash) const noexcept {
-            for (auto seq = probe_seq{h1(hash), capacity_}; true; seq.next()) {
+            // Probe until we find an empty or deleted slot
+            // Note: Swiss tables guarantee we'll always find one if growth logic is correct
+            for (auto seq = probe_seq{h1(hash), capacity_};; seq.next()) {
                 auto const mask = group{ctrl_ + seq.offset_}.match_empty_or_deleted();
                 if (mask) {
                     return {seq.offset(*mask), seq.index_};
                 }
+                // NOTE: If growth_left calculation is correct, we should always find a slot
+                // If we don't, the table has a serious bug
             }
+            // Unreachable, but needed to silence compiler warning
+            return {0, 0};
         }
 
         size_type prepare_insert(size_type const hash) {
-            auto target = find_first_non_full(hash);
-            if (growth_left_ == 0U && !is_deleted(ctrl_[target.offset_])) {
+            // Check if we need to grow BEFORE finding a slot
+            if (growth_left_ == 0U) {
                 rehash_and_grow_if_necessary();
-                target = find_first_non_full(hash);
             }
+
+            auto target = find_first_non_full(hash);
             ++size_;
             growth_left_ -= (is_empty(ctrl_[target.offset_]) ? 1U : 0U);
             set_ctrl(target.offset_, h2(hash));
@@ -467,7 +478,12 @@ namespace datapod {
 
         void set_ctrl(size_type const i, h2_t const c) noexcept {
             ctrl_[i] = static_cast<ctrl_t>(c);
-            ctrl_[((i - WIDTH) & capacity_) + 1U + ((WIDTH - 1U) & capacity_)] = static_cast<ctrl_t>(c);
+            // For wraparound: mirror the first WIDTH-1 bytes after the END marker
+            // ctrl_[capacity] is the END marker and should never be modified
+            // ctrl_[capacity+1..capacity+WIDTH-1] mirrors ctrl_[0..WIDTH-2]
+            if (i < WIDTH - 1U) {
+                ctrl_[capacity_ + 1U + i] = static_cast<ctrl_t>(c);
+            }
         }
 
         void rehash_and_grow_if_necessary() { resize(capacity_ == 0U ? 1U : capacity_ * 2U + 1U); }
@@ -533,6 +549,100 @@ namespace datapod {
 
         iterator iterator_at(size_type const i) noexcept { return {ctrl_ + i, entries_ + i}; }
         const_iterator iterator_at(size_type const i) const noexcept { return {ctrl_ + i, entries_ + i}; }
+
+        // Lookup - contains()
+        template <typename Key> bool contains(Key &&key) const { return find(std::forward<Key>(key)) != end(); }
+
+        bool contains(key_type const &key) const { return find(key) != end(); }
+
+        // Lookup - count()
+        template <typename Key> size_type count(Key &&key) const { return contains(std::forward<Key>(key)) ? 1U : 0U; }
+
+        size_type count(key_type const &key) const { return contains(key) ? 1U : 0U; }
+
+        // Modifiers - swap()
+        void swap(HashStorage &other) noexcept {
+            std::swap(entries_, other.entries_);
+            std::swap(ctrl_, other.ctrl_);
+            std::swap(size_, other.size_);
+            std::swap(capacity_, other.capacity_);
+            std::swap(growth_left_, other.growth_left_);
+            std::swap(self_allocated_, other.self_allocated_);
+        }
+
+        // Capacity - reserve()
+        void reserve(size_type count) {
+            if (count > capacity_) {
+                resize(normalize_capacity(count));
+            }
+        }
+
+        // Capacity - rehash() with count parameter
+        void rehash(size_type count) {
+            if (count > capacity_) {
+                resize(normalize_capacity(count));
+            } else {
+                resize(capacity_);
+            }
+        }
+
+        // Capacity - bucket_count()
+        size_type bucket_count() const noexcept { return capacity_; }
+
+        // Capacity - load_factor()
+        float load_factor() const noexcept {
+            return capacity_ == 0U ? 0.0f : static_cast<float>(size_) / static_cast<float>(capacity_);
+        }
+
+        // Capacity - max_load_factor()
+        float max_load_factor() const noexcept {
+            // Swiss tables target ~87.5% load factor (7/8)
+            return 0.875f;
+        }
+
+        // C++17 - insert_or_assign()
+        template <typename M> std::pair<iterator, bool> insert_or_assign(key_type const &key, M &&obj) {
+            auto res = find_or_prepare_insert(key);
+            if (res.second) {
+                // New insertion
+                new (entries_ + res.first) T{key, std::forward<M>(obj)};
+            } else {
+                // Update existing
+                GetValue{}(entries_[res.first]) = std::forward<M>(obj);
+            }
+            return {iterator_at(res.first), res.second};
+        }
+
+        template <typename M> std::pair<iterator, bool> insert_or_assign(key_type &&key, M &&obj) {
+            auto res = find_or_prepare_insert(key);
+            if (res.second) {
+                // New insertion
+                new (entries_ + res.first) T{std::move(key), std::forward<M>(obj)};
+            } else {
+                // Update existing
+                GetValue{}(entries_[res.first]) = std::forward<M>(obj);
+            }
+            return {iterator_at(res.first), res.second};
+        }
+
+        // C++17 - try_emplace()
+        template <typename... Args> std::pair<iterator, bool> try_emplace(key_type const &key, Args &&...args) {
+            auto res = find_or_prepare_insert(key);
+            if (res.second) {
+                // Only emplace if key doesn't exist
+                new (entries_ + res.first) T{key, mapped_type{std::forward<Args>(args)...}};
+            }
+            return {iterator_at(res.first), res.second};
+        }
+
+        template <typename... Args> std::pair<iterator, bool> try_emplace(key_type &&key, Args &&...args) {
+            auto res = find_or_prepare_insert(key);
+            if (res.second) {
+                // Only emplace if key doesn't exist
+                new (entries_ + res.first) T{std::move(key), mapped_type{std::forward<Args>(args)...}};
+            }
+            return {iterator_at(res.first), res.second};
+        }
 
         bool operator==(HashStorage const &b) const noexcept {
             if (size() != b.size()) {

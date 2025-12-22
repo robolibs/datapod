@@ -46,7 +46,12 @@ namespace datapod {
             using Type = decay_t<T>;
             using Type1 = decay_t<T1>;
 
-            if constexpr (is_iterable_v<Type> && is_iterable_v<Type1>) {
+            // IMPORTANT: Check operator== FIRST before to_tuple!
+            // Otherwise primitive types like int will use to_tuple and compare incorrectly
+            if constexpr (is_eq_comparable_v<Type, Type1>) {
+                // Has operator== - use it
+                return a == b;
+            } else if constexpr (is_iterable_v<Type> && is_iterable_v<Type1>) {
                 // Both are iterable - compare element-wise
                 using std::begin;
                 using std::end;
@@ -56,12 +61,9 @@ namespace datapod {
                 // Both are aggregate types - compare via reflection
                 return tuple_equal([](auto &&x, auto &&y) { return EqualTo<decltype(x)>{}(x, y); }, to_tuple(a),
                                    to_tuple(b));
-            } else if constexpr (is_eq_comparable_v<Type, Type1>) {
-                // Has operator==
-                return a == b;
             } else {
-                static_assert(is_iterable_v<Type> || is_eq_comparable_v<Type, Type1> || to_tuple_works_v<Type>,
-                              "Type must be iterable, equality comparable, or an aggregate type");
+                static_assert(is_eq_comparable_v<Type, Type1> || is_iterable_v<Type> || to_tuple_works_v<Type>,
+                              "Type must be equality comparable, iterable, or an aggregate type");
                 return false;
             }
         }
