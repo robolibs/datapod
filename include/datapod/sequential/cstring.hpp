@@ -77,9 +77,11 @@ namespace datapod {
             s_.remaining_ = static_cast<int8_t>(std::max(static_cast<int32_t>(short_length_limit - len), -1));
             if (is_short()) {
                 std::memcpy(s_.s_, str, len);
+                s_.s_[len] = '\0';
             } else {
                 h_ = heap(len, owning);
                 std::memcpy(data(), str, len);
+                data()[len] = '\0';
             }
         }
 
@@ -235,6 +237,208 @@ namespace datapod {
 
         msize_t size() const noexcept { return is_short() ? s_.size() : h_.size(); }
 
+        msize_t capacity() const noexcept {
+            // For short strings, capacity is the SSO limit
+            // For heap strings, we don't track extra capacity, so return size
+            if (is_short()) {
+                return short_length_limit;
+            } else {
+                // Since we don't store separate capacity, return size
+                // This means we'll reallocate on every growth, but keeps struct small
+                return h_.size_;
+            }
+        }
+
+        void reserve(msize_t new_cap) {
+            msize_t const current_size = size();
+
+            // If new capacity is within SSO limit and we're currently short, nothing to do
+            if (new_cap <= short_length_limit && is_short()) {
+                return;
+            }
+
+            // If we're already heap-allocated and new_cap isn't larger, nothing to do
+            if (!is_short() && new_cap <= current_size) {
+                return;
+            }
+
+            // Need to allocate on heap
+            char *new_mem = static_cast<char *>(std::malloc(new_cap + 1));
+            if (new_mem == nullptr) {
+                throw std::bad_alloc{};
+            }
+
+            if (current_size > 0) {
+                std::memcpy(new_mem, data(), current_size);
+            }
+            new_mem[current_size] = '\0';
+
+            // Free old memory if we were owning heap memory
+            if (!is_short() && h_.self_allocated_) {
+                std::free(data());
+            }
+
+            // Set up new heap storage
+            h_.ptr_ = new_mem;
+            h_.size_ = current_size;
+            h_.self_allocated_ = true;
+            h_.minus_one_ = -1;
+        }
+
+        void resize(msize_t new_size) {
+            msize_t const current_size = size();
+
+            // If growing beyond current storage, need to reallocate
+            if (new_size > short_length_limit && (is_short() || new_size > current_size)) {
+                char *new_mem = static_cast<char *>(std::malloc(new_size + 1));
+                if (new_mem == nullptr) {
+                    throw std::bad_alloc{};
+                }
+
+                if (current_size > 0) {
+                    std::memcpy(new_mem, data(), current_size);
+                }
+
+                // Free old heap memory if owned
+                if (!is_short() && h_.self_allocated_) {
+                    std::free(data());
+                }
+
+                // Set up heap storage
+                h_.ptr_ = new_mem;
+                h_.size_ = new_size;
+                h_.self_allocated_ = true;
+                h_.minus_one_ = -1;
+
+                // Fill new space with null bytes
+                if (new_size > current_size) {
+                    std::memset(new_mem + current_size, 0, new_size - current_size);
+                }
+                new_mem[new_size] = '\0';
+            } else if (new_size <= short_length_limit) {
+                // Can fit in SSO
+                if (!is_short() && h_.self_allocated_) {
+                    // Copy from heap to stack
+                    char temp[short_length_limit + 1];
+                    std::memcpy(temp, data(), current_size);
+                    std::free(data());
+
+                    s_ = stack{};
+                    if (new_size > 0) {
+                        std::memcpy(s_.s_, temp, new_size);
+                    }
+                    s_.remaining_ = static_cast<int8_t>(short_length_limit - new_size);
+                    s_.s_[new_size] = '\0';
+                } else {
+                    // Already short or non-owning
+                    if (new_size > current_size) {
+                        std::memset(s_.s_ + current_size, 0, new_size - current_size);
+                    }
+                    s_.remaining_ = static_cast<int8_t>(short_length_limit - new_size);
+                    s_.s_[new_size] = '\0';
+                }
+            } else {
+                // Already heap-allocated, just update size (shrinking)
+                h_.size_ = new_size;
+                data()[new_size] = '\0';
+            }
+        }
+
+        void push_back(char c) {
+            msize_t const current_size = size();
+            msize_t const new_size = current_size + 1;
+
+            if (new_size <= short_length_limit && is_short()) {
+                // Can fit in SSO
+                s_.s_[current_size] = c;
+                s_.s_[new_size] = '\0';
+                s_.remaining_--;
+            } else {
+                // Need heap allocation
+                char *new_mem = static_cast<char *>(std::malloc(new_size + 1));
+                if (new_mem == nullptr) {
+                    throw std::bad_alloc{};
+                }
+
+                if (current_size > 0) {
+                    std::memcpy(new_mem, data(), current_size);
+                }
+                new_mem[current_size] = c;
+                new_mem[new_size] = '\0';
+
+                // Free old heap memory if owned
+                if (!is_short() && h_.self_allocated_) {
+                    std::free(data());
+                }
+
+                // Set up heap storage
+                h_.ptr_ = new_mem;
+                h_.size_ = new_size;
+                h_.self_allocated_ = true;
+                h_.minus_one_ = -1;
+            }
+        }
+
+        void append(char const *str) {
+            if (str == nullptr) {
+                return;
+            }
+            append(str, mstrlen(str));
+        }
+
+        void append(std::string_view sv) { append(sv.data(), static_cast<msize_t>(sv.size())); }
+
+        void append(char const *str, msize_t len) {
+            if (len == 0) {
+                return;
+            }
+
+            msize_t const current_size = size();
+            msize_t const new_size = current_size + len;
+
+            if (new_size <= short_length_limit && is_short()) {
+                // Can fit in SSO
+                std::memcpy(s_.s_ + current_size, str, len);
+                s_.s_[new_size] = '\0';
+                s_.remaining_ = static_cast<int8_t>(short_length_limit - new_size);
+            } else {
+                // Need heap allocation
+                char *new_mem = static_cast<char *>(std::malloc(new_size + 1));
+                if (new_mem == nullptr) {
+                    throw std::bad_alloc{};
+                }
+
+                if (current_size > 0) {
+                    std::memcpy(new_mem, data(), current_size);
+                }
+                std::memcpy(new_mem + current_size, str, len);
+                new_mem[new_size] = '\0';
+
+                // Free old heap memory if owned
+                if (!is_short() && h_.self_allocated_) {
+                    std::free(data());
+                }
+
+                // Set up heap storage
+                h_.ptr_ = new_mem;
+                h_.size_ = new_size;
+                h_.self_allocated_ = true;
+                h_.minus_one_ = -1;
+            }
+        }
+
+        void clear() noexcept {
+            if (is_short()) {
+                s_.remaining_ = short_length_limit;
+                s_.s_[0] = '\0';
+            } else {
+                h_.size_ = 0;
+                if (data() != nullptr) {
+                    data()[0] = '\0';
+                }
+            }
+        }
+
         struct heap {
             Ptr ptr_{nullptr};
             std::uint32_t size_{0};
@@ -253,10 +457,13 @@ namespace datapod {
                 ptr_ = mem;
                 size_ = len;
                 self_allocated_ = true;
+                minus_one_ = -1;
             }
             heap(Ptr ptr, msize_t len, non_owning_t) {
                 ptr_ = ptr;
                 size_ = len;
+                self_allocated_ = false;
+                minus_one_ = -1;
             }
 
             msize_t size() const { return size_; }
@@ -278,6 +485,7 @@ namespace datapod {
 
         // Serialization support - expose union members
         auto members() noexcept { return std::tie(h_, s_); }
+        auto members() const noexcept { return std::tie(h_, s_); }
 
         union {
             heap h_;
