@@ -111,7 +111,10 @@ namespace datapod {
             }
         }
 
-        void reset() noexcept { blocks_ = {}; }
+        void reset() noexcept {
+            size_ = 0;
+            blocks_ = {};
+        }
 
         bool operator[](Key const i) const noexcept { return test(i); }
 
@@ -231,6 +234,40 @@ namespace datapod {
         }
 
         bool none() const noexcept { return !any(); }
+
+        // Modifiers
+        void push_back(bool value) {
+            resize(size_ + 1);
+            set(size_ - 1, value);
+        }
+
+        void pop_back() {
+            if (!empty()) {
+                resize(size_ - 1);
+            }
+        }
+
+        void reserve(size_type new_capacity) { blocks_.reserve(num_blocks(new_capacity)); }
+
+        size_type capacity() const noexcept { return blocks_.capacity() * bits_per_block; }
+
+        void clear() noexcept {
+            size_ = 0;
+            blocks_.clear();
+        }
+
+        void flip(Key const i) noexcept {
+            assert(i < size_);
+            auto &block = blocks_[static_cast<size_type>(to_idx(i)) / bits_per_block];
+            auto const bit = to_idx(i) % bits_per_block;
+            block ^= (block_t{1U} << bit);
+        }
+
+        void flip() noexcept {
+            for (auto &b : blocks_) {
+                b = ~b;
+            }
+        }
 
         block_t sanitized_last_block() const noexcept {
             if ((size_ % bits_per_block) != 0) {
