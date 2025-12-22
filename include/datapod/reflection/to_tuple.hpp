@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include "datapod/reflection/arity.hpp"
+#include "datapod/reflection/has_members.hpp"
 
 namespace datapod {
 
@@ -88,16 +89,36 @@ namespace datapod {
 
     } // namespace detail
 
+    // ============================================================================
+    // ENHANCED to_tuple - checks for members() first!
+    // ============================================================================
+
     // Main to_tuple function
     template <typename T> constexpr auto to_tuple(T &t) {
         using Type = std::remove_cv_t<std::remove_reference_t<T>>;
-        return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(t);
+
+        // Priority 1: Check for members() function
+        if constexpr (has_members_v<Type>) {
+            return t.members();
+        }
+        // Priority 2: Fall back to automatic structured bindings
+        else {
+            return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(t);
+        }
     }
 
     // Const overload
     template <typename T> constexpr auto to_tuple(T const &t) {
         using Type = std::remove_cv_t<std::remove_reference_t<T>>;
-        return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(const_cast<T &>(t));
+
+        // Priority 1: Check for const members() function
+        if constexpr (has_const_members_v<Type>) {
+            return t.members();
+        }
+        // Priority 2: Fall back to automatic structured bindings
+        else {
+            return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(const_cast<T &>(t));
+        }
     }
 
 } // namespace datapod
