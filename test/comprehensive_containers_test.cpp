@@ -3,17 +3,17 @@
 #include <string>
 #include <vector>
 
-#include "bitcon/containers/hash_map.hpp"
-#include "bitcon/containers/hash_set.hpp"
-#include "bitcon/containers/mmap_vec.hpp"
-#include "bitcon/containers/mutable_fws_multimap.hpp"
-#include "bitcon/containers/nvec.hpp"
-#include "bitcon/containers/offset_ptr.hpp"
-#include "bitcon/containers/ptr.hpp"
-#include "bitcon/containers/rtree.hpp"
-#include "bitcon/core/mmap.hpp"
+#include "datapod/containers/hash_map.hpp"
+#include "datapod/containers/hash_set.hpp"
+#include "datapod/containers/mmap_vec.hpp"
+#include "datapod/containers/mutable_fws_multimap.hpp"
+#include "datapod/containers/nvec.hpp"
+#include "datapod/containers/offset_ptr.hpp"
+#include "datapod/containers/ptr.hpp"
+#include "datapod/containers/rtree.hpp"
+#include "datapod/core/mmap.hpp"
 
-using namespace bitcon;
+using namespace datapod;
 
 // Helper template for Rtree - wraps BasicVector for use as template template parameter
 template <typename Key, typename Value> using VectorMap = BasicVector<Value, Value *, Allocator<Value>>;

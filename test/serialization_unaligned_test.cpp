@@ -1,9 +1,8 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "bitcon/bitcon.hpp"
+#include "datapod/datapod.hpp"
 
-using namespace bitcon;
+using namespace datapod;
 
 // =============================================================================
 // Test Structures

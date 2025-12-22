@@ -2,13 +2,13 @@
 #include <iostream>
 #include <string>
 
-#include "bitcon/core/decay.hpp"
-#include "bitcon/core/exception.hpp"
-#include "bitcon/core/hash.hpp"
-#include "bitcon/core/mode.hpp"
-#include "bitcon/core/offset_t.hpp"
-#include "bitcon/core/type_traits.hpp"
-#include "bitcon/core/verify.hpp"
+#include "datapod/core/decay.hpp"
+#include "datapod/core/exception.hpp"
+#include "datapod/core/hash.hpp"
+#include "datapod/core/mode.hpp"
+#include "datapod/core/offset_t.hpp"
+#include "datapod/core/type_traits.hpp"
+#include "datapod/core/verify.hpp"
 
 // Test exception handling
 void test_exception() {
@@ -16,8 +16,8 @@ void test_exception() {
 
     bool caught = false;
     try {
-        bitcon::throw_exception(bitcon::BitconException{"test error"});
-    } catch (const bitcon::BitconException &e) {
+        datapod::throw_exception(datapod::DatapodException{"test error"});
+    } catch (const datapod::DatapodException &e) {
         caught = true;
         assert(std::string(e.what()) == "test error");
     }
@@ -31,22 +31,22 @@ void test_verify() {
     std::cout << "Testing verify... ";
 
     // Should not throw
-    bitcon::verify(true, "this should not throw");
-    bitcon::verify_str(true, "this should not throw either");
+    datapod::verify(true, "this should not throw");
+    datapod::verify_str(true, "this should not throw either");
 
     // Should throw
     bool caught = false;
     try {
-        bitcon::verify(false, "expected failure");
-    } catch (const bitcon::BitconException &e) {
+        datapod::verify(false, "expected failure");
+    } catch (const datapod::DatapodException &e) {
         caught = true;
     }
     assert(caught);
 
     caught = false;
     try {
-        bitcon::verify_str(false, std::string("expected failure with string"));
-    } catch (const bitcon::BitconException &e) {
+        datapod::verify_str(false, std::string("expected failure with string"));
+    } catch (const datapod::DatapodException &e) {
         caught = true;
     }
     assert(caught);
@@ -59,13 +59,13 @@ void test_offset_t() {
     std::cout << "Testing offset_t... ";
 
     // Check that NULLPTR_OFFSET is the minimum value
-    assert(bitcon::NULLPTR_OFFSET == std::numeric_limits<bitcon::offset_t>::min());
+    assert(datapod::NULLPTR_OFFSET == std::numeric_limits<datapod::offset_t>::min());
 
     // Check that DANGLING is NULLPTR_OFFSET + 1
-    assert(bitcon::DANGLING == bitcon::NULLPTR_OFFSET + 1);
+    assert(datapod::DANGLING == datapod::NULLPTR_OFFSET + 1);
 
     // Check that offset_t is intptr_t
-    static_assert(std::is_same_v<bitcon::offset_t, std::intptr_t>);
+    static_assert(std::is_same_v<datapod::offset_t, std::intptr_t>);
 
     std::cout << "PASSED\n";
 }
@@ -75,14 +75,14 @@ void test_decay() {
     std::cout << "Testing decay_t... ";
 
     // Basic decay
-    static_assert(std::is_same_v<bitcon::decay_t<int &>, int>);
-    static_assert(std::is_same_v<bitcon::decay_t<const int &>, int>);
-    static_assert(std::is_same_v<bitcon::decay_t<int &&>, int>);
+    static_assert(std::is_same_v<datapod::decay_t<int &>, int>);
+    static_assert(std::is_same_v<datapod::decay_t<const int &>, int>);
+    static_assert(std::is_same_v<datapod::decay_t<int &&>, int>);
 
     // Reference wrapper unwrapping
     int x = 42;
     std::reference_wrapper<int> ref(x);
-    static_assert(std::is_same_v<bitcon::decay_t<decltype(ref)>, int>);
+    static_assert(std::is_same_v<datapod::decay_t<decltype(ref)>, int>);
 
     std::cout << "PASSED\n";
 }
@@ -91,9 +91,9 @@ void test_decay() {
 void test_mode() {
     std::cout << "Testing Mode enum... ";
 
-    using bitcon::is_mode_disabled;
-    using bitcon::is_mode_enabled;
-    using bitcon::Mode;
+    using datapod::is_mode_disabled;
+    using datapod::is_mode_enabled;
+    using datapod::Mode;
 
     // Test combining modes
     auto combined = Mode::WITH_VERSION | Mode::WITH_INTEGRITY;
@@ -112,15 +112,15 @@ void test_type_traits() {
     std::cout << "Testing type_traits... ";
 
     // is_char_array_v
-    static_assert(bitcon::is_char_array_v<char[10]>);
-    static_assert(bitcon::is_char_array_v<const char[10]>);
-    static_assert(!bitcon::is_char_array_v<int[10]>);
-    static_assert(!bitcon::is_char_array_v<std::string>);
+    static_assert(datapod::is_char_array_v<char[10]>);
+    static_assert(datapod::is_char_array_v<const char[10]>);
+    static_assert(!datapod::is_char_array_v<int[10]>);
+    static_assert(!datapod::is_char_array_v<std::string>);
 
     // is_iterable_v
-    static_assert(bitcon::is_iterable_v<std::string>);
-    static_assert(bitcon::is_iterable_v<std::vector<int>>);
-    static_assert(!bitcon::is_iterable_v<int>);
+    static_assert(datapod::is_iterable_v<std::string>);
+    static_assert(datapod::is_iterable_v<std::vector<int>>);
+    static_assert(!datapod::is_iterable_v<int>);
 
     std::cout << "PASSED\n";
 }
@@ -129,9 +129,9 @@ void test_type_traits() {
 void test_hash() {
     std::cout << "Testing hash... ";
 
-    using bitcon::BASE_HASH;
-    using bitcon::hash;
-    using bitcon::hash_combine;
+    using datapod::BASE_HASH;
+    using datapod::hash;
+    using datapod::hash_combine;
 
     // Hash consistency - same input should give same output
     auto h1 = hash("hello");

@@ -1,6 +1,6 @@
 <img align="right" width="26%" src="./misc/logo.png">
 
-# Bitcon
+# Datapod
 
 Serialization/Deserialization framework without source code generation
 

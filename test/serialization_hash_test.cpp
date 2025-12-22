@@ -1,8 +1,8 @@
 #include <doctest/doctest.h>
 
-#include "bitcon/bitcon.hpp"
+#include "datapod/datapod.hpp"
 
-using namespace bitcon;
+using namespace datapod;
 
 // Test HashMap serialization
 TEST_CASE("serialize - hashmap int to string") {

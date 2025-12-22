@@ -3,39 +3,39 @@
 #include <iostream>
 #include <vector>
 
-#include "bitcon/containers/allocator.hpp"
-#include "bitcon/containers/offset_ptr.hpp"
-#include "bitcon/containers/ptr.hpp"
+#include "datapod/containers/allocator.hpp"
+#include "datapod/containers/offset_ptr.hpp"
+#include "datapod/containers/ptr.hpp"
 
 // Test basic offset_ptr construction
 void test_offset_ptr_construction() {
     std::cout << "Testing offset_ptr construction... ";
 
     // Default construction
-    bitcon::OffsetPtr<int> p1;
+    datapod::OffsetPtr<int> p1;
     assert(p1.get() == nullptr);
     assert(!p1);
     assert(p1 == nullptr);
 
     // nullptr construction
-    bitcon::OffsetPtr<int> p2(nullptr);
+    datapod::OffsetPtr<int> p2(nullptr);
     assert(p2 == nullptr);
 
     // Construction from raw pointer
     int value = 42;
-    bitcon::OffsetPtr<int> p3(&value);
+    datapod::OffsetPtr<int> p3(&value);
     assert(p3.get() == &value);
     assert(p3);
     assert(p3 != nullptr);
     assert(*p3 == 42);
 
     // Copy construction
-    bitcon::OffsetPtr<int> p4(p3);
+    datapod::OffsetPtr<int> p4(p3);
     assert(p4.get() == &value);
     assert(*p4 == 42);
 
     // Move construction
-    bitcon::OffsetPtr<int> p5(std::move(p3));
+    datapod::OffsetPtr<int> p5(std::move(p3));
     assert(p5.get() == &value);
 
     std::cout << "PASSED\n";
@@ -48,8 +48,8 @@ void test_offset_ptr_assignment() {
     int value1 = 10;
     int value2 = 20;
 
-    bitcon::OffsetPtr<int> p1(&value1);
-    bitcon::OffsetPtr<int> p2;
+    datapod::OffsetPtr<int> p1(&value1);
+    datapod::OffsetPtr<int> p2;
 
     // Copy assignment
     p2 = p1;
@@ -79,7 +79,7 @@ void test_offset_ptr_dereferencing() {
     };
 
     Data data{10, 20};
-    bitcon::OffsetPtr<Data> p(&data);
+    datapod::OffsetPtr<Data> p(&data);
 
     // Operator*
     assert((*p).x == 10);
@@ -103,10 +103,10 @@ void test_offset_ptr_comparison() {
 
     int values[3] = {1, 2, 3};
 
-    bitcon::OffsetPtr<int> p1(&values[0]);
-    bitcon::OffsetPtr<int> p2(&values[0]);
-    bitcon::OffsetPtr<int> p3(&values[1]);
-    bitcon::OffsetPtr<int> p4(nullptr);
+    datapod::OffsetPtr<int> p1(&values[0]);
+    datapod::OffsetPtr<int> p2(&values[0]);
+    datapod::OffsetPtr<int> p3(&values[1]);
+    datapod::OffsetPtr<int> p4(nullptr);
 
     // Equality
     assert(p1 == p2);
@@ -134,7 +134,7 @@ void test_offset_ptr_arithmetic() {
     std::cout << "Testing offset_ptr arithmetic... ";
 
     int values[5] = {10, 20, 30, 40, 50};
-    bitcon::OffsetPtr<int> p(&values[0]);
+    datapod::OffsetPtr<int> p(&values[0]);
 
     // Increment
     ++p;
@@ -174,13 +174,13 @@ void test_offset_ptr_arithmetic() {
     assert(*p == 20);
 
     // Pointer difference
-    bitcon::OffsetPtr<int> p4(&values[0]);
-    bitcon::OffsetPtr<int> p5(&values[4]);
+    datapod::OffsetPtr<int> p4(&values[0]);
+    datapod::OffsetPtr<int> p5(&values[4]);
     assert(p5 - p4 == 4);
     assert(p4 - p5 == -4);
 
     // Array subscript
-    bitcon::OffsetPtr<int> p6(&values[0]);
+    datapod::OffsetPtr<int> p6(&values[0]);
     assert(p6[0] == 10);
     assert(p6[1] == 20);
     assert(p6[2] == 30);
@@ -195,7 +195,7 @@ void test_offset_ptr_relocation() {
 
     struct Block {
         int value;
-        bitcon::OffsetPtr<int> ptr;
+        datapod::OffsetPtr<int> ptr;
     };
 
     // Create a block with a pointer to its own value
@@ -207,8 +207,7 @@ void test_offset_ptr_relocation() {
     assert(*block1.ptr == 42);
 
     // Copy the block to a new memory location
-    Block block2;
-    std::memcpy(&block2, &block1, sizeof(Block));
+    Block block2 = block1; // Use copy instead of memcpy
 
     // The offset_ptr should still work in the new location!
     assert(*block2.ptr == 42);
@@ -222,7 +221,7 @@ void test_offset_ptr_relocation() {
     constexpr size_t SIZE = 3;
     struct ArrayBlock {
         int values[SIZE];
-        bitcon::OffsetPtr<int> ptrs[SIZE];
+        datapod::OffsetPtr<int> ptrs[SIZE];
     };
 
     ArrayBlock arr1;
@@ -237,8 +236,7 @@ void test_offset_ptr_relocation() {
     }
 
     // Relocate the entire array
-    ArrayBlock arr2;
-    std::memcpy(&arr2, &arr1, sizeof(ArrayBlock));
+    ArrayBlock arr2 = arr1; // Use copy instead of memcpy
 
     // All pointers should still work!
     for (size_t i = 0; i < SIZE; ++i) {
@@ -256,9 +254,9 @@ void test_offset_ptr_const() {
     int value = 42;
     const int const_value = 100;
 
-    bitcon::OffsetPtr<int> p1(&value);
-    bitcon::OffsetPtr<const int> p2(&const_value);
-    bitcon::OffsetPtr<const int> p3(&value); // non-const to const conversion
+    datapod::OffsetPtr<int> p1(&value);
+    datapod::OffsetPtr<const int> p2(&const_value);
+    datapod::OffsetPtr<const int> p3(&value); // non-const to const conversion
 
     assert(*p1 == 42);
     assert(*p2 == 100);
@@ -279,35 +277,35 @@ void test_ptr_mode_selection() {
     int value = 42;
 
     // Raw mode
-    bitcon::raw::ptr<int> raw_ptr = &value;
+    datapod::raw::ptr<int> raw_ptr = &value;
     assert(*raw_ptr == 42);
 
     // Offset mode
-    bitcon::offset::ptr<int> offset_ptr(&value);
+    datapod::offset::ptr<int> offset_ptr(&value);
     assert(*offset_ptr == 42);
 
     // Generic ptr template
-    bitcon::ptr<int, bitcon::RawMode> p1 = &value;
-    bitcon::ptr<int, bitcon::OffsetMode> p2(&value);
+    datapod::ptr<int, datapod::RawMode> p1 = &value;
+    datapod::ptr<int, datapod::OffsetMode> p2(&value);
 
     assert(*p1 == 42);
     assert(*p2 == 42);
 
     // Type traits
-    static_assert(bitcon::is_raw_ptr_v<int *>);
-    static_assert(!bitcon::is_raw_ptr_v<bitcon::OffsetPtr<int>>);
+    static_assert(datapod::is_raw_ptr_v<int *>);
+    static_assert(!datapod::is_raw_ptr_v<datapod::OffsetPtr<int>>);
 
-    static_assert(bitcon::is_offset_ptr_v<bitcon::OffsetPtr<int>>);
-    static_assert(!bitcon::is_offset_ptr_v<int *>);
+    static_assert(datapod::is_offset_ptr_v<datapod::OffsetPtr<int>>);
+    static_assert(!datapod::is_offset_ptr_v<int *>);
 
-    static_assert(bitcon::is_ptr_type_v<int *>);
-    static_assert(bitcon::is_ptr_type_v<bitcon::OffsetPtr<int>>);
-    static_assert(!bitcon::is_ptr_type_v<int>);
+    static_assert(datapod::is_ptr_type_v<int *>);
+    static_assert(datapod::is_ptr_type_v<datapod::OffsetPtr<int>>);
+    static_assert(!datapod::is_ptr_type_v<int>);
 
     // ptr_value_t
-    static_assert(std::is_same_v<bitcon::ptr_value_t<int *>, int>);
-    static_assert(std::is_same_v<bitcon::ptr_value_t<bitcon::OffsetPtr<int>>, int>);
-    static_assert(std::is_same_v<bitcon::ptr_value_t<int>, int>);
+    static_assert(std::is_same_v<datapod::ptr_value_t<int *>, int>);
+    static_assert(std::is_same_v<datapod::ptr_value_t<datapod::OffsetPtr<int>>, int>);
+    static_assert(std::is_same_v<datapod::ptr_value_t<int>, int>);
 
     std::cout << "PASSED\n";
 }
@@ -316,7 +314,7 @@ void test_ptr_mode_selection() {
 void test_allocator() {
     std::cout << "Testing Allocator... ";
 
-    bitcon::Allocator<int> alloc;
+    datapod::Allocator<int> alloc;
 
     // Allocate
     int *ptr = alloc.allocate(10);
@@ -341,7 +339,7 @@ void test_allocator() {
     alloc.deallocate(ptr, 10);
 
     // Test with vector
-    std::vector<int, bitcon::Allocator<int>> vec;
+    std::vector<int, datapod::Allocator<int>> vec;
     vec.push_back(1);
     vec.push_back(2);
     vec.push_back(3);
@@ -354,7 +352,7 @@ void test_allocator() {
     assert(alloc.max_size() > 0);
 
     // Test rebind
-    using StringAlloc = bitcon::Allocator<int>::rebind<std::string>::other;
+    using StringAlloc = datapod::Allocator<int>::rebind<std::string>::other;
     StringAlloc string_alloc;
     auto *str_ptr = string_alloc.allocate(1);
     string_alloc.construct(str_ptr, "Hello");
@@ -370,15 +368,15 @@ void test_offset_ptr_offset() {
     std::cout << "Testing offset_ptr offset storage... ";
 
     int value = 42;
-    bitcon::OffsetPtr<int> p(&value);
+    datapod::OffsetPtr<int> p(&value);
 
     // Calculate expected offset
     auto expected_offset = reinterpret_cast<std::uintptr_t>(&value) - reinterpret_cast<std::uintptr_t>(&p);
 
-    assert(p.offset() == static_cast<bitcon::offset_t>(expected_offset));
+    assert(p.offset() == static_cast<datapod::offset_t>(expected_offset));
 
     // Test set_offset
-    bitcon::OffsetPtr<int> p2;
+    datapod::OffsetPtr<int> p2;
     p2.set_offset(p.offset());
 
     // This won't point to the same location because the base address is different,
@@ -386,8 +384,8 @@ void test_offset_ptr_offset() {
     assert(p2.offset() == p.offset());
 
     // nullptr offset
-    bitcon::OffsetPtr<int> p3(nullptr);
-    assert(p3.offset() == bitcon::NULLPTR_OFFSET);
+    datapod::OffsetPtr<int> p3(nullptr);
+    assert(p3.offset() == datapod::NULLPTR_OFFSET);
 
     std::cout << "PASSED\n";
 }

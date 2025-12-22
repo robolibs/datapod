@@ -2,10 +2,10 @@
 #include <iostream>
 #include <string>
 
-#include "bitcon/reflection/arity.hpp"
-#include "bitcon/reflection/comparable.hpp"
-#include "bitcon/reflection/for_each_field.hpp"
-#include "bitcon/reflection/to_tuple.hpp"
+#include "datapod/reflection/arity.hpp"
+#include "datapod/reflection/comparable.hpp"
+#include "datapod/reflection/for_each_field.hpp"
+#include "datapod/reflection/to_tuple.hpp"
 
 // Test arity detection
 void test_arity() {
@@ -15,14 +15,14 @@ void test_arity() {
     struct One {
         int x;
     };
-    static_assert(bitcon::arity_v<One> == 1);
+    static_assert(datapod::arity_v<One> == 1);
 
     // Two fields
     struct Two {
         int x;
         double y;
     };
-    static_assert(bitcon::arity_v<Two> == 2);
+    static_assert(datapod::arity_v<Two> == 2);
 
     // Three fields
     struct Three {
@@ -30,7 +30,7 @@ void test_arity() {
         double y;
         int z;
     };
-    static_assert(bitcon::arity_v<Three> == 3);
+    static_assert(datapod::arity_v<Three> == 3);
 
     // Five fields
     struct Five {
@@ -40,7 +40,7 @@ void test_arity() {
         int d;
         int e;
     };
-    static_assert(bitcon::arity_v<Five> == 5);
+    static_assert(datapod::arity_v<Five> == 5);
 
     std::cout << "PASSED\n";
 }
@@ -55,7 +55,7 @@ void test_to_tuple() {
     };
 
     Point p{10, 20};
-    auto tup = bitcon::to_tuple(p);
+    auto tup = datapod::to_tuple(p);
 
     assert(std::get<0>(tup) == 10);
     assert(std::get<1>(tup) == 20);
@@ -76,12 +76,12 @@ void test_for_each_field() {
 
     // Count fields
     int count = 0;
-    bitcon::for_each_field(p, [&count](auto &&) { ++count; });
+    datapod::for_each_field(p, [&count](auto &&) { ++count; });
     assert(count == 2);
 
     // Sum all fields
     int sum = 0;
-    bitcon::for_each_field(p, [&sum](auto &&field) { sum += field; });
+    datapod::for_each_field(p, [&sum](auto &&field) { sum += field; });
     assert(sum == 30);
 
     std::cout << "PASSED\n";
@@ -102,7 +102,7 @@ void test_for_each_field_indexed() {
     int indices_sum = 0;
     int values_sum = 0;
 
-    bitcon::for_each_field_indexed(d, [&](auto &&field, auto index) {
+    datapod::for_each_field_indexed(d, [&](auto &&field, auto index) {
         indices_sum += index;
         values_sum += field;
     });

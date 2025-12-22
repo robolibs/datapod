@@ -1,4 +1,4 @@
-set_project("bitcon")
+set_project("datapod")
 set_version("0.0.1")
 set_xmakever("2.7.0")
 
@@ -116,14 +116,14 @@ if has_config("tests") then
 end
 
 -- Main library target
-target("bitcon")
+target("datapod")
     set_kind("static")
 
     -- Add source files
-    add_files("src/bitcon/**.cpp")
+    add_files("src/datapod/**.cpp")
 
     -- Add header files
-    add_headerfiles("include/(bitcon/**.hpp)")
+    add_headerfiles("include/(datapod/**.hpp)")
     add_includedirs("include", {public = true})
 
     -- Conditional rerun support (only if package is found)
@@ -137,21 +137,21 @@ target("bitcon")
     end
 
     -- Set install files
-    add_installfiles("include/(bitcon/**.hpp)")
+    add_installfiles("include/(datapod/**.hpp)")
     on_install(function (target)
         local installdir = target:installdir()
         os.cp(target:targetfile(), path.join(installdir, "lib", path.filename(target:targetfile())))
     end)
 target_end()
 
--- Examples (only build when bitcon is the main project)
+-- Examples (only build when datapod is the main project)
 if has_config("examples") and os.projectdir() == os.curdir() then
     for _, filepath in ipairs(os.files("examples/*.cpp")) do
         local filename = path.basename(filepath)
         target(filename)
             set_kind("binary")
             add_files(filepath)
-            add_deps("bitcon")
+            add_deps("datapod")
 
             -- Always try to add rerun_sdk for examples (matching CMake behavior)
             on_load(function (target)
@@ -166,14 +166,14 @@ if has_config("examples") and os.projectdir() == os.curdir() then
     end
 end
 
--- Tests (only build when bitcon is the main project)
+-- Tests (only build when datapod is the main project)
 if has_config("tests") and os.projectdir() == os.curdir() then
     for _, filepath in ipairs(os.files("test/*.cpp")) do
         local filename = path.basename(filepath)
         target(filename)
             set_kind("binary")
             add_files(filepath)
-            add_deps("bitcon")
+            add_deps("datapod")
             add_packages("doctest")
             add_includedirs("include")
             add_defines("DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN")

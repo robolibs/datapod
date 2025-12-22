@@ -1,0 +1,103 @@
+#pragma once
+
+#include <tuple>
+#include <type_traits>
+
+#include "datapod/reflection/arity.hpp"
+
+namespace datapod {
+
+    // Convert aggregate types to tuples using structured bindings
+    namespace detail {
+        template <typename T, std::size_t N> struct ToTupleImpl;
+
+        // Specializations for 0-20 fields (can be extended to 128 if needed)
+        template <typename T> struct ToTupleImpl<T, 0> {
+            static constexpr auto to_tuple(T &) { return std::tuple<>{}; }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 1> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a] = t;
+                return std::tie(a);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 2> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b] = t;
+                return std::tie(a, b);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 3> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c] = t;
+                return std::tie(a, b, c);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 4> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d] = t;
+                return std::tie(a, b, c, d);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 5> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e] = t;
+                return std::tie(a, b, c, d, e);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 6> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e, f] = t;
+                return std::tie(a, b, c, d, e, f);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 7> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e, f, g] = t;
+                return std::tie(a, b, c, d, e, f, g);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 8> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e, f, g, h] = t;
+                return std::tie(a, b, c, d, e, f, g, h);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 9> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e, f, g, h, i] = t;
+                return std::tie(a, b, c, d, e, f, g, h, i);
+            }
+        };
+
+        template <typename T> struct ToTupleImpl<T, 10> {
+            static constexpr auto to_tuple(T &t) {
+                auto &[a, b, c, d, e, f, g, h, i, j] = t;
+                return std::tie(a, b, c, d, e, f, g, h, i, j);
+            }
+        };
+
+    } // namespace detail
+
+    // Main to_tuple function
+    template <typename T> constexpr auto to_tuple(T &t) {
+        using Type = std::remove_cv_t<std::remove_reference_t<T>>;
+        return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(t);
+    }
+
+    // Const overload
+    template <typename T> constexpr auto to_tuple(T const &t) {
+        using Type = std::remove_cv_t<std::remove_reference_t<T>>;
+        return detail::ToTupleImpl<Type, arity_v<Type>>::to_tuple(const_cast<T &>(t));
+    }
+
+} // namespace datapod

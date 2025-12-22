@@ -2,13 +2,13 @@
 #include <string>
 #include <vector>
 
-#include "bitcon/containers/bitset.hpp"
-#include "bitcon/containers/bitvec.hpp"
-#include "bitcon/containers/cstring.hpp"
-#include "bitcon/containers/flat_matrix.hpp"
-#include "bitcon/containers/vecvec.hpp"
+#include "datapod/containers/bitset.hpp"
+#include "datapod/containers/bitvec.hpp"
+#include "datapod/containers/cstring.hpp"
+#include "datapod/containers/flat_matrix.hpp"
+#include "datapod/containers/vecvec.hpp"
 
-using namespace bitcon;
+using namespace datapod;
 
 #define TEST(name)                                                                                                     \
     void name();                                                                                                       \

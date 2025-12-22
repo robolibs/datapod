@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(project_name bitcon)
+set(project_name datapod)
 project(${project_name} VERSION 0.0.1 LANGUAGES CXX)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
