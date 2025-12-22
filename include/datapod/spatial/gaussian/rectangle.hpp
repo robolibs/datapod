@@ -19,6 +19,7 @@ namespace datapod {
             double uncertainty = 0.0;
 
             auto members() noexcept { return std::tie(rectangle, uncertainty); }
+            auto members() const noexcept { return std::tie(rectangle, uncertainty); }
         };
 
     } // namespace gaussian
