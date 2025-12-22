@@ -49,6 +49,24 @@ namespace datapod {
             other.capacity_ = 0;
         }
 
+        // Range constructor
+        template <typename InputIt, typename = std::enable_if_t<!std::is_integral_v<InputIt>>>
+        BasicVector(InputIt first, InputIt last) : data_(nullptr), size_(0), capacity_(0) {
+            size_type count = std::distance(first, last);
+            reserve(count);
+            for (auto it = first; it != last; ++it) {
+                push_back(*it);
+            }
+        }
+
+        // Initializer list constructor
+        BasicVector(std::initializer_list<T> init) : data_(nullptr), size_(0), capacity_(0) {
+            reserve(init.size());
+            for (auto const &elem : init) {
+                push_back(elem);
+            }
+        }
+
         // Destructor
         ~BasicVector() {
             clear();
@@ -84,6 +102,12 @@ namespace datapod {
                 other.size_ = 0;
                 other.capacity_ = 0;
             }
+            return *this;
+        }
+
+        // Initializer list assignment
+        BasicVector &operator=(std::initializer_list<T> ilist) {
+            assign(ilist);
             return *this;
         }
 
@@ -237,6 +261,105 @@ namespace datapod {
             }
         }
 
+        // Insert single element at position
+        iterator insert(const_iterator pos, T const &value) {
+            size_type index = pos - begin();
+            if (size_ == capacity_) {
+                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+            }
+            // Shift elements right
+            for (size_type i = size_; i > index; --i) {
+                alloc_.construct(&data_[i], std::move(data_[i - 1]));
+                alloc_.destroy(&data_[i - 1]);
+            }
+            alloc_.construct(&data_[index], value);
+            ++size_;
+            return begin() + index;
+        }
+
+        // Insert single element (move) at position
+        iterator insert(const_iterator pos, T &&value) {
+            size_type index = pos - begin();
+            if (size_ == capacity_) {
+                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+            }
+            // Shift elements right
+            for (size_type i = size_; i > index; --i) {
+                alloc_.construct(&data_[i], std::move(data_[i - 1]));
+                alloc_.destroy(&data_[i - 1]);
+            }
+            alloc_.construct(&data_[index], std::move(value));
+            ++size_;
+            return begin() + index;
+        }
+
+        // Insert count copies at position
+        iterator insert(const_iterator pos, size_type count, T const &value) {
+            if (count == 0)
+                return const_cast<iterator>(pos);
+            size_type index = pos - begin();
+            if (size_ + count > capacity_) {
+                reserve(size_ + count);
+            }
+            // Shift elements right
+            for (size_type i = size_ + count - 1; i >= index + count; --i) {
+                alloc_.construct(&data_[i], std::move(data_[i - count]));
+                alloc_.destroy(&data_[i - count]);
+            }
+            // Insert new elements
+            for (size_type i = 0; i < count; ++i) {
+                alloc_.construct(&data_[index + i], value);
+            }
+            size_ += count;
+            return begin() + index;
+        }
+
+        // Insert range [first, last) at position
+        // Use enable_if to prevent this from matching integral types
+        template <typename InputIt, typename = std::enable_if_t<!std::is_integral_v<InputIt>>>
+        iterator insert(const_iterator pos, InputIt first, InputIt last) {
+            size_type count = std::distance(first, last);
+            if (count == 0)
+                return const_cast<iterator>(pos);
+            size_type index = pos - begin();
+            if (size_ + count > capacity_) {
+                reserve(size_ + count);
+            }
+            // Shift elements right
+            for (size_type i = size_ + count - 1; i >= index + count && i < size_ + count; --i) {
+                alloc_.construct(&data_[i], std::move(data_[i - count]));
+                alloc_.destroy(&data_[i - count]);
+            }
+            // Insert new elements
+            size_type i = index;
+            for (auto it = first; it != last; ++it, ++i) {
+                alloc_.construct(&data_[i], *it);
+            }
+            size_ += count;
+            return begin() + index;
+        }
+
+        // Insert initializer list at position
+        iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
+            return insert(pos, ilist.begin(), ilist.end());
+        }
+
+        // Emplace element at position
+        template <typename... Args> iterator emplace(const_iterator pos, Args &&...args) {
+            size_type index = pos - begin();
+            if (size_ == capacity_) {
+                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+            }
+            // Shift elements right
+            for (size_type i = size_; i > index; --i) {
+                alloc_.construct(&data_[i], std::move(data_[i - 1]));
+                alloc_.destroy(&data_[i - 1]);
+            }
+            alloc_.construct(&data_[index], std::forward<Args>(args)...);
+            ++size_;
+            return begin() + index;
+        }
+
         // Erase single element at position
         T *erase(T *pos) {
             auto const r = pos;
@@ -292,6 +415,33 @@ namespace datapod {
             }
         }
 
+        // Assign count copies of value
+        void assign(size_type count, T const &value) {
+            clear();
+            reserve(count);
+            for (size_type i = 0; i < count; ++i) {
+                alloc_.construct(&data_[i], value);
+            }
+            size_ = count;
+        }
+
+        // Assign range [first, last)
+        // Use enable_if to prevent this from matching integral types
+        template <typename InputIt, typename = std::enable_if_t<!std::is_integral_v<InputIt>>>
+        void assign(InputIt first, InputIt last) {
+            clear();
+            size_type count = std::distance(first, last);
+            reserve(count);
+            size_type i = 0;
+            for (auto it = first; it != last; ++it, ++i) {
+                alloc_.construct(&data_[i], *it);
+            }
+            size_ = count;
+        }
+
+        // Assign from initializer list
+        void assign(std::initializer_list<T> ilist) { assign(ilist.begin(), ilist.end()); }
+
         void swap(BasicVector &other) noexcept {
             std::swap(data_, other.data_);
             std::swap(size_, other.size_);
@@ -331,6 +481,33 @@ namespace datapod {
     template <typename T, typename Ptr, typename Alloc>
     bool operator!=(BasicVector<T, Ptr, Alloc> const &lhs, BasicVector<T, Ptr, Alloc> const &rhs) {
         return !(lhs == rhs);
+    }
+
+    template <typename T, typename Ptr, typename Alloc>
+    bool operator<(BasicVector<T, Ptr, Alloc> const &lhs, BasicVector<T, Ptr, Alloc> const &rhs) {
+        auto min_size = lhs.size() < rhs.size() ? lhs.size() : rhs.size();
+        for (typename BasicVector<T, Ptr, Alloc>::size_type i = 0; i < min_size; ++i) {
+            if (lhs[i] < rhs[i])
+                return true;
+            if (rhs[i] < lhs[i])
+                return false;
+        }
+        return lhs.size() < rhs.size();
+    }
+
+    template <typename T, typename Ptr, typename Alloc>
+    bool operator<=(BasicVector<T, Ptr, Alloc> const &lhs, BasicVector<T, Ptr, Alloc> const &rhs) {
+        return !(rhs < lhs);
+    }
+
+    template <typename T, typename Ptr, typename Alloc>
+    bool operator>(BasicVector<T, Ptr, Alloc> const &lhs, BasicVector<T, Ptr, Alloc> const &rhs) {
+        return rhs < lhs;
+    }
+
+    template <typename T, typename Ptr, typename Alloc>
+    bool operator>=(BasicVector<T, Ptr, Alloc> const &lhs, BasicVector<T, Ptr, Alloc> const &rhs) {
+        return !(lhs < rhs);
     }
 
 } // namespace datapod
