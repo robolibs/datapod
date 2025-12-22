@@ -10,8 +10,8 @@
 #include <tuple>
 #include <type_traits>
 
-#include "datapod/containers/array.hpp"
 #include "datapod/core/bit_counting.hpp"
+#include "datapod/sequential/array.hpp"
 
 namespace datapod {
 

@@ -4,11 +4,11 @@
 #include <cstring>
 #include <limits>
 
-#include "datapod/containers/array.hpp"
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/bit_counting.hpp"
 #include "datapod/core/next_power_of_2.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/sequential/array.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

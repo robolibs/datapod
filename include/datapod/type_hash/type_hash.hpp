@@ -2,22 +2,22 @@
 
 #include <type_traits>
 
-#include "datapod/containers/array.hpp"
-#include "datapod/containers/hash_storage.hpp"
-#include "datapod/containers/map.hpp"
-#include "datapod/containers/optional.hpp"
-#include "datapod/containers/pair.hpp"
-#include "datapod/containers/string.hpp"
-#include "datapod/containers/tuple.hpp"
-#include "datapod/containers/unique_ptr.hpp"
-#include "datapod/containers/variant.hpp"
-#include "datapod/containers/vector.hpp"
+#include "datapod/adapters/optional.hpp"
+#include "datapod/adapters/pair.hpp"
+#include "datapod/adapters/tuple.hpp"
+#include "datapod/adapters/unique_ptr.hpp"
+#include "datapod/adapters/variant.hpp"
+#include "datapod/associative/hash_storage.hpp"
+#include "datapod/associative/map.hpp"
 #include "datapod/core/decay.hpp"
 #include "datapod/core/equal_to.hpp"
 #include "datapod/core/hash.hpp"
 #include "datapod/core/strong.hpp"
 #include "datapod/core/type_traits.hpp"
 #include "datapod/reflection/for_each_field.hpp"
+#include "datapod/sequential/array.hpp"
+#include "datapod/sequential/string.hpp"
+#include "datapod/sequential/vector.hpp"
 #include "datapod/type_hash/type_name.hpp"
 
 namespace datapod {

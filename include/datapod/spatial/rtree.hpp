@@ -6,9 +6,9 @@
 #include <cstring>
 #include <limits>
 
-#include "datapod/containers/array.hpp"
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/strong.hpp"
+#include "datapod/sequential/array.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

@@ -9,13 +9,13 @@
 #include <type_traits>
 #include <utility>
 
-#include "datapod/containers/optional.hpp"
-#include "datapod/containers/ptr.hpp"
+#include "datapod/adapters/optional.hpp"
 #include "datapod/core/aligned_alloc.hpp"
 #include "datapod/core/bit_counting.hpp"
 #include "datapod/core/decay.hpp"
 #include "datapod/core/exception.hpp"
 #include "datapod/core/hash.hpp"
+#include "datapod/memory/ptr.hpp"
 
 namespace datapod {
 

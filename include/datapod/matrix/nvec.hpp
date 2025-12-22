@@ -4,10 +4,10 @@
 #include <string_view>
 #include <utility>
 
-#include "datapod/containers/array.hpp"
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/strong.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/sequential/array.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

@@ -3,7 +3,7 @@
 #include <tuple>
 
 #include "../point.hpp"
-#include "datapod/containers/vector.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

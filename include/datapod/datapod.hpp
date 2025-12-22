@@ -19,9 +19,9 @@
 #include "datapod/core/strong.hpp"
 
 // Phase 3: Pointer System
-#include "datapod/containers/allocator.hpp"
-#include "datapod/containers/offset_ptr.hpp"
-#include "datapod/containers/ptr.hpp"
+#include "datapod/memory/allocator.hpp"
+#include "datapod/memory/offset_ptr.hpp"
+#include "datapod/memory/ptr.hpp"
 
 // Phase 4: Reflection System
 #include "datapod/reflection/arity.hpp"
@@ -30,25 +30,25 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 // Phase 5: Basic Containers
-#include "datapod/containers/array.hpp"
-#include "datapod/containers/optional.hpp"
-#include "datapod/containers/pair.hpp"
-#include "datapod/containers/string.hpp"
-#include "datapod/containers/unique_ptr.hpp"
-#include "datapod/containers/vector.hpp"
+#include "datapod/adapters/optional.hpp"
+#include "datapod/adapters/pair.hpp"
+#include "datapod/adapters/unique_ptr.hpp"
+#include "datapod/sequential/array.hpp"
+#include "datapod/sequential/string.hpp"
+#include "datapod/sequential/vector.hpp"
 
 // Hashing (depends on containers and reflection)
 #include "datapod/core/equal_to.hpp"
 #include "datapod/hashing.hpp"
 
 // Phase 6: Hash Containers (Swiss Tables)
-#include "datapod/containers/hash_storage.hpp"
-#include "datapod/containers/map.hpp"
-#include "datapod/containers/set.hpp"
+#include "datapod/associative/hash_storage.hpp"
+#include "datapod/associative/map.hpp"
+#include "datapod/associative/set.hpp"
 
 // Phase 7: Advanced Containers
-#include "datapod/containers/tuple.hpp"
-#include "datapod/containers/variant.hpp"
+#include "datapod/adapters/tuple.hpp"
+#include "datapod/adapters/variant.hpp"
 
 // Phase 8: Type Hash System
 #include "datapod/type_hash/type_hash.hpp"

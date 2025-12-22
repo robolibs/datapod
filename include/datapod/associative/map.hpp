@@ -1,7 +1,7 @@
 #pragma once
 
-#include "datapod/containers/hash_storage.hpp"
-#include "datapod/containers/pair.hpp"
+#include "datapod/adapters/pair.hpp"
+#include "datapod/associative/hash_storage.hpp"
 #include "datapod/core/equal_to.hpp"
 #include "datapod/hashing.hpp"
 

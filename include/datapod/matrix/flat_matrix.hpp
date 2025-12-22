@@ -6,8 +6,8 @@
 #include <iterator>
 #include <tuple>
 
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

@@ -4,10 +4,10 @@
 #include <iterator>
 #include <string_view>
 
-#include "datapod/containers/paged.hpp"
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/strong.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/memory/paged.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

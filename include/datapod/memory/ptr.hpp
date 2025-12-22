@@ -1,6 +1,6 @@
 #pragma once
 
-#include "datapod/containers/offset_ptr.hpp"
+#include "datapod/memory/offset_ptr.hpp"
 
 namespace datapod {
 

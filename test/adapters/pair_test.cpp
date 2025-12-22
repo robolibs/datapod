@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/containers/pair.hpp"
+#include "datapod/adapters/pair.hpp"
 #include <string>
 #include <vector>
 

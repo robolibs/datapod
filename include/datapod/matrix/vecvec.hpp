@@ -4,10 +4,10 @@
 #include <iterator>
 #include <type_traits>
 
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/char_traits.hpp"
 #include "datapod/core/const_iterator.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 

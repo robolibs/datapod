@@ -6,8 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "datapod/containers/allocator.hpp"
 #include "datapod/core/strong.hpp"
+#include "datapod/memory/allocator.hpp"
 
 namespace datapod {
 

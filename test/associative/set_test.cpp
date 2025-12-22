@@ -1,8 +1,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/containers/set.hpp"
-#include "datapod/containers/string.hpp"
+#include "datapod/associative/set.hpp"
+#include "datapod/sequential/string.hpp"
 
 using namespace datapod;
 

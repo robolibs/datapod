@@ -13,10 +13,10 @@
 #include <tuple>
 #include <type_traits>
 
-#include "datapod/containers/vector.hpp"
 #include "datapod/core/atomic.hpp"
 #include "datapod/core/bit_counting.hpp"
 #include "datapod/core/strong.hpp"
+#include "datapod/sequential/vector.hpp"
 
 namespace datapod {
 
