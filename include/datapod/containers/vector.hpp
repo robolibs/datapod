@@ -26,6 +26,8 @@ namespace datapod {
         using const_pointer = T const *;
         using iterator = T *;
         using const_iterator = T const *;
+        using reverse_iterator = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         // Constructors
         BasicVector() noexcept : data_(nullptr), size_(0), capacity_(0) {}
@@ -167,10 +169,20 @@ namespace datapod {
 
         const_iterator cend() const noexcept { return data_ + size_; }
 
+        reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+        const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+        const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+
+        reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
+        const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+        const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
+
         // Capacity
         bool empty() const noexcept { return size_ == 0; }
 
         size_type size() const noexcept { return size_; }
+
+        size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() / sizeof(T); }
 
         size_type capacity() const noexcept { return capacity_; }
 
@@ -231,7 +243,7 @@ namespace datapod {
 
         void push_back(T const &value) {
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             alloc_.construct(&data_[size_], value);
             ++size_;
@@ -239,7 +251,7 @@ namespace datapod {
 
         void push_back(T &&value) {
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             alloc_.construct(&data_[size_], std::move(value));
             ++size_;
@@ -247,7 +259,7 @@ namespace datapod {
 
         template <typename... Args> reference emplace_back(Args &&...args) {
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             alloc_.construct(&data_[size_], std::forward<Args>(args)...);
             ++size_;
@@ -261,11 +273,28 @@ namespace datapod {
             }
         }
 
+        // Bulk append operations (Folly-style)
+        template <typename InputIt, typename = std::enable_if_t<!std::is_integral_v<InputIt>>>
+        void append(InputIt first, InputIt last) {
+            size_type count = std::distance(first, last);
+            if (count == 0)
+                return;
+
+            reserve(size_ + count);
+            for (auto it = first; it != last; ++it) {
+                alloc_.construct(&data_[size_++], *it);
+            }
+        }
+
+        void append(std::initializer_list<T> ilist) { append(ilist.begin(), ilist.end()); }
+
+        template <typename Range> void append(Range const &range) { append(range.begin(), range.end()); }
+
         // Insert single element at position
         iterator insert(const_iterator pos, T const &value) {
             size_type index = pos - begin();
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             // Shift elements right
             for (size_type i = size_; i > index; --i) {
@@ -281,7 +310,7 @@ namespace datapod {
         iterator insert(const_iterator pos, T &&value) {
             size_type index = pos - begin();
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             // Shift elements right
             for (size_type i = size_; i > index; --i) {
@@ -348,7 +377,7 @@ namespace datapod {
         template <typename... Args> iterator emplace(const_iterator pos, Args &&...args) {
             size_type index = pos - begin();
             if (size_ == capacity_) {
-                reserve(capacity_ == 0 ? 1 : capacity_ * 2);
+                reserve(compute_new_capacity(capacity_, size_ + 1));
             }
             // Shift elements right
             for (size_type i = size_; i > index; --i) {
@@ -452,6 +481,14 @@ namespace datapod {
         auto members() noexcept { return std::tie(data_, size_, capacity_); }
 
       private:
+        // Folly-style 1.5x growth strategy for better memory reuse
+        size_type compute_new_capacity(size_type current, size_type needed) const noexcept {
+            // Growth factor of 1.5x (current + current/2)
+            // Better than 2x for memory reuse and cache efficiency
+            size_type grown = current + current / 2;
+            return std::max(needed, grown);
+        }
+
         T *data_;
         size_type size_;
         size_type capacity_;

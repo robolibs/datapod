@@ -385,4 +385,77 @@ TEST_SUITE("Vector") {
         CHECK(v[0] == 0);
         CHECK(v[999] == 999);
     }
+
+    TEST_CASE("Capacity - max_size()") {
+        Vector<int> v;
+        CHECK(v.max_size() > 0);
+        CHECK(v.max_size() == std::numeric_limits<size_t>::max() / sizeof(int));
+    }
+
+    TEST_CASE("Element Access - at() with bounds checking") {
+        Vector<int> v = {10, 20, 30};
+
+        // Valid access
+        CHECK(v.at(0) == 10);
+        CHECK(v.at(1) == 20);
+        CHECK(v.at(2) == 30);
+
+        // Out of bounds should throw
+        CHECK_THROWS_AS(v.at(3), std::out_of_range);
+        CHECK_THROWS_AS(v.at(100), std::out_of_range);
+    }
+
+    TEST_CASE("Modifiers - append() range") {
+        Vector<int> v1 = {1, 2, 3};
+        Vector<int> v2 = {4, 5, 6};
+
+        v1.append(v2.begin(), v2.end());
+        CHECK(v1.size() == 6);
+        CHECK(v1[0] == 1);
+        CHECK(v1[5] == 6);
+    }
+
+    TEST_CASE("Modifiers - append() initializer_list") {
+        Vector<int> v = {1, 2, 3};
+        v.append({4, 5, 6});
+
+        CHECK(v.size() == 6);
+        CHECK(v[3] == 4);
+        CHECK(v[5] == 6);
+    }
+
+    TEST_CASE("Modifiers - append() range (another vector)") {
+        Vector<int> v1 = {1, 2};
+        Vector<int> v2 = {3, 4, 5};
+
+        v1.append(v2);
+        CHECK(v1.size() == 5);
+        for (int i = 0; i < 5; ++i) {
+            CHECK(v1[i] == i + 1);
+        }
+    }
+
+    TEST_CASE("Iterators - reverse") {
+        Vector<int> v = {1, 2, 3, 4, 5};
+
+        Vector<int> reversed;
+        for (auto it = v.rbegin(); it != v.rend(); ++it) {
+            reversed.push_back(*it);
+        }
+
+        CHECK(reversed.size() == 5);
+        CHECK(reversed[0] == 5);
+        CHECK(reversed[4] == 1);
+    }
+
+    TEST_CASE("Iterators - const reverse") {
+        Vector<int> const v = {1, 2, 3, 4, 5};
+
+        int sum = 0;
+        for (auto it = v.crbegin(); it != v.crend(); ++it) {
+            sum += *it;
+        }
+
+        CHECK(sum == 15);
+    }
 }
