@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../state.hpp"
 #include "datapod/containers/vector.hpp"
 
@@ -14,6 +16,8 @@ namespace datapod {
      */
     struct Trajectory {
         Vector<State> states;
+
+        auto members() noexcept { return std::tie(states); }
     };
 
 } // namespace datapod

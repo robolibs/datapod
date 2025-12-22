@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "euler.hpp"
 #include "point.hpp"
 #include "size.hpp"
@@ -20,6 +22,8 @@ namespace datapod {
         Point center;
         Size half_extents;
         Euler orientation;
+
+        auto members() noexcept { return std::tie(center, half_extents, orientation); }
     };
 
 } // namespace datapod

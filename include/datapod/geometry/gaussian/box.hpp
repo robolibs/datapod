@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../box.hpp"
 
 namespace datapod {
@@ -15,6 +17,8 @@ namespace datapod {
         struct Box {
             datapod::Box box;
             double uncertainty = 0.0;
+
+            auto members() noexcept { return std::tie(box, uncertainty); }
         };
 
     } // namespace gaussian

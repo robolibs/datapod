@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "pose.hpp"
 
 namespace datapod {
@@ -15,6 +17,8 @@ namespace datapod {
         Pose pose;
         double linear_velocity = 0.0;  // m/s
         double angular_velocity = 0.0; // rad/s
+
+        auto members() noexcept { return std::tie(pose, linear_velocity, angular_velocity); }
     };
 
 } // namespace datapod

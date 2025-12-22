@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "point.hpp"
 
 namespace datapod {
@@ -14,6 +16,8 @@ namespace datapod {
     struct AABB {
         Point min_point;
         Point max_point;
+
+        auto members() noexcept { return std::tie(min_point, max_point); }
     };
 
 } // namespace datapod

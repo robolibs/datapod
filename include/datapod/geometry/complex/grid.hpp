@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../pose.hpp"
 #include "datapod/containers/vector.hpp"
 
@@ -23,6 +25,8 @@ namespace datapod {
         bool centered = false;   // Whether grid is centered at pose
         Pose pose;               // Spatial transform
         Vector<T> data;          // Row-major grid data
+
+        auto members() noexcept { return std::tie(rows, cols, resolution, centered, pose, data); }
     };
 
 } // namespace datapod

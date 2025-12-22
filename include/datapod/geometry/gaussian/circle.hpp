@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../primitives/circle.hpp"
 
 namespace datapod {
@@ -15,6 +17,8 @@ namespace datapod {
         struct Circle {
             datapod::Circle circle;
             double uncertainty = 0.0;
+
+            auto members() noexcept { return std::tie(circle, uncertainty); }
         };
 
     } // namespace gaussian

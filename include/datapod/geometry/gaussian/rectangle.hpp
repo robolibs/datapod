@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../primitives/rectangle.hpp"
 
 namespace datapod {
@@ -15,6 +17,8 @@ namespace datapod {
         struct Rectangle {
             datapod::Rectangle rectangle;
             double uncertainty = 0.0;
+
+            auto members() noexcept { return std::tie(rectangle, uncertainty); }
         };
 
     } // namespace gaussian

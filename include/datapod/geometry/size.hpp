@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 namespace datapod {
 
     /**
@@ -13,6 +15,8 @@ namespace datapod {
         double x = 0.0;
         double y = 0.0;
         double z = 0.0;
+
+        auto members() noexcept { return std::tie(x, y, z); }
     };
 
 } // namespace datapod

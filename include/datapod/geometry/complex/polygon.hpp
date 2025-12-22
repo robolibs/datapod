@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../point.hpp"
 #include "datapod/containers/vector.hpp"
 
@@ -16,6 +18,8 @@ namespace datapod {
      */
     struct Polygon {
         Vector<Point> vertices;
+
+        auto members() noexcept { return std::tie(vertices); }
     };
 
 } // namespace datapod

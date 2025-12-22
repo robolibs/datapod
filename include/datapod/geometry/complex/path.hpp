@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "../pose.hpp"
 #include "datapod/containers/vector.hpp"
 
@@ -14,6 +16,8 @@ namespace datapod {
      */
     struct Path {
         Vector<Pose> waypoints;
+
+        auto members() noexcept { return std::tie(waypoints); }
     };
 
 } // namespace datapod

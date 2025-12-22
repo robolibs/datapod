@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "point.hpp"
 
 namespace datapod {
@@ -14,6 +16,8 @@ namespace datapod {
     struct BoundingSphere {
         Point center;
         double radius = 0.0;
+
+        auto members() noexcept { return std::tie(center, radius); }
     };
 
 } // namespace datapod
