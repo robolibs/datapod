@@ -57,23 +57,23 @@ namespace datapod {
     }
 
     // Helper to detect our container types
-    template <typename T> struct is_datapod_container : std::false_type {};
-    template <> struct is_datapod_container<String> : std::true_type {};
-    template <typename T> struct is_datapod_container<Vector<T>> : std::true_type {};
-    template <typename T> struct is_datapod_container<Optional<T>> : std::true_type {};
-    template <typename A, typename B> struct is_datapod_container<Pair<A, B>> : std::true_type {};
-    template <typename T, std::size_t N> struct is_datapod_container<Array<T, N>> : std::true_type {};
-    template <typename... Ts> struct is_datapod_container<Tuple<Ts...>> : std::true_type {};
-    template <typename... Ts> struct is_datapod_container<Variant<Ts...>> : std::true_type {};
+    template <typename T> struct is_container : std::false_type {};
+    template <> struct is_container<String> : std::true_type {};
+    template <typename T> struct is_container<Vector<T>> : std::true_type {};
+    template <typename T> struct is_container<Optional<T>> : std::true_type {};
+    template <typename A, typename B> struct is_container<Pair<A, B>> : std::true_type {};
+    template <typename T, std::size_t N> struct is_container<Array<T, N>> : std::true_type {};
+    template <typename... Ts> struct is_container<Tuple<Ts...>> : std::true_type {};
+    template <typename... Ts> struct is_container<Variant<Ts...>> : std::true_type {};
     // HashMap and HashSet are type aliases for HashStorage
     template <typename T, template <typename> typename Ptr, typename GetKey, typename GetValue, typename Hash,
               typename Eq>
-    struct is_datapod_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
-    template <typename T> constexpr bool is_datapod_container_v = is_datapod_container<decay_t<T>>::value;
+    struct is_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
+    template <typename T> constexpr bool is_container_v = is_container<decay_t<T>>::value;
 
     // Serialize aggregate types (structs) using reflection
     template <Mode M, typename Ctx, typename T>
-    std::enable_if_t<std::is_class_v<T> && !std::is_scalar_v<T> && !is_datapod_container_v<T>> //
+    std::enable_if_t<std::is_class_v<T> && !std::is_scalar_v<T> && !is_container_v<T>> //
     serialize(Ctx &ctx, T &value) {
         if constexpr (to_tuple_works_v<T>) {
             for_each_field(value, [&](auto &field) { serialize<M>(ctx, field); });
@@ -243,7 +243,7 @@ namespace datapod {
 
     // Deserialize aggregate types using reflection
     template <Mode M, typename Ctx, typename T>
-    std::enable_if_t<std::is_class_v<T> && !std::is_scalar_v<T> && !is_datapod_container_v<T>> //
+    std::enable_if_t<std::is_class_v<T> && !std::is_scalar_v<T> && !is_container_v<T>> //
     deserialize(Ctx &ctx, T &value) {
         if constexpr (to_tuple_works_v<T>) {
             for_each_field(value, [&](auto &field) { deserialize<M>(ctx, field); });
