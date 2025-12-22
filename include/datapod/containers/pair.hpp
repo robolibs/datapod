@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <utility>
 
 namespace datapod {
@@ -37,6 +38,9 @@ namespace datapod {
         constexpr bool operator>(Pair const &other) const { return other < *this; }
 
         constexpr bool operator>=(Pair const &other) const { return !(*this < other); }
+
+        // Serialization support
+        auto members() noexcept { return std::tie(first, second); }
     };
 
     // Deduction guide

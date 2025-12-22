@@ -40,7 +40,7 @@ namespace datapod {
             return ret;
         }
 
-        auto datapod_members() noexcept { return std::tie(blocks_); }
+        auto members() noexcept { return std::tie(size_, blocks_); }
 
         static constexpr size_type num_blocks(size_type num_bits) {
             return static_cast<size_type>(num_bits / bits_per_block + (num_bits % bits_per_block == 0 ? 0 : 1));

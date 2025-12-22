@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cinttypes>
 #include <iterator>
+#include <tuple>
 
 #include "datapod/containers/vector.hpp"
 #include "datapod/core/verify.hpp"
@@ -90,6 +91,9 @@ namespace datapod {
         }
 
         void reset(value_type const &t) { std::fill(std::begin(entries_), std::end(entries_), t); }
+
+        // Serialization support
+        auto members() noexcept { return std::tie(n_rows_, n_columns_, entries_); }
 
         size_type n_rows_{0U}, n_columns_{0U};
         Vec entries_;

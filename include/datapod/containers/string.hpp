@@ -223,6 +223,9 @@ namespace datapod {
             return os << std::string_view(str.data(), str.size());
         }
 
+        // Serialization support - expose all data members including union
+        auto members() noexcept { return std::tie(size_, is_sso_, sso_data_, heap_data_, capacity_); }
+
       private:
         size_type size_;
         bool is_sso_;

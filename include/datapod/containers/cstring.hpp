@@ -276,6 +276,9 @@ namespace datapod {
             }
         };
 
+        // Serialization support - expose union members
+        auto members() noexcept { return std::tie(h_, s_); }
+
         union {
             heap h_;
             stack s_{};

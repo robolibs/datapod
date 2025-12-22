@@ -346,6 +346,9 @@ namespace datapod {
         friend ConstBucket begin(BasicVecvec const &m) { return m.begin(); }
         friend ConstBucket end(BasicVecvec const &m) { return m.end(); }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(data_, bucket_starts_); }
+
         DataVec data_;
         IndexVec bucket_starts_;
     };

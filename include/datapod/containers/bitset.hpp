@@ -31,7 +31,7 @@ namespace datapod {
             return ret;
         }
 
-        auto datapod_members() noexcept { return std::tie(blocks_); }
+        auto members() noexcept { return std::tie(blocks_); }
 
         void zero_out() {
             for (auto &b : blocks_) {

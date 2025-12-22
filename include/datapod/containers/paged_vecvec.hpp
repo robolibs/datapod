@@ -349,6 +349,9 @@ namespace datapod {
             idx_.clear();
         }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(paged_, idx_); }
+
         PagedAlloc paged_;
         Index idx_;
     };

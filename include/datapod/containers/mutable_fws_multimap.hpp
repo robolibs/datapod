@@ -544,6 +544,9 @@ namespace datapod {
 
         static size_type get_order(size_type const size) { return size_type{trailing_zeros(to_idx(size))}; }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(index_, data_, free_buckets_, element_count_); }
+
         index_vec_t index_;
         data_vec_t data_;
         Array<index_vec_t, Log2MaxEntriesPerBucket + 1U> free_buckets_;

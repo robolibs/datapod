@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iterator>
 #include <limits>
+#include <tuple>
 
 #include "datapod/core/mmap.hpp"
 #include "datapod/core/strong.hpp"
@@ -159,6 +160,9 @@ namespace datapod {
         template <class It> T *insert(T *pos, It first, It last) {
             return insert(pos, first, last, typename std::iterator_traits<It>::iterator_category());
         }
+
+        // Serialization support
+        auto members() noexcept { return std::tie(mmap_, used_size_); }
 
         Mmap mmap_;
         size_type used_size_{0U};

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <tuple>
 
 namespace datapod {
 
@@ -84,6 +85,9 @@ namespace datapod {
                 other.data_[i] = tmp;
             }
         }
+
+        // Serialization support
+        auto members() noexcept { return std::tie(data_); }
     };
 
     // Specialization for zero-size array

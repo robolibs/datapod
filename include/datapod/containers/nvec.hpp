@@ -571,6 +571,9 @@ namespace datapod {
             return index_[L][i + 1] - index_[L][i];
         }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(index_, data_); }
+
         Array<IndexVec, N> index_;
         DataVec data_;
     };

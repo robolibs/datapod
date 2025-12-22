@@ -140,6 +140,9 @@ namespace datapod {
             size_type next_{std::numeric_limits<size_type>::max()};
         };
 
+        // Serialization support
+        auto members() noexcept { return std::tie(data_, free_list_); }
+
         DataVec data_;
         Array<Node, free_list_size> free_list_{};
     };

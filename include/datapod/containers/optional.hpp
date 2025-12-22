@@ -167,6 +167,9 @@ namespace datapod {
             }
         }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(has_value_, storage_); }
+
       private:
         bool has_value_;
         alignas(T) unsigned char storage_[sizeof(T)];

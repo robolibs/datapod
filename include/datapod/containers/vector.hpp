@@ -298,6 +298,9 @@ namespace datapod {
             std::swap(capacity_, other.capacity_);
         }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(data_, size_, capacity_); }
+
       private:
         T *data_;
         size_type size_;

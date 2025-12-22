@@ -547,6 +547,9 @@ namespace datapod {
             return true;
         }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(entries_, ctrl_, size_, capacity_, growth_left_, self_allocated_); }
+
         Ptr<T> entries_{nullptr};
         Ptr<ctrl_t> ctrl_{empty_group()};
         size_type size_{0U}, capacity_{0U}, growth_left_{0U};

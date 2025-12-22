@@ -167,6 +167,9 @@ namespace datapod {
         std::size_t data_size() const { return data_.size(); }
         bool finished() const { return complete_; }
 
+        // Serialization support
+        auto members() noexcept { return std::tie(data_, index_, current_start_, complete_); }
+
         DataVec data_;
         IndexVec index_;
         index_t current_start_{0};
