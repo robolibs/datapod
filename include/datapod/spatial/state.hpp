@@ -19,6 +19,11 @@ namespace datapod {
         double angular_velocity = 0.0; // rad/s
 
         auto members() noexcept { return std::tie(pose, linear_velocity, angular_velocity); }
+        auto members() const noexcept { return std::tie(pose, linear_velocity, angular_velocity); }
+
+        inline bool is_set() const noexcept {
+            return pose.is_set() || linear_velocity != 0.0 || angular_velocity != 0.0;
+        }
     };
 
 } // namespace datapod

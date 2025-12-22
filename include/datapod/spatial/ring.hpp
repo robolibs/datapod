@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <tuple>
 
 #include "datapod/sequential/vector.hpp"
@@ -31,6 +32,33 @@ namespace datapod {
 
         auto members() noexcept { return std::tie(points); }
         auto members() const noexcept { return std::tie(points); }
+
+        // Geometric properties
+        inline double length() const noexcept {
+            if (points.size() < 2)
+                return 0.0;
+            double total = 0.0;
+            for (size_t i = 1; i < points.size(); ++i) {
+                total += points[i - 1].distance_to(points[i]);
+            }
+            return total;
+        }
+
+        inline double area() const noexcept {
+            if (points.size() < 3)
+                return 0.0;
+            // Shoelace formula for polygon area
+            double sum = 0.0;
+            for (size_t i = 0; i < points.size() - 1; ++i) {
+                sum += points[i].x * points[i + 1].y - points[i + 1].x * points[i].y;
+            }
+            return std::abs(sum) * 0.5;
+        }
+
+        // Utility
+        inline size_t num_points() const noexcept { return points.size(); }
+        inline bool empty() const noexcept { return points.empty(); }
+        inline bool is_closed() const noexcept { return points.size() >= 3 && points.front() == points.back(); }
     };
 
 } // namespace datapod

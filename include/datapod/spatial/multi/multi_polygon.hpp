@@ -29,6 +29,9 @@ namespace datapod {
 
         auto members() noexcept { return std::tie(polygons); }
         auto members() const noexcept { return std::tie(polygons); }
+
+        inline size_t size() const noexcept { return polygons.size(); }
+        inline bool empty() const noexcept { return polygons.empty(); }
     };
 
 } // namespace datapod

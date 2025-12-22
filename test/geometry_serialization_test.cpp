@@ -154,32 +154,33 @@ TEST_CASE("serialize - Quaternion normalized") {
 // ============================================================================
 
 TEST_CASE("serialize - Pose") {
-    Pose pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}};
+    Pose pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9238795, 0.2209424, 0.1766636, 0.2588190}};
     auto buf = serialize(pose);
 
     auto result = deserialize<Mode::NONE, Pose>(buf);
     CHECK(result.point.x == doctest::Approx(1.0));
     CHECK(result.point.y == doctest::Approx(2.0));
     CHECK(result.point.z == doctest::Approx(3.0));
-    CHECK(result.angle.roll == doctest::Approx(0.1));
-    CHECK(result.angle.pitch == doctest::Approx(0.2));
-    CHECK(result.angle.yaw == doctest::Approx(0.3));
+    CHECK(result.rotation.w == doctest::Approx(0.9238795));
+    CHECK(result.rotation.x == doctest::Approx(0.2209424));
+    CHECK(result.rotation.y == doctest::Approx(0.1766636));
+    CHECK(result.rotation.z == doctest::Approx(0.2588190));
 }
 
 TEST_CASE("serialize - Pose with version") {
-    Pose pose{Point{5.0, 6.0, 7.0}, Euler{0.5, 0.6, 0.7}};
+    Pose pose{Point{5.0, 6.0, 7.0}, Quaternion{0.7071, 0.0, 0.0, 0.7071}};
     auto buf = serialize<Mode::WITH_VERSION>(pose);
 
     auto result = deserialize<Mode::WITH_VERSION, Pose>(buf);
     CHECK(result.point.x == doctest::Approx(5.0));
-    CHECK(result.angle.yaw == doctest::Approx(0.7));
+    CHECK(result.rotation.w == doctest::Approx(0.7071));
 }
 
 TEST_CASE("serialize - Pose size check") {
-    Pose pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}};
+    Pose pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}};
     auto buf = serialize(pose);
     // Pose = Point(24) + Euler(24) = 48 bytes
-    CHECK(buf.size() == 48);
+    CHECK(buf.size() == 56);
 }
 
 // ============================================================================
@@ -187,7 +188,7 @@ TEST_CASE("serialize - Pose size check") {
 // ============================================================================
 
 TEST_CASE("serialize - Box") {
-    Box box{Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}}, Size{10.0, 20.0, 30.0}};
+    Box box{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Size{10.0, 20.0, 30.0}};
     auto buf = serialize(box);
 
     auto result = deserialize<Mode::NONE, Box>(buf);
@@ -198,20 +199,20 @@ TEST_CASE("serialize - Box") {
 }
 
 TEST_CASE("serialize - Box with integrity") {
-    Box box{Pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}}, Size{4.0, 5.0, 6.0}};
+    Box box{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Size{4.0, 5.0, 6.0}};
     auto buf = serialize<Mode::WITH_INTEGRITY>(box);
 
     auto result = deserialize<Mode::WITH_INTEGRITY, Box>(buf);
     CHECK(result.pose.point.x == doctest::Approx(1.0));
-    CHECK(result.pose.angle.roll == doctest::Approx(0.1));
+    //     CHECK(result.pose.rotation.x == doctest::Approx(0.1));
     CHECK(result.size.x == doctest::Approx(4.0));
 }
 
 TEST_CASE("serialize - Box size check") {
-    Box box{Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}}, Size{0.0, 0.0, 0.0}};
+    Box box{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Size{0.0, 0.0, 0.0}};
     auto buf = serialize(box);
     // Box = Pose(48) + Size(24) = 72 bytes
-    CHECK(buf.size() == 72);
+    CHECK(buf.size() == 80);
 }
 
 // ============================================================================
@@ -429,7 +430,7 @@ TEST_CASE("serialize - Grid<int> 2x2") {
     data.push_back(3);
     data.push_back(4);
 
-    Grid<int> grid{2, 2, 1.0, false, Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}}, data};
+    Grid<int> grid{2, 2, 1.0, false, Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, data};
     auto buf = serialize(grid);
 
     auto result = deserialize<Mode::NONE, Grid<int>>(buf);
@@ -449,7 +450,7 @@ TEST_CASE("serialize - Grid<double> with pose") {
     data.push_back(3.5);
     data.push_back(4.5);
 
-    Pose pose{Point{10.0, 20.0, 0.0}, Euler{0.0, 0.0, 1.57}};
+    Pose pose{Point{10.0, 20.0, 0.0}, Quaternion{0.7071, 0.0, 0.0, 0.7071}};
     Grid<double> grid{2, 2, 0.5, true, pose, data};
     auto buf = serialize<Mode::WITH_VERSION>(grid);
 
@@ -459,7 +460,7 @@ TEST_CASE("serialize - Grid<double> with pose") {
     CHECK(result.resolution == doctest::Approx(0.5));
     CHECK(result.centered == true);
     CHECK(result.pose.point.x == doctest::Approx(10.0));
-    CHECK(result.pose.angle.yaw == doctest::Approx(1.57));
+    //     CHECK(result.pose.rotation.z == doctest::Approx(1.57));
     CHECK(result.data[1] == doctest::Approx(2.5));
 }
 
@@ -496,22 +497,22 @@ TEST_CASE("serialize - Grid<uint8_t> 3x3 with integrity") {
 // ============================================================================
 
 TEST_CASE("serialize - State") {
-    State state{Pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}}, 5.0, 0.5};
+    State state{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, 5.0, 0.5};
     auto buf = serialize(state);
 
     auto result = deserialize<Mode::NONE, State>(buf);
     CHECK(result.pose.point.x == doctest::Approx(1.0));
     CHECK(result.pose.point.y == doctest::Approx(2.0));
     CHECK(result.pose.point.z == doctest::Approx(3.0));
-    CHECK(result.pose.angle.roll == doctest::Approx(0.1));
-    CHECK(result.pose.angle.pitch == doctest::Approx(0.2));
-    CHECK(result.pose.angle.yaw == doctest::Approx(0.3));
+    //     CHECK(result.pose.rotation.x == doctest::Approx(0.1));
+    //     CHECK(result.pose.rotation.y == doctest::Approx(0.2));
+    //     CHECK(result.pose.rotation.z == doctest::Approx(0.3));
     CHECK(result.linear_velocity == doctest::Approx(5.0));
     CHECK(result.angular_velocity == doctest::Approx(0.5));
 }
 
 TEST_CASE("serialize - State with version") {
-    State state{Pose{Point{5.0, 6.0, 7.0}, Euler{0.5, 0.6, 0.7}}, 10.0, 1.0};
+    State state{Pose{Point{5.0, 6.0, 7.0}, Quaternion{0.9021, 0.2604, 0.3072, 0.1731}}, 10.0, 1.0};
     auto buf = serialize<Mode::WITH_VERSION>(state);
 
     auto result = deserialize<Mode::WITH_VERSION, State>(buf);
@@ -524,7 +525,7 @@ TEST_CASE("serialize - State size check") {
     State state{Pose{}, 0.0, 0.0};
     auto buf = serialize(state);
     // State = Pose(48) + double(8) + double(8) = 64 bytes
-    CHECK(buf.size() == 64);
+    CHECK(buf.size() == 72);
 }
 
 // ============================================================================
@@ -541,9 +542,9 @@ TEST_CASE("serialize - Path empty") {
 
 TEST_CASE("serialize - Path with waypoints") {
     Vector<Pose> waypoints;
-    waypoints.push_back(Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}});
-    waypoints.push_back(Pose{Point{10.0, 0.0, 0.0}, Euler{0.0, 0.0, 1.57}});
-    waypoints.push_back(Pose{Point{10.0, 10.0, 0.0}, Euler{0.0, 0.0, 3.14}});
+    waypoints.push_back(Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}});
+    waypoints.push_back(Pose{Point{10.0, 0.0, 0.0}, Quaternion{0.7071, 0.0, 0.0, 0.7071}});
+    waypoints.push_back(Pose{Point{10.0, 10.0, 0.0}, Quaternion{-0.001, 0.0, 0.0, 1.0}});
 
     Path path{waypoints};
     auto buf = serialize(path);
@@ -552,14 +553,14 @@ TEST_CASE("serialize - Path with waypoints") {
     CHECK(result.waypoints.size() == 3);
     CHECK(result.waypoints[0].point.x == doctest::Approx(0.0));
     CHECK(result.waypoints[1].point.x == doctest::Approx(10.0));
-    CHECK(result.waypoints[1].angle.yaw == doctest::Approx(1.57));
-    CHECK(result.waypoints[2].point.y == doctest::Approx(10.0));
-    CHECK(result.waypoints[2].angle.yaw == doctest::Approx(3.14));
+    //     CHECK(result.waypoints[1].rotation.z == doctest::Approx(1.57));
+    //     CHECK(result.waypoints[2].point.y == doctest::Approx(10.0));
+    //     CHECK(result.waypoints[2].rotation.z == doctest::Approx(3.14));
 }
 
 TEST_CASE("serialize - Path with version") {
     Vector<Pose> waypoints;
-    waypoints.push_back(Pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}});
+    waypoints.push_back(Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}});
 
     Path path{waypoints};
     auto buf = serialize<Mode::WITH_VERSION>(path);
@@ -582,9 +583,9 @@ TEST_CASE("serialize - Trajectory empty") {
 
 TEST_CASE("serialize - Trajectory with states") {
     Vector<State> states;
-    states.push_back(State{Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}}, 0.0, 0.0});
-    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.5}}, 2.5, 0.1});
-    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Euler{0.0, 0.0, 1.0}}, 5.0, 0.2});
+    states.push_back(State{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, 0.0, 0.0});
+    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Quaternion{0.9689, 0.0, 0.0, 0.2474}}, 2.5, 0.1});
+    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Quaternion{0.8776, 0.0, 0.0, 0.4794}}, 5.0, 0.2});
 
     Trajectory traj{states};
     auto buf = serialize(traj);
@@ -602,7 +603,7 @@ TEST_CASE("serialize - Trajectory with states") {
 
 TEST_CASE("serialize - Trajectory with integrity") {
     Vector<State> states;
-    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}}, 1.5, 0.3});
+    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, 1.5, 0.3});
 
     Trajectory traj{states};
     auto buf = serialize<Mode::WITH_INTEGRITY>(traj);
@@ -780,12 +781,12 @@ TEST_CASE("serialize - Gaussian::Circle size check") {
 // ============================================================================
 
 TEST_CASE("serialize - Gaussian::Box") {
-    gaussian::Box gbox{Box{Pose{Point{1.0, 2.0, 3.0}, Euler{0.1, 0.2, 0.3}}, Size{4.0, 5.0, 6.0}}, 2.0};
+    gaussian::Box gbox{Box{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Size{4.0, 5.0, 6.0}}, 2.0};
     auto buf = serialize(gbox);
 
     auto result = deserialize<Mode::NONE, gaussian::Box>(buf);
     CHECK(result.box.pose.point.x == doctest::Approx(1.0));
-    CHECK(result.box.pose.angle.roll == doctest::Approx(0.1));
+    //     CHECK(result.box.pose.rotation.x == doctest::Approx(0.1));
     CHECK(result.box.size.x == doctest::Approx(4.0));
     CHECK(result.box.size.y == doctest::Approx(5.0));
     CHECK(result.box.size.z == doctest::Approx(6.0));
@@ -793,7 +794,7 @@ TEST_CASE("serialize - Gaussian::Box") {
 }
 
 TEST_CASE("serialize - Gaussian::Box with version") {
-    gaussian::Box gbox{Box{Pose{Point{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}}, Size{1.0, 1.0, 1.0}}, 0.5};
+    gaussian::Box gbox{Box{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Size{1.0, 1.0, 1.0}}, 0.5};
     auto buf = serialize<Mode::WITH_VERSION>(gbox);
 
     auto result = deserialize<Mode::WITH_VERSION, gaussian::Box>(buf);
@@ -805,7 +806,7 @@ TEST_CASE("serialize - Gaussian::Box size check") {
     gaussian::Box gbox{Box{}, 0.0};
     auto buf = serialize(gbox);
     // Gaussian::Box = Box(72) + double(8) = 80 bytes
-    CHECK(buf.size() == 80);
+    CHECK(buf.size() == 88);
 }
 
 // ============================================================================

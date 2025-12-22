@@ -29,6 +29,9 @@ namespace datapod {
 
         auto members() noexcept { return std::tie(linestrings); }
         auto members() const noexcept { return std::tie(linestrings); }
+
+        inline size_t size() const noexcept { return linestrings.size(); }
+        inline bool empty() const noexcept { return linestrings.empty(); }
     };
 
 } // namespace datapod

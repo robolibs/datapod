@@ -18,6 +18,10 @@ namespace datapod {
         Vector<State> states;
 
         auto members() noexcept { return std::tie(states); }
+        auto members() const noexcept { return std::tie(states); }
+
+        inline size_t size() const noexcept { return states.size(); }
+        inline bool empty() const noexcept { return states.empty(); }
     };
 
 } // namespace datapod

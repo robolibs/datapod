@@ -29,6 +29,21 @@ namespace datapod {
 
         auto members() noexcept { return std::tie(points); }
         auto members() const noexcept { return std::tie(points); }
+
+        // Geometric properties
+        inline double length() const noexcept {
+            if (points.size() < 2)
+                return 0.0;
+            double total = 0.0;
+            for (size_t i = 1; i < points.size(); ++i) {
+                total += points[i - 1].distance_to(points[i]);
+            }
+            return total;
+        }
+
+        // Utility
+        inline size_t num_points() const noexcept { return points.size(); }
+        inline bool empty() const noexcept { return points.empty(); }
     };
 
 } // namespace datapod

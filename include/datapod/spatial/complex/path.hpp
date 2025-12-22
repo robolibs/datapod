@@ -18,6 +18,10 @@ namespace datapod {
         Vector<Pose> waypoints;
 
         auto members() noexcept { return std::tie(waypoints); }
+        auto members() const noexcept { return std::tie(waypoints); }
+
+        inline size_t size() const noexcept { return waypoints.size(); }
+        inline bool empty() const noexcept { return waypoints.empty(); }
     };
 
 } // namespace datapod
