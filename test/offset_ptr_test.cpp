@@ -3,39 +3,39 @@
 #include <iostream>
 #include <vector>
 
-#include "datagram/containers/allocator.hpp"
-#include "datagram/containers/offset_ptr.hpp"
-#include "datagram/containers/ptr.hpp"
+#include "bitcon/containers/allocator.hpp"
+#include "bitcon/containers/offset_ptr.hpp"
+#include "bitcon/containers/ptr.hpp"
 
 // Test basic offset_ptr construction
 void test_offset_ptr_construction() {
     std::cout << "Testing offset_ptr construction... ";
 
     // Default construction
-    datagram::OffsetPtr<int> p1;
+    bitcon::OffsetPtr<int> p1;
     assert(p1.get() == nullptr);
     assert(!p1);
     assert(p1 == nullptr);
 
     // nullptr construction
-    datagram::OffsetPtr<int> p2(nullptr);
+    bitcon::OffsetPtr<int> p2(nullptr);
     assert(p2 == nullptr);
 
     // Construction from raw pointer
     int value = 42;
-    datagram::OffsetPtr<int> p3(&value);
+    bitcon::OffsetPtr<int> p3(&value);
     assert(p3.get() == &value);
     assert(p3);
     assert(p3 != nullptr);
     assert(*p3 == 42);
 
     // Copy construction
-    datagram::OffsetPtr<int> p4(p3);
+    bitcon::OffsetPtr<int> p4(p3);
     assert(p4.get() == &value);
     assert(*p4 == 42);
 
     // Move construction
-    datagram::OffsetPtr<int> p5(std::move(p3));
+    bitcon::OffsetPtr<int> p5(std::move(p3));
     assert(p5.get() == &value);
 
     std::cout << "PASSED\n";
@@ -48,8 +48,8 @@ void test_offset_ptr_assignment() {
     int value1 = 10;
     int value2 = 20;
 
-    datagram::OffsetPtr<int> p1(&value1);
-    datagram::OffsetPtr<int> p2;
+    bitcon::OffsetPtr<int> p1(&value1);
+    bitcon::OffsetPtr<int> p2;
 
     // Copy assignment
     p2 = p1;
@@ -79,7 +79,7 @@ void test_offset_ptr_dereferencing() {
     };
 
     Data data{10, 20};
-    datagram::OffsetPtr<Data> p(&data);
+    bitcon::OffsetPtr<Data> p(&data);
 
     // Operator*
     assert((*p).x == 10);
@@ -103,10 +103,10 @@ void test_offset_ptr_comparison() {
 
     int values[3] = {1, 2, 3};
 
-    datagram::OffsetPtr<int> p1(&values[0]);
-    datagram::OffsetPtr<int> p2(&values[0]);
-    datagram::OffsetPtr<int> p3(&values[1]);
-    datagram::OffsetPtr<int> p4(nullptr);
+    bitcon::OffsetPtr<int> p1(&values[0]);
+    bitcon::OffsetPtr<int> p2(&values[0]);
+    bitcon::OffsetPtr<int> p3(&values[1]);
+    bitcon::OffsetPtr<int> p4(nullptr);
 
     // Equality
     assert(p1 == p2);
@@ -134,7 +134,7 @@ void test_offset_ptr_arithmetic() {
     std::cout << "Testing offset_ptr arithmetic... ";
 
     int values[5] = {10, 20, 30, 40, 50};
-    datagram::OffsetPtr<int> p(&values[0]);
+    bitcon::OffsetPtr<int> p(&values[0]);
 
     // Increment
     ++p;
@@ -174,13 +174,13 @@ void test_offset_ptr_arithmetic() {
     assert(*p == 20);
 
     // Pointer difference
-    datagram::OffsetPtr<int> p4(&values[0]);
-    datagram::OffsetPtr<int> p5(&values[4]);
+    bitcon::OffsetPtr<int> p4(&values[0]);
+    bitcon::OffsetPtr<int> p5(&values[4]);
     assert(p5 - p4 == 4);
     assert(p4 - p5 == -4);
 
     // Array subscript
-    datagram::OffsetPtr<int> p6(&values[0]);
+    bitcon::OffsetPtr<int> p6(&values[0]);
     assert(p6[0] == 10);
     assert(p6[1] == 20);
     assert(p6[2] == 30);
@@ -195,7 +195,7 @@ void test_offset_ptr_relocation() {
 
     struct Block {
         int value;
-        datagram::OffsetPtr<int> ptr;
+        bitcon::OffsetPtr<int> ptr;
     };
 
     // Create a block with a pointer to its own value
@@ -222,7 +222,7 @@ void test_offset_ptr_relocation() {
     constexpr size_t SIZE = 3;
     struct ArrayBlock {
         int values[SIZE];
-        datagram::OffsetPtr<int> ptrs[SIZE];
+        bitcon::OffsetPtr<int> ptrs[SIZE];
     };
 
     ArrayBlock arr1;
@@ -256,9 +256,9 @@ void test_offset_ptr_const() {
     int value = 42;
     const int const_value = 100;
 
-    datagram::OffsetPtr<int> p1(&value);
-    datagram::OffsetPtr<const int> p2(&const_value);
-    datagram::OffsetPtr<const int> p3(&value); // non-const to const conversion
+    bitcon::OffsetPtr<int> p1(&value);
+    bitcon::OffsetPtr<const int> p2(&const_value);
+    bitcon::OffsetPtr<const int> p3(&value); // non-const to const conversion
 
     assert(*p1 == 42);
     assert(*p2 == 100);
@@ -279,35 +279,35 @@ void test_ptr_mode_selection() {
     int value = 42;
 
     // Raw mode
-    datagram::raw::ptr<int> raw_ptr = &value;
+    bitcon::raw::ptr<int> raw_ptr = &value;
     assert(*raw_ptr == 42);
 
     // Offset mode
-    datagram::offset::ptr<int> offset_ptr(&value);
+    bitcon::offset::ptr<int> offset_ptr(&value);
     assert(*offset_ptr == 42);
 
     // Generic ptr template
-    datagram::ptr<int, datagram::RawMode> p1 = &value;
-    datagram::ptr<int, datagram::OffsetMode> p2(&value);
+    bitcon::ptr<int, bitcon::RawMode> p1 = &value;
+    bitcon::ptr<int, bitcon::OffsetMode> p2(&value);
 
     assert(*p1 == 42);
     assert(*p2 == 42);
 
     // Type traits
-    static_assert(datagram::is_raw_ptr_v<int *>);
-    static_assert(!datagram::is_raw_ptr_v<datagram::OffsetPtr<int>>);
+    static_assert(bitcon::is_raw_ptr_v<int *>);
+    static_assert(!bitcon::is_raw_ptr_v<bitcon::OffsetPtr<int>>);
 
-    static_assert(datagram::is_offset_ptr_v<datagram::OffsetPtr<int>>);
-    static_assert(!datagram::is_offset_ptr_v<int *>);
+    static_assert(bitcon::is_offset_ptr_v<bitcon::OffsetPtr<int>>);
+    static_assert(!bitcon::is_offset_ptr_v<int *>);
 
-    static_assert(datagram::is_ptr_type_v<int *>);
-    static_assert(datagram::is_ptr_type_v<datagram::OffsetPtr<int>>);
-    static_assert(!datagram::is_ptr_type_v<int>);
+    static_assert(bitcon::is_ptr_type_v<int *>);
+    static_assert(bitcon::is_ptr_type_v<bitcon::OffsetPtr<int>>);
+    static_assert(!bitcon::is_ptr_type_v<int>);
 
     // ptr_value_t
-    static_assert(std::is_same_v<datagram::ptr_value_t<int *>, int>);
-    static_assert(std::is_same_v<datagram::ptr_value_t<datagram::OffsetPtr<int>>, int>);
-    static_assert(std::is_same_v<datagram::ptr_value_t<int>, int>);
+    static_assert(std::is_same_v<bitcon::ptr_value_t<int *>, int>);
+    static_assert(std::is_same_v<bitcon::ptr_value_t<bitcon::OffsetPtr<int>>, int>);
+    static_assert(std::is_same_v<bitcon::ptr_value_t<int>, int>);
 
     std::cout << "PASSED\n";
 }
@@ -316,7 +316,7 @@ void test_ptr_mode_selection() {
 void test_allocator() {
     std::cout << "Testing Allocator... ";
 
-    datagram::Allocator<int> alloc;
+    bitcon::Allocator<int> alloc;
 
     // Allocate
     int *ptr = alloc.allocate(10);
@@ -341,7 +341,7 @@ void test_allocator() {
     alloc.deallocate(ptr, 10);
 
     // Test with vector
-    std::vector<int, datagram::Allocator<int>> vec;
+    std::vector<int, bitcon::Allocator<int>> vec;
     vec.push_back(1);
     vec.push_back(2);
     vec.push_back(3);
@@ -354,7 +354,7 @@ void test_allocator() {
     assert(alloc.max_size() > 0);
 
     // Test rebind
-    using StringAlloc = datagram::Allocator<int>::rebind<std::string>::other;
+    using StringAlloc = bitcon::Allocator<int>::rebind<std::string>::other;
     StringAlloc string_alloc;
     auto *str_ptr = string_alloc.allocate(1);
     string_alloc.construct(str_ptr, "Hello");
@@ -370,15 +370,15 @@ void test_offset_ptr_offset() {
     std::cout << "Testing offset_ptr offset storage... ";
 
     int value = 42;
-    datagram::OffsetPtr<int> p(&value);
+    bitcon::OffsetPtr<int> p(&value);
 
     // Calculate expected offset
     auto expected_offset = reinterpret_cast<std::uintptr_t>(&value) - reinterpret_cast<std::uintptr_t>(&p);
 
-    assert(p.offset() == static_cast<datagram::offset_t>(expected_offset));
+    assert(p.offset() == static_cast<bitcon::offset_t>(expected_offset));
 
     // Test set_offset
-    datagram::OffsetPtr<int> p2;
+    bitcon::OffsetPtr<int> p2;
     p2.set_offset(p.offset());
 
     // This won't point to the same location because the base address is different,
@@ -386,8 +386,8 @@ void test_offset_ptr_offset() {
     assert(p2.offset() == p.offset());
 
     // nullptr offset
-    datagram::OffsetPtr<int> p3(nullptr);
-    assert(p3.offset() == datagram::NULLPTR_OFFSET);
+    bitcon::OffsetPtr<int> p3(nullptr);
+    assert(p3.offset() == bitcon::NULLPTR_OFFSET);
 
     std::cout << "PASSED\n";
 }

@@ -3,17 +3,17 @@
 #include <string>
 #include <vector>
 
-#include "datagram/containers/hash_map.hpp"
-#include "datagram/containers/hash_set.hpp"
-#include "datagram/containers/mmap_vec.hpp"
-#include "datagram/containers/mutable_fws_multimap.hpp"
-#include "datagram/containers/nvec.hpp"
-#include "datagram/containers/offset_ptr.hpp"
-#include "datagram/containers/ptr.hpp"
-#include "datagram/containers/rtree.hpp"
-#include "datagram/core/mmap.hpp"
+#include "bitcon/containers/hash_map.hpp"
+#include "bitcon/containers/hash_set.hpp"
+#include "bitcon/containers/mmap_vec.hpp"
+#include "bitcon/containers/mutable_fws_multimap.hpp"
+#include "bitcon/containers/nvec.hpp"
+#include "bitcon/containers/offset_ptr.hpp"
+#include "bitcon/containers/ptr.hpp"
+#include "bitcon/containers/rtree.hpp"
+#include "bitcon/core/mmap.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 // Helper template for Rtree - wraps BasicVector for use as template template parameter
 template <typename Key, typename Value> using VectorMap = BasicVector<Value, Value *, Allocator<Value>>;

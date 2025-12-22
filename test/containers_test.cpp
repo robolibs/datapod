@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string_view>
 
-#include "datagram/datagram.hpp"
+#include "bitcon/bitcon.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 // Test fixture helpers
 #define TEST(name)                                                                                                     \

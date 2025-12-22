@@ -1,8 +1,8 @@
 #include <doctest/doctest.h>
 
-#include "datagram/datagram.hpp"
+#include "bitcon/bitcon.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 // Test endian detection
 TEST_CASE("endian - detection") {

@@ -2,11 +2,11 @@
 #include <string>
 #include <vector>
 
-#include "datagram/containers/fws_multimap.hpp"
-#include "datagram/containers/paged.hpp"
-#include "datagram/containers/paged_vecvec.hpp"
+#include "bitcon/containers/fws_multimap.hpp"
+#include "bitcon/containers/paged.hpp"
+#include "bitcon/containers/paged_vecvec.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 #define TEST(name)                                                                                                     \
     void name();                                                                                                       \

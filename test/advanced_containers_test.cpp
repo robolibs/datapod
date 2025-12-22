@@ -1,7 +1,7 @@
 #include <iostream>
-#include "datagram/datagram.hpp"
+#include "bitcon/bitcon.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 #define TEST(name)                                                                                                     \
     void name();                                                                                                       \

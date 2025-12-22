@@ -2,13 +2,13 @@
 #include <string>
 #include <vector>
 
-#include "datagram/containers/bitset.hpp"
-#include "datagram/containers/bitvec.hpp"
-#include "datagram/containers/cstring.hpp"
-#include "datagram/containers/flat_matrix.hpp"
-#include "datagram/containers/vecvec.hpp"
+#include "bitcon/containers/bitset.hpp"
+#include "bitcon/containers/bitvec.hpp"
+#include "bitcon/containers/cstring.hpp"
+#include "bitcon/containers/flat_matrix.hpp"
+#include "bitcon/containers/vecvec.hpp"
 
-using namespace datagram;
+using namespace bitcon;
 
 #define TEST(name)                                                                                                     \
     void name();                                                                                                       \
