@@ -5,6 +5,7 @@
 #include <iosfwd>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -45,13 +46,14 @@ namespace datapod {
             }
         }
 
-        constexpr void set(std::string_view s) noexcept {
+        constexpr Bitset &set(std::string_view s) noexcept {
             for (std::size_t i = 0U; i != std::min(Size, s.size()); ++i) {
                 set(i, s[s.size() - i - 1U] != '0');
             }
+            return *this;
         }
 
-        constexpr void set(std::size_t const i, bool const val = true) noexcept {
+        constexpr Bitset &set(std::size_t const i, bool const val = true) noexcept {
             assert((i / bits_per_block) < num_blocks);
             auto &block = blocks_[i / bits_per_block];
             auto const bit = i % bits_per_block;
@@ -61,9 +63,40 @@ namespace datapod {
             } else {
                 block &= (~block_t{0U} ^ mask);
             }
+            return *this;
         }
 
+        // Set all bits to true
+        constexpr Bitset &set() noexcept {
+            one_out();
+            return *this;
+        }
+
+        // Reset single bit to false
+        constexpr Bitset &reset(std::size_t const i) noexcept {
+            set(i, false);
+            return *this;
+        }
+
+        // Reset all bits to false
         void reset() noexcept { blocks_ = {}; }
+
+        // Flip single bit
+        constexpr Bitset &flip(std::size_t const i) noexcept {
+            assert((i / bits_per_block) < num_blocks);
+            auto &block = blocks_[i / bits_per_block];
+            auto const bit = i % bits_per_block;
+            block ^= (block_t{1U} << bit);
+            return *this;
+        }
+
+        // Flip all bits
+        constexpr Bitset &flip() noexcept {
+            for (auto &b : blocks_) {
+                b = ~b;
+            }
+            return *this;
+        }
 
         bool operator[](std::size_t const i) const noexcept { return test(i); }
 
@@ -96,6 +129,22 @@ namespace datapod {
         }
 
         bool none() const noexcept { return !any(); }
+
+        bool all() const noexcept {
+            // Check all full blocks
+            for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
+                if (blocks_[i] != ~block_t{0U}) {
+                    return false;
+                }
+            }
+            // Check last block (may be partial)
+            if constexpr ((Size % bits_per_block) != 0U) {
+                auto const expected_mask = ~((~block_t{0U}) << (Size % bits_per_block));
+                return (blocks_[num_blocks - 1U] & expected_mask) == expected_mask;
+            } else {
+                return blocks_[num_blocks - 1U] == ~block_t{0U};
+            }
+        }
 
         block_t sanitized_last_block() const noexcept {
             if constexpr ((Size % bits_per_block) != 0U) {
@@ -130,6 +179,44 @@ namespace datapod {
             return s;
         }
 
+        // Convert to unsigned long (throws if Size > 64 and value doesn't fit)
+        unsigned long to_ulong() const {
+            if constexpr (Size == 0U) {
+                return 0UL;
+            } else if constexpr (Size < 64U) {
+                return static_cast<unsigned long>(blocks_[0U] & ((1ULL << Size) - 1ULL));
+            } else if constexpr (Size == 64U) {
+                return static_cast<unsigned long>(blocks_[0U]);
+            } else {
+                // Check if higher blocks are zero
+                for (std::size_t i = 1U; i < num_blocks; ++i) {
+                    if (blocks_[i] != 0U) {
+                        throw std::overflow_error("bitset value cannot fit in unsigned long");
+                    }
+                }
+                return static_cast<unsigned long>(blocks_[0U]);
+            }
+        }
+
+        // Convert to unsigned long long (throws if Size > 64 and value doesn't fit)
+        unsigned long long to_ullong() const {
+            if constexpr (Size == 0U) {
+                return 0ULL;
+            } else if constexpr (Size < 64U) {
+                return blocks_[0U] & ((1ULL << Size) - 1ULL);
+            } else if constexpr (Size == 64U) {
+                return blocks_[0U];
+            } else {
+                // Check if higher blocks are zero
+                for (std::size_t i = 1U; i < num_blocks; ++i) {
+                    if (blocks_[i] != 0U) {
+                        throw std::overflow_error("bitset value cannot fit in unsigned long long");
+                    }
+                }
+                return blocks_[0U];
+            }
+        }
+
         friend bool operator==(Bitset const &a, Bitset const &b) noexcept {
             for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
                 if (a.blocks_[i] != b.blocks_[i]) {
@@ -149,14 +236,16 @@ namespace datapod {
                 return false;
             }
 
-            for (int i = num_blocks - 2; i != -1; --i) {
-                auto const x = a.blocks_[i];
-                auto const y = b.blocks_[i];
-                if (x < y) {
-                    return true;
-                }
-                if (y < x) {
-                    return false;
+            if constexpr (num_blocks > 1) {
+                for (std::size_t i = num_blocks - 1; i-- > 0;) {
+                    auto const x = a.blocks_[i];
+                    auto const y = b.blocks_[i];
+                    if (x < y) {
+                        return true;
+                    }
+                    if (y < x) {
+                        return false;
+                    }
                 }
             }
 
