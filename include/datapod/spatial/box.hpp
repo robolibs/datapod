@@ -12,6 +12,7 @@ namespace datapod {
         Size size;
 
         auto members() noexcept { return std::tie(pose, size); }
+        auto members() const noexcept { return std::tie(pose, size); }
     };
 
 } // namespace datapod

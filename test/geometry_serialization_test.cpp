@@ -19,6 +19,7 @@
 #include "datapod/spatial/primitives/circle.hpp"
 #include "datapod/spatial/primitives/line.hpp"
 #include "datapod/spatial/primitives/rectangle.hpp"
+#include "datapod/spatial/primitives/segment.hpp"
 #include "datapod/spatial/primitives/square.hpp"
 #include "datapod/spatial/primitives/triangle.hpp"
 #include "datapod/spatial/quaternion.hpp"
@@ -217,11 +218,11 @@ TEST_CASE("serialize - Box size check") {
 // Line Serialization Tests
 // ============================================================================
 
-TEST_CASE("serialize - Line") {
-    Line line{Point{0.0, 0.0, 0.0}, Point{10.0, 20.0, 30.0}};
-    auto buf = serialize(line);
+TEST_CASE("serialize - Segment") {
+    Segment seg{Point{0.0, 0.0, 0.0}, Point{10.0, 20.0, 30.0}};
+    auto buf = serialize(seg);
 
-    auto result = deserialize<Mode::NONE, Line>(buf);
+    auto result = deserialize<Mode::NONE, Segment>(buf);
     CHECK(result.start.x == doctest::Approx(0.0));
     CHECK(result.start.y == doctest::Approx(0.0));
     CHECK(result.start.z == doctest::Approx(0.0));
@@ -230,10 +231,10 @@ TEST_CASE("serialize - Line") {
     CHECK(result.end.z == doctest::Approx(30.0));
 }
 
-TEST_CASE("serialize - Line size check") {
-    Line line{Point{0.0, 0.0, 0.0}, Point{0.0, 0.0, 0.0}};
-    auto buf = serialize(line);
-    // Line = 2 * Point(24) = 48 bytes
+TEST_CASE("serialize - Segment size check") {
+    Segment seg{Point{0.0, 0.0, 0.0}, Point{0.0, 0.0, 0.0}};
+    auto buf = serialize(seg);
+    // Segment = 2 * Point(24) = 48 bytes
     CHECK(buf.size() == 48);
 }
 
