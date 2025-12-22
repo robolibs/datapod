@@ -217,14 +217,14 @@ TEST_CASE("integrity - deserialize without integrity on protected data") {
     CHECK(result != 42);
 }
 
-// Test with HashMap
+// Test with Map
 TEST_CASE("integrity - hashmap") {
-    HashMap<int, String> map;
+    Map<int, String> map;
     map.insert({1, String("one")});
     map.insert({2, String("two")});
 
     auto buf = serialize<Mode::WITH_INTEGRITY>(map);
-    auto result = deserialize<Mode::WITH_INTEGRITY, HashMap<int, String>>(buf);
+    auto result = deserialize<Mode::WITH_INTEGRITY, Map<int, String>>(buf);
 
     REQUIRE(result.size() == 2);
     CHECK(result[1] == "one");

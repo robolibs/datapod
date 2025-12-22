@@ -26,13 +26,4 @@ namespace datapod {
         using Map = HashStorage<Pair<Key, Value>, offset::ptr, GetFirst, GetSecond, Hash, Eq>;
     } // namespace offset
 
-    // Backward compatibility - deprecated aliases
-    template <typename Key, typename Value, typename Hash = Hasher<Key>, typename Eq = EqualTo<Key>>
-    using HashMap [[deprecated("Use Map instead")]] = Map<Key, Value, Hash, Eq>;
-
-    namespace offset {
-        template <typename Key, typename Value, typename Hash = Hasher<Key>, typename Eq = EqualTo<Key>>
-        using HashMap [[deprecated("Use offset::Map instead")]] = Map<Key, Value, Hash, Eq>;
-    } // namespace offset
-
 } // namespace datapod

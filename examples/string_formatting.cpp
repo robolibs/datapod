@@ -1,7 +1,7 @@
 // String Formatting Example
 // Demonstrates the zero-dependency formatting capabilities of datapod::String
 
-#include "datapod/containers/string.hpp"
+#include "datapod/datapod.hpp"
 
 #include <iostream>
 
@@ -137,8 +137,24 @@ int main() {
 
     std::cout << std::endl;
 
-    // ===== 6. Performance Notes =====
-    std::cout << "6. Performance Notes:" << std::endl;
+    // ===== 6. Serialization =====
+    std::cout << "6. Serialization:" << std::endl;
+
+    String original = String::format("User {} has score {}", "alice", 42);
+    std::cout << "   Original: " << original.c_str() << std::endl;
+
+    // Serialize
+    auto buffer = serialize(original);
+    std::cout << "   Serialized to " << buffer.size() << " bytes" << std::endl;
+
+    // Deserialize
+    auto restored = deserialize<Mode::NONE, String>(buffer);
+    std::cout << "   Restored: " << restored.c_str() << std::endl;
+
+    std::cout << std::endl;
+
+    // ===== 7. Performance Notes =====
+    std::cout << "7. Performance Notes:" << std::endl;
     std::cout << "   - All formatting is zero-dependency (no fmt, no iostreams)" << std::endl;
     std::cout << "   - SSO optimization: strings <= 23 chars stay on stack" << std::endl;
     std::cout << "   - operator+ creates new string (immutable)" << std::endl;

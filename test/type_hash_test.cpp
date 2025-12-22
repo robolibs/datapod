@@ -185,8 +185,8 @@ TEST_CASE("type_hash - strong typedef") {
 }
 
 TEST_CASE("type_hash - hash_map and hash_set") {
-    auto const h_map = type_hash<HashMap<int, double>>();
-    auto const h_set = type_hash<HashSet<int>>();
+    auto const h_map = type_hash<Map<int, double>>();
+    auto const h_set = type_hash<Set<int>>();
 
     CHECK(h_map != h_set);
 }

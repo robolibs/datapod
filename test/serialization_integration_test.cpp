@@ -40,7 +40,7 @@ struct SensorData {
 struct ControlCommand {
     int command_id;
     String command_type;
-    HashMap<String, double> parameters;
+    Map<String, double> parameters;
     Optional<double> timeout;
 };
 
@@ -287,9 +287,9 @@ TEST_CASE("integration - large sensor array") {
 // Test deeply nested structures
 
 TEST_CASE("integration - nested containers") {
-    Vector<HashMap<String, Vector<Optional<double>>>> nested;
+    Vector<Map<String, Vector<Optional<double>>>> nested;
 
-    HashMap<String, Vector<Optional<double>>> map1;
+    Map<String, Vector<Optional<double>>> map1;
     Vector<Optional<double>> vec1;
     vec1.push_back(1.0);
     vec1.push_back(Optional<double>());
@@ -297,7 +297,7 @@ TEST_CASE("integration - nested containers") {
     map1.insert({String("data1"), vec1});
     nested.push_back(map1);
 
-    HashMap<String, Vector<Optional<double>>> map2;
+    Map<String, Vector<Optional<double>>> map2;
     Vector<Optional<double>> vec2;
     vec2.push_back(Optional<double>());
     vec2.push_back(2.0);
@@ -305,7 +305,7 @@ TEST_CASE("integration - nested containers") {
     nested.push_back(map2);
 
     auto buf = serialize(nested);
-    auto result = deserialize<Mode::NONE, Vector<HashMap<String, Vector<Optional<double>>>>>(buf);
+    auto result = deserialize<Mode::NONE, Vector<Map<String, Vector<Optional<double>>>>>(buf);
 
     REQUIRE(result.size() == 2);
     REQUIRE(result[0].size() == 1);

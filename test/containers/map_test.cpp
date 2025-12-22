@@ -421,17 +421,6 @@ TEST_SUITE("Map") {
         CHECK_FALSE(m.contains("four"));
     }
 
-    TEST_CASE("Backward Compatibility - HashMap still works") {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-        HashMap<int, String> hm{{1, "one"}, {2, "two"}};
-        CHECK(hm.size() == 2);
-        CHECK(hm[1] == String("one"));
-
-#pragma GCC diagnostic pop
-    }
-
     TEST_CASE("members() Serialization Support") {
         Map<int, String> m{{1, "one"}, {2, "two"}};
 

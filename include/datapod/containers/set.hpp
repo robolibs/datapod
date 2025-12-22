@@ -21,13 +21,4 @@ namespace datapod {
         using Set = HashStorage<T, offset::ptr, Identity, Identity, Hash, Eq>;
     } // namespace offset
 
-    // Backward compatibility - deprecated aliases
-    template <typename T, typename Hash = Hasher<T>, typename Eq = EqualTo<T>>
-    using HashSet [[deprecated("Use Set instead")]] = Set<T, Hash, Eq>;
-
-    namespace offset {
-        template <typename T, typename Hash = Hasher<T>, typename Eq = EqualTo<T>>
-        using HashSet [[deprecated("Use offset::Set instead")]] = Set<T, Hash, Eq>;
-    } // namespace offset
-
 } // namespace datapod

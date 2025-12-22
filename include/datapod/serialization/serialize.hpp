@@ -5,10 +5,10 @@
 #include <type_traits>
 
 #include "datapod/containers/array.hpp"
-#include "datapod/containers/hash_map.hpp"
-#include "datapod/containers/hash_set.hpp"
+#include "datapod/containers/map.hpp"
 #include "datapod/containers/optional.hpp"
 #include "datapod/containers/pair.hpp"
+#include "datapod/containers/set.hpp"
 #include "datapod/containers/string.hpp"
 #include "datapod/containers/tuple.hpp"
 #include "datapod/containers/variant.hpp"
@@ -65,7 +65,7 @@ namespace datapod {
     template <typename T, std::size_t N> struct is_container<Array<T, N>> : std::true_type {};
     template <typename... Ts> struct is_container<Tuple<Ts...>> : std::true_type {};
     template <typename... Ts> struct is_container<Variant<Ts...>> : std::true_type {};
-    // HashMap and HashSet are type aliases for HashStorage
+    // Map and Set are type aliases for HashStorage
     template <typename T, template <typename> typename Ptr, typename GetKey, typename GetValue, typename Hash,
               typename Eq>
     struct is_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
@@ -149,7 +149,7 @@ namespace datapod {
         }
     }
 
-    // Serialize HashStorage (used by HashMap and HashSet)
+    // Serialize HashStorage (used by Map and Set)
     template <Mode M, typename Ctx, typename T, template <typename> typename Ptr, typename GetKey, typename GetValue,
               typename Hash, typename Eq>
     void serialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {
@@ -345,7 +345,7 @@ namespace datapod {
         deserialize_variant_at_index<M, 0>(ctx, value, idx);
     }
 
-    // Deserialize HashStorage (used by HashMap and HashSet)
+    // Deserialize HashStorage (used by Map and Set)
     template <Mode M, typename Ctx, typename T, template <typename> typename Ptr, typename GetKey, typename GetValue,
               typename Hash, typename Eq>
     void deserialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {

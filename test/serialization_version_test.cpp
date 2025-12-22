@@ -187,29 +187,29 @@ TEST_CASE("version - variant") {
     CHECK(get<String>(result) == "hello");
 }
 
-// Test version tracking with HashMap
+// Test version tracking with Map
 TEST_CASE("version - hashmap") {
-    HashMap<int, String> map;
+    Map<int, String> map;
     map.insert({1, String("one")});
     map.insert({2, String("two")});
 
     auto buf = serialize<Mode::WITH_VERSION>(map);
-    auto result = deserialize<Mode::WITH_VERSION, HashMap<int, String>>(buf);
+    auto result = deserialize<Mode::WITH_VERSION, Map<int, String>>(buf);
 
     REQUIRE(result.size() == 2);
     CHECK(result[1] == "one");
     CHECK(result[2] == "two");
 }
 
-// Test version tracking with HashSet
+// Test version tracking with Set
 TEST_CASE("version - hashset") {
-    HashSet<int> set;
+    Set<int> set;
     set.insert(10);
     set.insert(20);
     set.insert(30);
 
     auto buf = serialize<Mode::WITH_VERSION>(set);
-    auto result = deserialize<Mode::WITH_VERSION, HashSet<int>>(buf);
+    auto result = deserialize<Mode::WITH_VERSION, Set<int>>(buf);
 
     REQUIRE(result.size() == 3);
     CHECK(result.find(10) != result.end());

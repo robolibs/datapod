@@ -3,8 +3,8 @@
 #include <type_traits>
 
 #include "datapod/containers/array.hpp"
-#include "datapod/containers/hash_map.hpp"
 #include "datapod/containers/hash_storage.hpp"
+#include "datapod/containers/map.hpp"
 #include "datapod/containers/optional.hpp"
 #include "datapod/containers/pair.hpp"
 #include "datapod/containers/string.hpp"
@@ -26,18 +26,18 @@ namespace datapod {
         return hash_combine(hash(canonical_type_str<decay_t<T>>()), sizeof(T));
     }
 
-    template <typename T> hash_t type_hash(T const &, hash_t, HashMap<hash_t, unsigned> &) noexcept;
+    template <typename T> hash_t type_hash(T const &, hash_t, Map<hash_t, unsigned> &) noexcept;
 
     // Array specialization
     template <typename T, std::size_t Size>
-    hash_t type_hash(Array<T, Size> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    hash_t type_hash(Array<T, Size> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("array"));
         h = hash_combine(h, Size);
         return type_hash(T{}, h, done);
     }
 
     // Base template - handles pointers, integrals, scalars, and aggregates
-    template <typename T> hash_t type_hash(T const &el, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    template <typename T> hash_t type_hash(T const &el, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         using Type = decay_t<T>;
 
         auto const base_hash = type2str_hash<Type>();
@@ -68,7 +68,7 @@ namespace datapod {
 
     // Pair specialization
     template <typename A, typename B>
-    hash_t type_hash(Pair<A, B> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    hash_t type_hash(Pair<A, B> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = type_hash(A{}, h, done);
         h = type_hash(B{}, h, done);
         return hash_combine(h, hash("pair"));
@@ -76,14 +76,14 @@ namespace datapod {
 
     // Vector specialization
     template <typename T, typename Ptr, typename Alloc>
-    hash_t type_hash(BasicVector<T, Ptr, Alloc> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    hash_t type_hash(BasicVector<T, Ptr, Alloc> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("vector"));
         return type_hash(T{}, h, done);
     }
 
     // UniquePtr specialization
     template <typename T, typename Ptr>
-    hash_t type_hash(UniquePtr<T, Ptr> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    hash_t type_hash(UniquePtr<T, Ptr> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("unique_ptr"));
         return type_hash(T{}, h, done);
     }
@@ -92,34 +92,33 @@ namespace datapod {
     template <typename T, template <typename> typename Ptr, typename GetKey, typename GetValue, typename Hash,
               typename Eq>
     hash_t type_hash(HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> const &, hash_t h,
-                     HashMap<hash_t, unsigned> &done) noexcept {
+                     Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("hash_storage"));
         return type_hash(T{}, h, done);
     }
 
     // Variant specialization
-    template <typename... T>
-    hash_t type_hash(Variant<T...> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    template <typename... T> hash_t type_hash(Variant<T...> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("variant"));
         ((h = type_hash(T{}, h, done)), ...);
         return h;
     }
 
     // Tuple specialization
-    template <typename... T> hash_t type_hash(Tuple<T...> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    template <typename... T> hash_t type_hash(Tuple<T...> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("tuple"));
         ((h = type_hash(T{}, h, done)), ...);
         return h;
     }
 
     // String specialization
-    template <typename Ptr> hash_t type_hash(BasicString<Ptr> const &, hash_t h, HashMap<hash_t, unsigned> &) noexcept {
+    template <typename Ptr> hash_t type_hash(BasicString<Ptr> const &, hash_t h, Map<hash_t, unsigned> &) noexcept {
         return hash_combine(h, hash("string"));
     }
 
     // Strong typedef specialization
     template <typename T, typename Tag>
-    hash_t type_hash(Strong<T, Tag> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    hash_t type_hash(Strong<T, Tag> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("strong"));
         h = type_hash(T{}, h, done);
         h = hash_combine(hash(canonical_type_str<Tag>()), h);
@@ -127,7 +126,7 @@ namespace datapod {
     }
 
     // Optional specialization
-    template <typename T> hash_t type_hash(Optional<T> const &, hash_t h, HashMap<hash_t, unsigned> &done) noexcept {
+    template <typename T> hash_t type_hash(Optional<T> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("optional"));
         h = type_hash(T{}, h, done);
         return h;
@@ -135,7 +134,7 @@ namespace datapod {
 
     // Entry point: compute type hash for a type
     template <typename T> hash_t type_hash() {
-        auto done = HashMap<hash_t, unsigned>{};
+        auto done = Map<hash_t, unsigned>{};
         return type_hash(T{}, BASE_HASH, done);
     }
 

@@ -43,8 +43,8 @@
 
 // Phase 6: Hash Containers (Swiss Tables)
 #include "datapod/containers/hash_storage.hpp"
-#include "datapod/containers/map.hpp" // Includes HashMap (deprecated) alias
-#include "datapod/containers/set.hpp" // Includes HashSet (deprecated) alias
+#include "datapod/containers/map.hpp"
+#include "datapod/containers/set.hpp"
 
 // Phase 7: Advanced Containers
 #include "datapod/containers/tuple.hpp"

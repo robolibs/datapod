@@ -3,14 +3,14 @@
 #include <string>
 #include <vector>
 
-#include "datapod/containers/hash_map.hpp"
-#include "datapod/containers/hash_set.hpp"
+#include "datapod/containers/map.hpp"
 #include "datapod/containers/mmap_vec.hpp"
 #include "datapod/containers/mutable_fws_multimap.hpp"
 #include "datapod/containers/nvec.hpp"
 #include "datapod/containers/offset_ptr.hpp"
 #include "datapod/containers/ptr.hpp"
 #include "datapod/containers/rtree.hpp"
+#include "datapod/containers/set.hpp"
 #include "datapod/core/mmap.hpp"
 
 using namespace datapod;
@@ -47,11 +47,11 @@ template <typename Key, typename Value> using VectorMap = BasicVector<Value, Val
     } while (0)
 
 // ============================================================================
-// HashMap Tests
+// Map Tests
 // ============================================================================
 
-TEST(test_hash_map_basic) {
-    HashMap<int, String> map;
+TEST(test_map_basic) {
+    Map<int, String> map;
 
     ASSERT(map.empty());
     ASSERT_EQ(map.size(), 0);
@@ -68,8 +68,8 @@ TEST(test_hash_map_basic) {
     ASSERT_EQ(map[3].view(), "three");
 }
 
-TEST(test_hash_map_find) {
-    HashMap<int, int> map;
+TEST(test_map_find) {
+    Map<int, int> map;
     map[10] = 100;
     map[20] = 200;
 
@@ -82,8 +82,8 @@ TEST(test_hash_map_find) {
     ASSERT(it2 == map.end());
 }
 
-TEST(test_hash_map_erase) {
-    HashMap<int, int> map;
+TEST(test_map_erase) {
+    Map<int, int> map;
     map[1] = 10;
     map[2] = 20;
     map[3] = 30;
@@ -99,8 +99,8 @@ TEST(test_hash_map_erase) {
     ASSERT(map.find(3) != map.end());
 }
 
-TEST(test_hash_map_clear) {
-    HashMap<int, int> map;
+TEST(test_map_clear) {
+    Map<int, int> map;
     map[1] = 10;
     map[2] = 20;
 
@@ -109,8 +109,8 @@ TEST(test_hash_map_clear) {
     ASSERT_EQ(map.size(), 0);
 }
 
-TEST(test_hash_map_iteration) {
-    HashMap<int, int> map;
+TEST(test_map_iteration) {
+    Map<int, int> map;
     map[1] = 10;
     map[2] = 20;
     map[3] = 30;
@@ -122,8 +122,8 @@ TEST(test_hash_map_iteration) {
     ASSERT_EQ(sum, 60);
 }
 
-TEST(test_hash_map_overwrite) {
-    HashMap<int, int> map;
+TEST(test_map_overwrite) {
+    Map<int, int> map;
     map[1] = 10;
 
     map[1] = 100; // overwrite
@@ -131,8 +131,8 @@ TEST(test_hash_map_overwrite) {
     ASSERT_EQ(map.size(), 1);
 }
 
-TEST(test_hash_map_rehash) {
-    HashMap<int, int> map;
+TEST(test_map_rehash) {
+    Map<int, int> map;
 
     // Insert many elements to trigger rehashing
     for (int i = 0; i < 100; ++i) {
@@ -148,11 +148,11 @@ TEST(test_hash_map_rehash) {
 }
 
 // ============================================================================
-// HashSet Tests
+// Set Tests
 // ============================================================================
 
-TEST(test_hash_set_basic) {
-    HashSet<int> set;
+TEST(test_set_basic) {
+    Set<int> set;
 
     ASSERT(set.empty());
     ASSERT_EQ(set.size(), 0);
@@ -170,8 +170,8 @@ TEST(test_hash_set_basic) {
     ASSERT(set.find(4) == set.end());
 }
 
-TEST(test_hash_set_find) {
-    HashSet<int> set;
+TEST(test_set_find) {
+    Set<int> set;
     set.insert(10);
     set.insert(20);
 
@@ -183,8 +183,8 @@ TEST(test_hash_set_find) {
     ASSERT(it2 == set.end());
 }
 
-TEST(test_hash_set_erase) {
-    HashSet<int> set;
+TEST(test_set_erase) {
+    Set<int> set;
     set.insert(1);
     set.insert(2);
     set.insert(3);
@@ -200,16 +200,16 @@ TEST(test_hash_set_erase) {
     ASSERT(set.find(3) != set.end());
 }
 
-TEST(test_hash_set_duplicate_insert) {
-    HashSet<int> set;
+TEST(test_set_duplicate_insert) {
+    Set<int> set;
     set.insert(42);
     set.insert(42); // duplicate
 
     ASSERT_EQ(set.size(), 1);
 }
 
-TEST(test_hash_set_iteration) {
-    HashSet<int> set;
+TEST(test_set_iteration) {
+    Set<int> set;
     set.insert(1);
     set.insert(2);
     set.insert(3);
@@ -221,8 +221,8 @@ TEST(test_hash_set_iteration) {
     ASSERT_EQ(sum, 6);
 }
 
-TEST(test_hash_set_clear) {
-    HashSet<int> set;
+TEST(test_set_clear) {
+    Set<int> set;
     set.insert(1);
     set.insert(2);
 
@@ -231,8 +231,8 @@ TEST(test_hash_set_clear) {
     ASSERT_EQ(set.size(), 0);
 }
 
-TEST(test_hash_set_with_strings) {
-    HashSet<String> set;
+TEST(test_set_with_strings) {
+    Set<String> set;
     set.insert(String("hello"));
     set.insert(String("world"));
     set.insert(String("test"));

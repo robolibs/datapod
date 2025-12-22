@@ -30,16 +30,16 @@ using namespace datapod;
         }                                                                                                              \
     } while (0)
 
-// ==================== HashMap Tests ====================
+// ==================== Map Tests ====================
 
 TEST(test_hashmap_empty) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     ASSERT_EQ(map.empty(), true);
     ASSERT_EQ(map.size(), 0);
 }
 
 TEST(test_hashmap_insert) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     auto res1 = map.insert({1, 100});
     ASSERT_EQ(res1.second, true); // inserted
     ASSERT_EQ(res1.first->first, 1);
@@ -51,7 +51,7 @@ TEST(test_hashmap_insert) {
 }
 
 TEST(test_hashmap_operator_bracket) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     map[1] = 100;
     map[2] = 200;
     map[3] = 300;
@@ -63,7 +63,7 @@ TEST(test_hashmap_operator_bracket) {
 }
 
 TEST(test_hashmap_find) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     map[1] = 100;
     map[2] = 200;
     
@@ -76,7 +76,7 @@ TEST(test_hashmap_find) {
 }
 
 TEST(test_hashmap_erase) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     map[1] = 100;
     map[2] = 200;
     map[3] = 300;
@@ -88,7 +88,7 @@ TEST(test_hashmap_erase) {
 }
 
 TEST(test_hashmap_iteration) {
-    HashMap<int, int> map;
+    Map<int, int> map;
     map[1] = 100;
     map[2] = 200;
     map[3] = 300;
@@ -101,7 +101,7 @@ TEST(test_hashmap_iteration) {
 }
 
 TEST(test_hashmap_string_keys) {
-    HashMap<BasicString<>, int> map;
+    Map<BasicString<>, int> map;
     map[BasicString<>("hello")] = 1;
     map[BasicString<>("world")] = 2;
     
@@ -110,16 +110,16 @@ TEST(test_hashmap_string_keys) {
     ASSERT_EQ(map[BasicString<>("world")], 2);
 }
 
-// ==================== HashSet Tests ====================
+// ==================== Set Tests ====================
 
 TEST(test_hashset_empty) {
-    HashSet<int> set;
+    Set<int> set;
     ASSERT_EQ(set.empty(), true);
     ASSERT_EQ(set.size(), 0);
 }
 
 TEST(test_hashset_insert) {
-    HashSet<int> set;
+    Set<int> set;
     auto res1 = set.insert(1);
     ASSERT_EQ(res1.second, true); // inserted
     ASSERT_EQ(*res1.first, 1);
@@ -130,7 +130,7 @@ TEST(test_hashset_insert) {
 }
 
 TEST(test_hashset_find) {
-    HashSet<int> set;
+    Set<int> set;
     set.insert(1);
     set.insert(2);
     set.insert(3);
@@ -144,7 +144,7 @@ TEST(test_hashset_find) {
 }
 
 TEST(test_hashset_erase) {
-    HashSet<int> set;
+    Set<int> set;
     set.insert(1);
     set.insert(2);
     set.insert(3);
@@ -156,7 +156,7 @@ TEST(test_hashset_erase) {
 }
 
 TEST(test_hashset_iteration) {
-    HashSet<int> set;
+    Set<int> set;
     set.insert(1);
     set.insert(2);
     set.insert(3);
@@ -169,7 +169,7 @@ TEST(test_hashset_iteration) {
 }
 
 TEST(test_hashset_string) {
-    HashSet<BasicString<>> set;
+    Set<BasicString<>> set;
     set.insert("hello");
     set.insert("world");
     set.insert("hello"); // duplicate
