@@ -1,10 +1,15 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 #include <tuple>
 
 #include "../aabb.hpp"
+#include "../euler.hpp"
+#include "../obb.hpp"
 #include "../point.hpp"
+#include "../pose.hpp"
+#include "../size.hpp"
 #include "datapod/sequential/vector.hpp"
 
 namespace datapod {
@@ -97,6 +102,75 @@ namespace datapod {
 
             return AABB{min_pt, max_pt};
         }
+
+        // Oriented Bounding Box (simplified algorithm)
+        inline OBB get_obb() const noexcept {
+            if (vertices.empty()) {
+                return OBB{Point{0.0, 0.0, 0.0}, Size{0.0, 0.0, 0.0}, Euler{0.0, 0.0, 0.0}};
+            }
+
+            // Calculate centroid
+            double sumX = 0.0, sumY = 0.0;
+            for (const auto &p : vertices) {
+                sumX += p.x;
+                sumY += p.y;
+            }
+            double centroidX = sumX / vertices.size();
+            double centroidY = sumY / vertices.size();
+
+            // Use orientation based on first vertex to centroid direction
+            const auto &first = vertices[0];
+            double orientation_rad = std::atan2(centroidY - first.y, centroidX - first.x);
+            double cosO = std::cos(orientation_rad);
+            double sinO = std::sin(orientation_rad);
+
+            // Rotate all points and find min/max in rotated space
+            double minRotX = std::numeric_limits<double>::infinity();
+            double maxRotX = -std::numeric_limits<double>::infinity();
+            double minRotY = std::numeric_limits<double>::infinity();
+            double maxRotY = -std::numeric_limits<double>::infinity();
+
+            for (const auto &p : vertices) {
+                double x = p.x;
+                double y = p.y;
+                double rotX = x * cosO + y * sinO;
+                double rotY = -x * sinO + y * cosO;
+
+                minRotX = std::min(minRotX, rotX);
+                maxRotX = std::max(maxRotX, rotX);
+                minRotY = std::min(minRotY, rotY);
+                maxRotY = std::max(maxRotY, rotY);
+            }
+
+            // Calculate width and height in rotated space
+            double width = maxRotX - minRotX;
+            double height = maxRotY - minRotY;
+
+            // Center in rotated space
+            double centerRotX = 0.5 * (minRotX + maxRotX);
+            double centerRotY = 0.5 * (minRotY + maxRotY);
+
+            // Transform center back to world space
+            double centerX = centerRotX * cosO - centerRotY * sinO;
+            double centerY = centerRotX * sinO + centerRotY * cosO;
+
+            Point center_pt{centerX, centerY, 0.0};
+            Euler euler{0.0, 0.0, orientation_rad};
+            Size half_extents{width * 0.5, height * 0.5, 0.0};
+
+            return OBB{center_pt, half_extents, euler};
+        }
+
+        // Iterators
+        inline auto begin() noexcept { return vertices.begin(); }
+        inline auto end() noexcept { return vertices.end(); }
+        inline auto begin() const noexcept { return vertices.begin(); }
+        inline auto end() const noexcept { return vertices.end(); }
+
+        // Comparison operators
+        inline bool operator==(const Polygon &other) const noexcept { return vertices == other.vertices; }
+
+        inline bool operator!=(const Polygon &other) const noexcept { return !(*this == other); }
     };
 
 } // namespace datapod
