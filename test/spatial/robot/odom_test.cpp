@@ -10,7 +10,7 @@ TEST_SUITE("Odom") {
         CHECK(odom.pose.point.x == 0.0);
         CHECK(odom.pose.point.y == 0.0);
         CHECK(odom.pose.point.z == 0.0);
-        CHECK(odom.pose.rotation.w == 0.0);
+        CHECK(odom.pose.rotation.w == 1.0); // Identity quaternion
         CHECK(odom.twist.linear.vx == 0.0);
         CHECK(odom.twist.angular.vz == 0.0);
     }
