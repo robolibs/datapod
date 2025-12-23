@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.5] - 2025-12-23
+
+### <!-- 2 -->🚜 Refactor
+
+- Refactor identity matrix setting and update acknowledgments
+
+### Build
+
+- Remove unnecessary object file
+
 ## [0.0.4] - 2025-12-23
 
 ### <!-- 0 -->⛰️  Features
