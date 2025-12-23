@@ -18,6 +18,7 @@ namespace datapod {
         double radius = 0.0;
 
         auto members() noexcept { return std::tie(center, radius); }
+        auto members() const noexcept { return std::tie(center, radius); }
     };
 
 } // namespace datapod

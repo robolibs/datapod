@@ -27,6 +27,7 @@ namespace datapod {
         Vector<T> data;          // Row-major grid data
 
         auto members() noexcept { return std::tie(rows, cols, resolution, centered, pose, data); }
+        auto members() const noexcept { return std::tie(rows, cols, resolution, centered, pose, data); }
     };
 
 } // namespace datapod
