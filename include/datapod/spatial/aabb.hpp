@@ -81,6 +81,21 @@ namespace datapod {
             max_point.y = std::max(max_point.y, other.max_point.y);
             max_point.z = std::max(max_point.z, other.max_point.z);
         }
+
+        // Distance from AABB to a point (0 if point is inside)
+        inline double distance_to_point(const Point &p) const noexcept {
+            double dx = std::max({min_point.x - p.x, 0.0, p.x - max_point.x});
+            double dy = std::max({min_point.y - p.y, 0.0, p.y - max_point.y});
+            double dz = std::max({min_point.z - p.z, 0.0, p.z - max_point.z});
+            return std::sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        // Comparison operators
+        inline bool operator==(const AABB &other) const noexcept {
+            return min_point == other.min_point && max_point == other.max_point;
+        }
+
+        inline bool operator!=(const AABB &other) const noexcept { return !(*this == other); }
     };
 
 } // namespace datapod
