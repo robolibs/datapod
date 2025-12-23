@@ -74,6 +74,12 @@ option("rerun")
     set_description("Enable rerun_sdk support")
 option_end()
 
+option("short_namespace")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Enable short namespace alias (dp)")
+option_end()
+
 -- Define rerun_sdk package (from ~/.local installation)
 package("rerun_sdk")
     set_kind("library", {headeronly = false})
@@ -126,6 +132,11 @@ target("datapod")
     add_headerfiles("include/(datapod/**.hpp)")
     add_includedirs("include", {public = true})
 
+    -- Add SHORT_NAMESPACE define if enabled
+    if has_config("short_namespace") then
+        add_defines("SHORT_NAMESPACE", {public = true})
+    end
+
     -- Conditional rerun support (only if package is found)
     if has_config("examples") or has_config("rerun") then
         on_load(function (target)
@@ -153,6 +164,9 @@ if has_config("examples") and os.projectdir() == os.curdir() then
             add_files(filepath)
             add_deps("datapod")
 
+            -- Always enable SHORT_NAMESPACE for examples
+            add_defines("SHORT_NAMESPACE")
+
             -- Always try to add rerun_sdk for examples (matching CMake behavior)
             on_load(function (target)
                 if target:pkg("rerun_sdk") then
@@ -177,6 +191,10 @@ if has_config("tests") and os.projectdir() == os.curdir() then
             add_packages("doctest")
             add_includedirs("include")
             add_defines("DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN")
+            
+            -- Always enable SHORT_NAMESPACE for tests
+            add_defines("SHORT_NAMESPACE")
+            
             add_syslinks("pthread")
 
             -- Add as test

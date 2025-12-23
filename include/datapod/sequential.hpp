@@ -20,3 +20,8 @@
 #include "sequential/string.hpp"
 #include "sequential/vector.hpp"
 #include "sequential/vecvec.hpp"
+
+// Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
+#if defined(SHORT_NAMESPACE)
+namespace dp = datapod;
+#endif

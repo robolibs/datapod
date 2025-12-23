@@ -20,6 +20,7 @@ set(params
 string(TOUPPER ${project_name} project_name_upper)
 option(${project_name_upper}_BUILD_EXAMPLES "Build examples" OFF)
 option(${project_name_upper}_ENABLE_TESTS "Enable tests" OFF)
+option(SHORT_NAMESPACE "Enable short namespace alias (dp)" OFF)
 include(FetchContent)
 
 # --------------------------------------------------------------------------------------------------
@@ -38,12 +39,21 @@ if(LIB_SOURCES)
         $<INSTALL_INTERFACE:include>
     )
     target_compile_options(${project_name} PRIVATE ${params})
+    # Add SHORT_NAMESPACE define if enabled
+    target_compile_definitions(${project_name}
+        PUBLIC
+            $<$<BOOL:${SHORT_NAMESPACE}>:SHORT_NAMESPACE>
+    )
 else()
     add_library(${project_name} INTERFACE)
     target_include_directories(${project_name} INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     )
+    # Add SHORT_NAMESPACE define if enabled (for header-only mode)
+    if(SHORT_NAMESPACE)
+        target_compile_definitions(${project_name} INTERFACE SHORT_NAMESPACE)
+    endif()
 endif()
 
 # Allow users to link via `${project_name}::${project_name}`
@@ -91,6 +101,7 @@ if(${project_name_upper}_BUILD_EXAMPLES)
     get_filename_component(exec_name "${src_file}" NAME_WE)
     add_executable(${exec_name} "${src_file}")
     target_compile_options(${exec_name} PRIVATE ${params})
+    target_compile_definitions(${exec_name} PRIVATE SHORT_NAMESPACE)
     target_link_libraries(${exec_name} ${project_name}::${project_name} ${ext_deps})
     install(TARGETS ${exec_name} DESTINATION bin)
     list(APPEND exec_names ${exec_name})
@@ -121,12 +132,13 @@ if(${project_name_upper}_ENABLE_TESTS)
   )
   FetchContent_MakeAvailable(DocTest)
 
-  file(GLOB test_src CONFIGURE_DEPENDS test/*.cpp)
+  file(GLOB_RECURSE test_src CONFIGURE_DEPENDS test/*.cpp test/**/*.cpp)
 
   foreach(src_file IN LISTS test_src)
     get_filename_component(test_name "${src_file}" NAME_WE)
     add_executable(${test_name} "${src_file}")
     target_compile_options(${test_name} PRIVATE ${params})
+    target_compile_definitions(${test_name} PRIVATE SHORT_NAMESPACE)
     target_link_libraries(${test_name} ${project_name}::${project_name} doctest_with_main)
     add_test(NAME ${test_name} COMMAND ${test_name})
   endforeach()
