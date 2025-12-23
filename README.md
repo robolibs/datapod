@@ -2,7 +2,7 @@
 
 # Datapod
 
-Serialization/Deserialization framework without source code generation
+High-performance, POD-compatible containers with zero-cost serialization and spatial indexing
 
 # Acknowledgements
  Made possible thanks to [those amazing projects](./ACKNOWLEDGMENTS.md).
