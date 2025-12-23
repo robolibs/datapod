@@ -34,6 +34,9 @@
 #include "datapod/adapters/pair.hpp"
 #include "datapod/adapters/unique_ptr.hpp"
 #include "datapod/sequential/array.hpp"
+#include "datapod/sequential/fixed_queue.hpp"
+#include "datapod/sequential/queue.hpp"
+#include "datapod/sequential/stack.hpp"
 #include "datapod/sequential/string.hpp"
 #include "datapod/sequential/vector.hpp"
 
