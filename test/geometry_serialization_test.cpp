@@ -497,7 +497,7 @@ TEST_CASE("serialize - Grid<uint8_t> 3x3 with integrity") {
 // ============================================================================
 
 TEST_CASE("serialize - State") {
-    State state{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, 5.0, 0.5};
+    State state{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Velocity{5.0, 0.0, 0.0}, Velocity{0.5, 0.0, 0.0}};
     auto buf = serialize(state);
 
     auto result = deserialize<Mode::NONE, State>(buf);
@@ -507,25 +507,25 @@ TEST_CASE("serialize - State") {
     //     CHECK(result.pose.rotation.x == doctest::Approx(0.1));
     //     CHECK(result.pose.rotation.y == doctest::Approx(0.2));
     //     CHECK(result.pose.rotation.z == doctest::Approx(0.3));
-    CHECK(result.linear_velocity == doctest::Approx(5.0));
-    CHECK(result.angular_velocity == doctest::Approx(0.5));
+    CHECK(result.linear_velocity.vx == doctest::Approx(5.0));
+    CHECK(result.angular_velocity.vx == doctest::Approx(0.5));
 }
 
 TEST_CASE("serialize - State with version") {
-    State state{Pose{Point{5.0, 6.0, 7.0}, Quaternion{0.9021, 0.2604, 0.3072, 0.1731}}, 10.0, 1.0};
+    State state{Pose{Point{5.0, 6.0, 7.0}, Quaternion{0.9021, 0.2604, 0.3072, 0.1731}}, Velocity{10.0, 0.0, 0.0}, Velocity{1.0, 0.0, 0.0}};
     auto buf = serialize<Mode::WITH_VERSION>(state);
 
     auto result = deserialize<Mode::WITH_VERSION, State>(buf);
     CHECK(result.pose.point.x == doctest::Approx(5.0));
-    CHECK(result.linear_velocity == doctest::Approx(10.0));
-    CHECK(result.angular_velocity == doctest::Approx(1.0));
+    CHECK(result.linear_velocity.vx == doctest::Approx(10.0));
+    CHECK(result.angular_velocity.vx == doctest::Approx(1.0));
 }
 
 TEST_CASE("serialize - State size check") {
-    State state{Pose{}, 0.0, 0.0};
+    State state{Pose{}, Velocity{}, Velocity{}};
     auto buf = serialize(state);
     // State = Pose(48) + double(8) + double(8) = 64 bytes
-    CHECK(buf.size() == 72);
+    CHECK(buf.size() == 104);
 }
 
 // ============================================================================
@@ -583,9 +583,9 @@ TEST_CASE("serialize - Trajectory empty") {
 
 TEST_CASE("serialize - Trajectory with states") {
     Vector<State> states;
-    states.push_back(State{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, 0.0, 0.0});
-    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Quaternion{0.9689, 0.0, 0.0, 0.2474}}, 2.5, 0.1});
-    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Quaternion{0.8776, 0.0, 0.0, 0.4794}}, 5.0, 0.2});
+    states.push_back(State{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Velocity{}, Velocity{}});
+    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Quaternion{0.9689, 0.0, 0.0, 0.2474}}, Velocity{2.5, 0.0, 0.0}, Velocity{0.1, 0.0, 0.0}});
+    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Quaternion{0.8776, 0.0, 0.0, 0.4794}}, Velocity{5.0, 0.0, 0.0}, Velocity{0.2, 0.0, 0.0}});
 
     Trajectory traj{states};
     auto buf = serialize(traj);
@@ -593,17 +593,17 @@ TEST_CASE("serialize - Trajectory with states") {
     auto result = deserialize<Mode::NONE, Trajectory>(buf);
     CHECK(result.states.size() == 3);
     CHECK(result.states[0].pose.point.x == doctest::Approx(0.0));
-    CHECK(result.states[0].linear_velocity == doctest::Approx(0.0));
+    CHECK(result.states[0].linear_velocity.vx == doctest::Approx(0.0));
     CHECK(result.states[1].pose.point.x == doctest::Approx(5.0));
-    CHECK(result.states[1].linear_velocity == doctest::Approx(2.5));
-    CHECK(result.states[1].angular_velocity == doctest::Approx(0.1));
+    CHECK(result.states[1].linear_velocity.vx == doctest::Approx(2.5));
+    CHECK(result.states[1].angular_velocity.vx == doctest::Approx(0.1));
     CHECK(result.states[2].pose.point.y == doctest::Approx(5.0));
-    CHECK(result.states[2].linear_velocity == doctest::Approx(5.0));
+    CHECK(result.states[2].linear_velocity.vx == doctest::Approx(5.0));
 }
 
 TEST_CASE("serialize - Trajectory with integrity") {
     Vector<State> states;
-    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, 1.5, 0.3});
+    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Velocity{1.5, 0.3, 0.0}});
 
     Trajectory traj{states};
     auto buf = serialize<Mode::WITH_INTEGRITY>(traj);
