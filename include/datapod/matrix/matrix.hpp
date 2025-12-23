@@ -121,7 +121,7 @@ namespace datapod {
         }
 
         // Set to identity (only for square matrices)
-        template <typename U = T> constexpr typename std::enable_if<R == C, void>::type set_identity() noexcept {
+        template <size_t R_ = R, size_t C_ = C> constexpr std::enable_if_t<R_ == C_, void> set_identity() noexcept {
             fill(T{});
             for (size_type i = 0; i < R; ++i) {
                 (*this)(i, i) = T{1};
