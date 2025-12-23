@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.3] - 2025-12-23
+
+### <!-- 0 -->⛰️  Features
+
+- Add basic sequential data structures
+- Introduce Rust-inspired error handling with `Result` and `Error`
+- Introduce temporal data structures and remove old docs
+- Introduce geographic and odometry data structures
+- Feat: Add spatial vector and inertia primitives
+- Introduce 3D velocity and acceleration types
+- Add tensor, matrix, and scalar data structures
+
+### <!-- 3 -->📚 Documentation
+
+- Introduce `Result` and `Error` types with examples
+- Readme: Update project description
+
 ## [0.0.2] - 2025-12-23
 
 ### <!-- 0 -->⛰️  Features
