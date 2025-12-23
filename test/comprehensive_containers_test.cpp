@@ -4,14 +4,14 @@
 #include <vector>
 
 #include "datapod/associative/map.hpp"
-#include "datapod/memory/mmap_vec.hpp"
 #include "datapod/associative/mutable_fws_multimap.hpp"
-#include "datapod/matrix/nvec.hpp"
-#include "datapod/memory/offset_ptr.hpp"
-#include "datapod/memory/ptr.hpp"
-#include "datapod/spatial/rtree.hpp"
 #include "datapod/associative/set.hpp"
 #include "datapod/core/mmap.hpp"
+#include "datapod/memory/mmap_vec.hpp"
+#include "datapod/memory/offset_ptr.hpp"
+#include "datapod/memory/ptr.hpp"
+#include "datapod/sequential/nvec.hpp"
+#include "datapod/spatial/rtree.hpp"
 
 using namespace datapod;
 

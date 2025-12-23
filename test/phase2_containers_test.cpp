@@ -5,8 +5,8 @@
 #include "datapod/adapters/bitset.hpp"
 #include "datapod/sequential/bitvec.hpp"
 #include "datapod/sequential/cstring.hpp"
-#include "datapod/matrix/flat_matrix.hpp"
-#include "datapod/matrix/vecvec.hpp"
+#include "datapod/sequential/flat_matrix.hpp"
+#include "datapod/sequential/vecvec.hpp"
 
 using namespace datapod;
 
