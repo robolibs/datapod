@@ -59,7 +59,7 @@ TEST_SUITE("Queue") {
         original.push(2);
         original.push(3);
         original.push(4);
-        original.pop(); // leaves internal state in 'out_'
+        original.pop();   // leaves internal state in 'out_'
         original.push(5); // mixes 'in_' and 'out_'
 
         auto buf = serialize(original);

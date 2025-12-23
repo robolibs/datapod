@@ -5,7 +5,7 @@
 using namespace datapod;
 
 // Test structs
-struct Point {
+struct TestPoint {
     int x;
     int y;
 };
@@ -40,10 +40,10 @@ TEST_CASE("serialize - multiple scalars") {
 
 // Test struct serialization with reflection
 TEST_CASE("serialize - simple struct") {
-    Point p{10, 20};
+    TestPoint p{10, 20};
     auto buf = serialize(p);
 
-    auto result = deserialize<Mode::NONE, Point>(buf);
+    auto result = deserialize<Mode::NONE, TestPoint>(buf);
     CHECK(result.x == 10);
     CHECK(result.y == 20);
 }
@@ -158,14 +158,14 @@ TEST_CASE("serialize - big endian mode") {
 
 // Test round-trip with different types
 TEST_CASE("serialize - vector of structs") {
-    Vector<Point> points;
+    Vector<TestPoint> points;
     points.push_back({1, 2});
     points.push_back({3, 4});
     points.push_back({5, 6});
 
     auto buf = serialize(points);
 
-    auto result = deserialize<Mode::NONE, Vector<Point>>(buf);
+    auto result = deserialize<Mode::NONE, Vector<TestPoint>>(buf);
     REQUIRE(result.size() == 3);
     CHECK(result[0].x == 1);
     CHECK(result[0].y == 2);

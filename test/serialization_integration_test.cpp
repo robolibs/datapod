@@ -12,7 +12,7 @@ struct Vector3 {
     double z;
 };
 
-struct Pose {
+struct TestPose {
     Vector3 position;
     Vector3 orientation;
 };
@@ -24,7 +24,7 @@ struct WheelState {
 };
 
 struct VehicleState {
-    Pose pose;
+    TestPose pose;
     Vector3 velocity;
     Array<WheelState, 4> wheels;
     double timestamp;

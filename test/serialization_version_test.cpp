@@ -5,7 +5,7 @@
 using namespace datapod;
 
 // Test structs for version tracking
-struct Point {
+struct TestPoint {
     int x;
     int y;
 };
@@ -47,10 +47,10 @@ TEST_CASE("version - scalar float") {
 
 // Test version tracking with struct
 TEST_CASE("version - struct point") {
-    Point p{10, 20};
+    TestPoint p{10, 20};
     auto buf = serialize<Mode::WITH_VERSION>(p);
 
-    auto result = deserialize<Mode::WITH_VERSION, Point>(buf);
+    auto result = deserialize<Mode::WITH_VERSION, TestPoint>(buf);
     CHECK(result.x == 10);
     CHECK(result.y == 20);
 }
@@ -121,9 +121,9 @@ TEST_CASE("version - mismatch int vs float") {
     CHECK(caught_error == true);
 }
 
-// Test version mismatch detection - Point vs Modified
+// Test version mismatch detection - TestPoint vs Modified
 TEST_CASE("version - mismatch struct schemas") {
-    Point p{10, 20};
+    TestPoint p{10, 20};
     auto buf = serialize<Mode::WITH_VERSION>(p);
 
     // Try to deserialize as Modified (different struct)

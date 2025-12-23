@@ -1,66 +1,69 @@
 #pragma once
 
-// Phase 1: Foundation (Core Utilities)
-#include "datapod/core/decay.hpp"
-#include "datapod/core/exception.hpp"
-#include "datapod/core/hash.hpp"
-#include "datapod/core/mode.hpp"
-#include "datapod/core/offset_t.hpp"
-#include "datapod/core/type_traits.hpp"
-#include "datapod/core/verify.hpp"
+/**
+ * @file datapod.hpp
+ * @brief Main header file for the Datapod library - includes EVERYTHING
+ *
+ * This is the main convenience header that includes all datapod types.
+ * Just #include <datapod/datapod.hpp> and you're ready to go!
+ *
+ * For selective inclusion (to avoid potential naming conflicts), use category headers:
+ * - #include <datapod/sequential.hpp>  - Vector, String, Array, Queue, Stack, etc.
+ * - #include <datapod/associative.hpp> - Map, Set, multimaps
+ * - #include <datapod/adapters.hpp>    - Optional, Result, Error, Variant, Pair, Tuple
+ * - #include <datapod/spatial.hpp>     - Point, Pose, geometry types
+ * - #include <datapod/temporal.hpp>    - TimeSeries, Stamp, Event, etc.
+ * - #include <datapod/matrix.hpp>      - Matrix, Tensor, Scalar
+ */
 
-// Phase 2: Core Utilities Extended
-#include "datapod/core/aligned_alloc.hpp"
-#include "datapod/core/bit_counting.hpp"
-#include "datapod/core/buffer.hpp"
-#include "datapod/core/chunk.hpp"
-#include "datapod/core/mmap.hpp"
-#include "datapod/core/next_power_of_2.hpp"
-#include "datapod/core/strong.hpp"
+// Core utilities (always needed)
+#include "core/decay.hpp"
+#include "core/exception.hpp"
+#include "core/hash.hpp"
+#include "core/mode.hpp"
+#include "core/none.hpp"
+#include "core/offset_t.hpp"
+#include "core/type_traits.hpp"
+#include "core/verify.hpp"
 
-// Phase 3: Pointer System
-#include "datapod/memory/allocator.hpp"
-#include "datapod/memory/offset_ptr.hpp"
-#include "datapod/memory/ptr.hpp"
+// Core utilities extended
+#include "core/aligned_alloc.hpp"
+#include "core/bit_counting.hpp"
+#include "core/buffer.hpp"
+#include "core/chunk.hpp"
+#include "core/endian.hpp"
+#include "core/equal_to.hpp"
+#include "core/next_power_of_2.hpp"
+#include "core/strong.hpp"
 
-// Phase 4: Reflection System
-#include "datapod/reflection/arity.hpp"
-#include "datapod/reflection/comparable.hpp"
-#include "datapod/reflection/for_each_field.hpp"
-#include "datapod/reflection/to_tuple.hpp"
+// Memory management
+#include "memory/allocator.hpp"
+#include "memory/offset_ptr.hpp"
+#include "memory/ptr.hpp"
 
-// Phase 5: Basic Containers
-#include "datapod/adapters/optional.hpp"
-#include "datapod/adapters/pair.hpp"
-#include "datapod/adapters/unique_ptr.hpp"
-#include "datapod/sequential/array.hpp"
-#include "datapod/sequential/fixed_queue.hpp"
-#include "datapod/sequential/queue.hpp"
-#include "datapod/sequential/stack.hpp"
-#include "datapod/sequential/string.hpp"
-#include "datapod/sequential/vector.hpp"
+// Reflection system
+#include "reflection/arity.hpp"
+#include "reflection/comparable.hpp"
+#include "reflection/for_each_field.hpp"
+#include "reflection/has_members.hpp"
+#include "reflection/to_tuple.hpp"
 
-// Hashing (depends on containers and reflection)
-#include "datapod/core/equal_to.hpp"
-#include "datapod/hashing.hpp"
+// Hashing
+#include "hashing.hpp"
 
-// Phase 6: Hash Containers (Swiss Tables)
-#include "datapod/associative/hash_storage.hpp"
-#include "datapod/associative/map.hpp"
-#include "datapod/associative/set.hpp"
+// Type hash system
+#include "type_hash/type_hash.hpp"
+#include "type_hash/type_name.hpp"
 
-// Phase 7: Advanced Containers
-#include "datapod/adapters/tuple.hpp"
-#include "datapod/adapters/variant.hpp"
+// Serialization system
+#include "serialization/buf.hpp"
+#include "serialization/serialize.hpp"
+#include "serialization/serialized_size.hpp"
 
-// Phase 8: Type Hash System
-#include "datapod/type_hash/type_hash.hpp"
-#include "datapod/type_hash/type_name.hpp"
-
-// Phase 9: Endian Handling
-#include "datapod/core/endian.hpp"
-
-// Phase 10: Serialization Infrastructure
-#include "datapod/serialization/buf.hpp"
-#include "datapod/serialization/serialize.hpp"
-#include "datapod/serialization/serialized_size.hpp"
+// All category headers (everything!)
+#include "adapters.hpp"
+#include "associative.hpp"
+#include "matrix.hpp"
+#include "sequential.hpp"
+#include "spatial.hpp"
+#include "temporal.hpp"

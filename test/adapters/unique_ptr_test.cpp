@@ -37,10 +37,10 @@ struct Derived : Base {
 };
 
 // Struct with members for pointer access testing
-struct Point {
+struct TestPoint {
     int x;
     int y;
-    Point(int x_, int y_) : x(x_), y(y_) {}
+    TestPoint(int x_, int y_) : x(x_), y(y_) {}
 };
 
 TEST_SUITE("UniquePtr") {
@@ -169,7 +169,7 @@ TEST_SUITE("UniquePtr") {
     }
 
     TEST_CASE("MemberAccess") {
-        UniquePtr<Point> ptr(new Point(10, 20));
+        UniquePtr<TestPoint> ptr(new TestPoint(10, 20));
 
         CHECK(ptr->x == 10);
         CHECK(ptr->y == 20);
@@ -293,7 +293,7 @@ TEST_SUITE("UniquePtr") {
     }
 
     TEST_CASE("MakeUniqueWithArgs") {
-        auto ptr = make_unique<Point>(15, 25);
+        auto ptr = make_unique<TestPoint>(15, 25);
         CHECK(ptr->x == 15);
         CHECK(ptr->y == 25);
     }

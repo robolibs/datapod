@@ -350,7 +350,7 @@ Type identification and hashing.
 
 ### Test Coverage
 
-- ✅ **74/74 tests passing (100%)**
+- ✅ **76/76 tests passing (100%)**
 - **Missing Tests:** ~15 files
 - **Missing Examples:** ~25 files (many spatial/temporal types could benefit)
 

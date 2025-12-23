@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <datapod/datapod.hpp>
+#include <datapod/sequential.hpp>
 #include <iostream>
 
 using namespace datapod;
@@ -54,4 +54,3 @@ int main() {
     }
     std::cout << "\n";
 }
-

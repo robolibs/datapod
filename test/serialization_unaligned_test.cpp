@@ -8,7 +8,7 @@ using namespace datapod;
 // Test Structures
 // =============================================================================
 
-struct Point {
+struct TestPoint {
     int x;
     int y;
 };
@@ -76,11 +76,11 @@ TEST_CASE("serialize - deserialize from string_view") {
 }
 
 TEST_CASE("serialize - deserialize struct from string_view") {
-    Point original{10, 20};
+    TestPoint original{10, 20};
     auto buf = serialize(original);
 
     std::string_view view(reinterpret_cast<char const *>(buf.data()), buf.size());
-    auto result = deserialize<Mode::NONE, Point>(view);
+    auto result = deserialize<Mode::NONE, TestPoint>(view);
 
     CHECK(result.x == 10);
     CHECK(result.y == 20);

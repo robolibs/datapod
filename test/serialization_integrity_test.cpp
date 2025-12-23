@@ -5,7 +5,7 @@
 using namespace datapod;
 
 // Test structs
-struct Point {
+struct TestPoint {
     int x;
     int y;
 };
@@ -35,10 +35,10 @@ TEST_CASE("integrity - scalar double") {
 
 // Test integrity checking with struct
 TEST_CASE("integrity - struct") {
-    Point p{10, 20};
+    TestPoint p{10, 20};
     auto buf = serialize<Mode::WITH_INTEGRITY>(p);
 
-    auto result = deserialize<Mode::WITH_INTEGRITY, Point>(buf);
+    auto result = deserialize<Mode::WITH_INTEGRITY, TestPoint>(buf);
     CHECK(result.x == 10);
     CHECK(result.y == 20);
 }
@@ -149,10 +149,10 @@ TEST_CASE("integrity - detect checksum tampering") {
 
 // Test combined modes: WITH_INTEGRITY + WITH_VERSION
 TEST_CASE("integrity - with version tracking") {
-    Point p{100, 200};
+    TestPoint p{100, 200};
     auto buf = serialize<Mode::WITH_INTEGRITY | Mode::WITH_VERSION>(p);
 
-    auto result = deserialize<Mode::WITH_INTEGRITY | Mode::WITH_VERSION, Point>(buf);
+    auto result = deserialize<Mode::WITH_INTEGRITY | Mode::WITH_VERSION, TestPoint>(buf);
     CHECK(result.x == 100);
     CHECK(result.y == 200);
 }
