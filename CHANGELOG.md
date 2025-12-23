@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.4] - 2025-12-23
+
+### <!-- 0 -->⛰️  Features
+
+- Feat: Add short namespace alias for datapod
+
+### <!-- 2 -->🚜 Refactor
+
+- Consolidate headers and rename test structs
+
+### <!-- 3 -->📚 Documentation
+
+- Outline project status and future development
+
 ## [0.0.3] - 2025-12-23
 
 ### <!-- 0 -->⛰️  Features
