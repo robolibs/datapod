@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.7] - 2025-12-24
+
+### <!-- 0 -->⛰️  Features
+
+- Refactor matrix and tensor for composition and SIMD
+
+### <!-- 3 -->📚 Documentation
+
+- Update README with architecture and installation instructions
+- Add license to repo and update README
+
 ## [0.0.6] - 2025-12-24
 
 ### <!-- 0 -->⛰️  Features
