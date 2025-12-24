@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.6] - 2025-12-24
+
+### <!-- 0 -->⛰️  Features
+
+- Add SIMD conversion for spatial data structures
+- Add tensor and matrix types into `datapod::mat` namespace
+
+### <!-- 2 -->🚜 Refactor
+
+- Improve `to_mat` for grid-to-matrix conversion
+
 ## [0.0.5] - 2025-12-23
 
 ### <!-- 2 -->🚜 Refactor
