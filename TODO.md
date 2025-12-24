@@ -125,6 +125,35 @@ Linear algebra and tensor operations.
 
 Geometry types and spatial indexing structures.
 
+### 5.0 SIMD Conversion Support (to_mat/from_mat)
+
+**Status:** Partial (14/40 types have conversions)
+
+All spatial POD types should have `to_mat()` and `from_mat()` methods for SIMD-optimized operations via `datapod::mat::vector` types.
+
+**Completed (14 types):**
+- ✅ Point, Velocity, Acceleration, Euler, Size (3-component → `mat::vector<double, 3>`)
+- ✅ Quaternion (4-component → `mat::vector<double, 4>`)
+- ✅ Twist, Wrench, Accel (6-component → `mat::vector<double, 6>`)
+- ✅ Pose (7-component → `mat::vector<double, 7>`)
+- ✅ Inertia (10-component → `mat::vector<double, 10>`)
+- ✅ State, Odom (13-component → `mat::vector<double, 13>`)
+- ✅ Circle (primitives) (4-component → `mat::vector<double, 4>`)
+- ✅ Grid (complex) (special: `to_mat<R,C>()` → `mat::matrix<T, R, C>`)
+
+**TODO - Add to_mat/from_mat (26 types):**
+- ⚠️ AABB (6: min_point + max_point → `mat::vector<double, 6>`)
+- ⚠️ Box (10: pose + size → `mat::vector<double, 10>`)
+- ⚠️ OBB (9: center + half_extents + orientation → `mat::vector<double, 9>`)
+- ⚠️ BoundingSphere/BS (4: center + radius → `mat::vector<double, 4>`)
+- ⚠️ Primitives: Rectangle (12: 4 corners), Square, Triangle, Line, Segment
+- ⚠️ Gaussian types (4 files): point, circle, box, rectangle
+- ⚠️ Complex: Path, Polygon, Trajectory
+- ⚠️ Multi types (3 files): MultiPoint, MultiLinestring, MultiPolygon
+- ⚠️ Geo, Linestring, Ring
+
+**Priority:** MEDIUM - Add conversions to remaining simple POD types for SIMD optimization
+
 ### 5.1 Core Spatial (9 files)
 
 | File | members() | Test | Example | Status |

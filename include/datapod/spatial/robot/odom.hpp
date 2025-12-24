@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include "../pose.hpp"
+#include "datapod/matrix/vector.hpp"
 #include "twist.hpp"
 
 namespace datapod {
@@ -46,6 +47,19 @@ namespace datapod {
         inline bool operator==(const Odom &other) const noexcept { return pose == other.pose && twist == other.twist; }
 
         inline bool operator!=(const Odom &other) const noexcept { return !(*this == other); }
+
+        // Conversion to/from mat::vector for SIMD operations (13-DOF: pose + twist)
+        inline mat::vector<double, 13> to_mat() const noexcept {
+            return mat::vector<double, 13>{pose.point.x,    pose.point.y,    pose.point.z,     pose.rotation.w,
+                                           pose.rotation.x, pose.rotation.y, pose.rotation.z,  twist.linear.vx,
+                                           twist.linear.vy, twist.linear.vz, twist.angular.vx, twist.angular.vy,
+                                           twist.angular.vz};
+        }
+
+        static inline Odom from_mat(const mat::vector<double, 13> &v) noexcept {
+            return Odom{Pose{Point{v[0], v[1], v[2]}, Quaternion{v[3], v[4], v[5], v[6]}},
+                        Twist{Velocity{v[7], v[8], v[9]}, Velocity{v[10], v[11], v[12]}}};
+        }
     };
 
 } // namespace datapod

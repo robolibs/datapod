@@ -2,6 +2,7 @@
 
 #include <tuple>
 
+#include "datapod/matrix/vector.hpp"
 #include "pose.hpp"
 #include "velocity.hpp"
 
@@ -30,6 +31,19 @@ namespace datapod {
 
         inline bool is_set() const noexcept {
             return pose.is_set() || linear_velocity.is_set() || angular_velocity.is_set();
+        }
+
+        // Conversion to/from mat::vector for SIMD operations (13-DOF: pose + velocities)
+        inline mat::vector<double, 13> to_mat() const noexcept {
+            return mat::vector<double, 13>{
+                pose.point.x,        pose.point.y,        pose.point.z,       pose.rotation.w,    pose.rotation.x,
+                pose.rotation.y,     pose.rotation.z,     linear_velocity.vx, linear_velocity.vy, linear_velocity.vz,
+                angular_velocity.vx, angular_velocity.vy, angular_velocity.vz};
+        }
+
+        static inline State from_mat(const mat::vector<double, 13> &v) noexcept {
+            return State{Pose{Point{v[0], v[1], v[2]}, Quaternion{v[3], v[4], v[5], v[6]}}, Velocity{v[7], v[8], v[9]},
+                         Velocity{v[10], v[11], v[12]}};
         }
     };
 

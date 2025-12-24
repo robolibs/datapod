@@ -3,6 +3,8 @@
 #include <cmath>
 #include <tuple>
 
+#include "datapod/matrix/vector.hpp"
+
 namespace datapod {
 
     /**
@@ -50,6 +52,11 @@ namespace datapod {
         }
 
         inline bool operator!=(const Velocity &other) const noexcept { return !(*this == other); }
+
+        // Conversion to/from mat::vector for SIMD operations
+        inline mat::vector<double, 3> to_mat() const noexcept { return mat::vector<double, 3>{vx, vy, vz}; }
+
+        static inline Velocity from_mat(const mat::vector<double, 3> &v) noexcept { return Velocity{v[0], v[1], v[2]}; }
     };
 
 } // namespace datapod

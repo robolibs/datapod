@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include "../point.hpp"
+#include "datapod/matrix/vector.hpp"
 
 namespace datapod {
 
@@ -62,6 +63,15 @@ namespace datapod {
         inline Wrench operator*(double scale) const noexcept { return Wrench{force * scale, torque * scale}; }
 
         inline Wrench operator/(double scale) const noexcept { return Wrench{force / scale, torque / scale}; }
+
+        // Conversion to/from mat::vector for SIMD operations (6-DOF)
+        inline mat::vector<double, 6> to_mat() const noexcept {
+            return mat::vector<double, 6>{force.x, force.y, force.z, torque.x, torque.y, torque.z};
+        }
+
+        static inline Wrench from_mat(const mat::vector<double, 6> &v) noexcept {
+            return Wrench{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}};
+        }
     };
 
 } // namespace datapod

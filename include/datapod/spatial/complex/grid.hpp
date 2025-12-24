@@ -7,6 +7,7 @@
 
 #include "../point.hpp"
 #include "../pose.hpp"
+#include "datapod/matrix/matrix.hpp"
 #include "datapod/sequential/array.hpp"
 #include "datapod/sequential/vector.hpp"
 
@@ -132,6 +133,44 @@ namespace datapod {
         inline std::size_t size() const noexcept { return rows * cols; }
         inline bool empty() const noexcept { return rows == 0 || cols == 0; }
         inline bool is_valid() const noexcept { return rows > 0 && cols > 0 && data.size() == rows * cols; }
+
+        // Conversion to mat::matrix for fixed-size grids (requires T to be convertible to double)
+        // Note: Only works for compile-time known dimensions
+        template <std::size_t R, std::size_t C>
+        inline mat::matrix<T, R, C> to_mat() const noexcept
+        requires(std::is_arithmetic_v<T>)
+        {
+            mat::matrix<T, R, C> result;
+            if (rows == R && cols == C) {
+                for (std::size_t r = 0; r < R; ++r) {
+                    for (std::size_t c = 0; c < C; ++c) {
+                        result(r, c) = data[index(r, c)];
+                    }
+                }
+            }
+            return result;
+        }
+
+        // Create Grid from mat::matrix
+        template <std::size_t R, std::size_t C>
+        static inline Grid<T> from_mat(const mat::matrix<T, R, C> &m, double res = 1.0, bool cent = false,
+                                       const Pose &p = Pose{})
+        requires(std::is_arithmetic_v<T>)
+        {
+            Grid<T> grid;
+            grid.rows = R;
+            grid.cols = C;
+            grid.resolution = res;
+            grid.centered = cent;
+            grid.pose = p;
+            grid.data.resize(R * C);
+            for (std::size_t r = 0; r < R; ++r) {
+                for (std::size_t c = 0; c < C; ++c) {
+                    grid.data[r * C + c] = m(r, c);
+                }
+            }
+            return grid;
+        }
     };
 
 } // namespace datapod

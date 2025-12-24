@@ -3,6 +3,8 @@
 #include <cmath>
 #include <tuple>
 
+#include "datapod/matrix/vector.hpp"
+
 namespace datapod {
 
     // Forward declaration
@@ -56,6 +58,13 @@ namespace datapod {
 
         // Conversion to Euler (implementation below, after including euler.hpp)
         inline Euler to_euler() const noexcept;
+
+        // Conversion to/from mat::vector for SIMD operations
+        inline mat::vector<double, 4> to_mat() const noexcept { return mat::vector<double, 4>{w, x, y, z}; }
+
+        static inline Quaternion from_mat(const mat::vector<double, 4> &v) noexcept {
+            return Quaternion{v[0], v[1], v[2], v[3]};
+        }
     };
 
 } // namespace datapod
