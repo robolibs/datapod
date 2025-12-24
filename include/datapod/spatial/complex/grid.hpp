@@ -134,19 +134,27 @@ namespace datapod {
         inline bool empty() const noexcept { return rows == 0 || cols == 0; }
         inline bool is_valid() const noexcept { return rows > 0 && cols > 0 && data.size() == rows * cols; }
 
-        // Conversion to mat::matrix for fixed-size grids (requires T to be convertible to double)
-        // Note: Only works for compile-time known dimensions
+        // Note: Grid has runtime dimensions, but mat::matrix requires compile-time dimensions.
+        // For SIMD operations on grid data, access grid.data directly (it's a Vector<T>)
+        // or use to_mat<R,C>() if dimensions are known at compile time.
+
+        // Conversion to mat::matrix for compile-time known dimensions
+        // Example: auto m = grid.to_mat<10, 10>(); // for a 10x10 grid
         template <std::size_t R, std::size_t C>
         inline mat::matrix<T, R, C> to_mat() const noexcept
         requires(std::is_arithmetic_v<T>)
         {
             mat::matrix<T, R, C> result;
+            // Runtime check: only convert if sizes match
             if (rows == R && cols == C) {
                 for (std::size_t r = 0; r < R; ++r) {
                     for (std::size_t c = 0; c < C; ++c) {
                         result(r, c) = data[index(r, c)];
                     }
                 }
+            } else {
+                // Size mismatch - return zero-initialized matrix
+                result.fill(T{});
             }
             return result;
         }
