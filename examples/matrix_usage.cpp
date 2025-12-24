@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <iostream>
 
-using namespace datapod;
+using namespace datapod::mat;
 
 void print_matrix(const matrix<double, 3, 3> &m, const std::string &name) {
     std::cout << "   " << name << ":" << std::endl;

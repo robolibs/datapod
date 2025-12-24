@@ -1,70 +1,84 @@
+#include <cstdint>
 #include <datapod/matrix/tensor.hpp>
 #include <iostream>
 
-using namespace datapod;
+using namespace datapod::mat;
 
 int main() {
-    std::cout << "=== tensor Usage Examples ===" << std::endl << std::endl;
+    std::cout << "=== tensor (N-dimensional) Usage Examples ===" << std::endl << std::endl;
 
     // 1. Construction
     std::cout << "1. Construction:" << std::endl;
-    tensor<double, 3> position{1.0, 2.0, 3.0};  // 3D position vector
-    tensor<float, 6> state;                     // 6-DOF state vector
-    auto features = tensor{0.5, 0.8, 0.3, 0.9}; // Deduction guide
+    tensor<double, 2, 3, 4> volume;
+    volume.fill(0.0);
+    std::cout << "   Created 2x3x4 tensor" << std::endl;
+    std::cout << "   size = " << volume.size() << " elements" << std::endl;
+    std::cout << "   rank = " << tensor<double, 2, 3, 4>::rank << " dimensions" << std::endl << std::endl;
 
-    std::cout << "   position[0] = " << position[0] << std::endl;
-    std::cout << "   position size = " << position.size() << std::endl;
-    std::cout << "   features deduced size = " << features.size() << std::endl << std::endl;
+    // 2. Multi-dimensional indexing
+    std::cout << "2. Multi-dimensional Indexing:" << std::endl;
+    tensor<int, 2, 2, 2> cube;
+    cube.fill(0);
+    cube(0, 0, 0) = 1;
+    cube(1, 1, 1) = 8;
+    cube(0, 1, 0) = 3;
 
-    // 2. Element access
-    std::cout << "2. Element Access:" << std::endl;
-    tensor<double, 4> vec{10.0, 20.0, 30.0, 40.0};
-    std::cout << "   vec[0] = " << vec[0] << std::endl;
-    std::cout << "   vec.front() = " << vec.front() << std::endl;
-    std::cout << "   vec.back() = " << vec.back() << std::endl;
-    std::cout << "   vec.at(2) = " << vec.at(2) << std::endl << std::endl;
+    std::cout << "   cube(0,0,0) = " << cube(0, 0, 0) << std::endl;
+    std::cout << "   cube(1,1,1) = " << cube(1, 1, 1) << std::endl;
+    std::cout << "   cube(0,1,0) = " << cube(0, 1, 0) << std::endl << std::endl;
 
-    // 3. Operations
-    std::cout << "3. Operations:" << std::endl;
-    tensor<double, 5> t;
-    t.fill(7.5);
-    std::cout << "   After fill(7.5): t[0] = " << t[0] << ", t[4] = " << t[4] << std::endl;
-
-    tensor<int, 3> a{1, 2, 3};
-    tensor<int, 3> b{10, 20, 30};
-    a.swap(b);
-    std::cout << "   After swap: a[0] = " << a[0] << ", b[0] = " << b[0] << std::endl << std::endl;
+    // 3. Shape and dimensions
+    std::cout << "3. Shape and Dimensions:" << std::endl;
+    tensor<float, 3, 4, 5> t;
+    auto shape = t.shape();
+    std::cout << "   shape = [" << shape[0] << ", " << shape[1] << ", " << shape[2] << "]" << std::endl;
+    std::cout << "   dim(0) = " << t.dim(0) << std::endl;
+    std::cout << "   dim(1) = " << t.dim(1) << std::endl;
+    std::cout << "   dim(2) = " << t.dim(2) << std::endl << std::endl;
 
     // 4. Iteration
     std::cout << "4. Iteration:" << std::endl;
-    tensor<int, 5> nums{1, 2, 3, 4, 5};
-    std::cout << "   Elements: ";
-    for (auto val : nums) {
+    tensor<int, 2, 2, 2> small;
+    for (size_t i = 0; i < 8; ++i) {
+        small[i] = static_cast<int>(i + 1);
+    }
+    std::cout << "   Linear elements: ";
+    for (auto val : small) {
         std::cout << val << " ";
     }
     std::cout << std::endl << std::endl;
 
     // 5. Type traits
     std::cout << "5. Type Traits:" << std::endl;
-    std::cout << "   is_tensor_v<tensor<double,3>>: " << is_tensor_v<tensor<double, 3>> << std::endl;
-    std::cout << "   rank: " << tensor<double, 3>::rank << " (rank-1 tensor)" << std::endl;
-    std::cout << "   size: " << tensor<double, 3>::size_ << std::endl << std::endl;
+    std::cout << "   is_tensor_v<tensor<double,2,2,2>>: " << is_tensor_v<tensor<double, 2, 2, 2>> << std::endl;
+    std::cout << "   rank: " << tensor<double, 2, 2, 2>::rank << " (rank-3 tensor)" << std::endl << std::endl;
 
-    // 6. Use cases
-    std::cout << "6. Common Use Cases:" << std::endl;
+    // 6. 4D tensor
+    std::cout << "6. 4D Tensor:" << std::endl;
+    tensor<double, 2, 2, 2, 2> rank4;
+    rank4.fill(1.0);
+    std::cout << "   Created 2x2x2x2 tensor (rank-4)" << std::endl;
+    std::cout << "   size = " << rank4.size() << " elements" << std::endl;
+    std::cout << "   rank = " << tensor<double, 2, 2, 2, 2>::rank << std::endl << std::endl;
 
-    // 3D position
-    tensor3d pos3d{1.0, 2.0, 3.0};
-    std::cout << "   3D position: (" << pos3d[0] << ", " << pos3d[1] << ", " << pos3d[2] << ")" << std::endl;
+    // 7. Common use cases
+    std::cout << "7. Common Use Cases:" << std::endl;
 
-    // 6-DOF state (position + velocity)
-    tensor6d robot_state;
-    robot_state.fill(0.0);
-    robot_state[0] = 1.0; // x
-    robot_state[1] = 2.0; // y
-    robot_state[2] = 3.0; // z
-    std::cout << "   Robot state: position = (" << robot_state[0] << ", " << robot_state[1] << ", " << robot_state[2]
-              << ")" << std::endl;
+    // 3D voxel grid
+    tensor<float, 8, 8, 8> voxels;
+    voxels.fill(0.0f);
+    voxels(4, 4, 4) = 1.0f; // Set center voxel
+    std::cout << "   8x8x8 voxel grid, center = " << voxels(4, 4, 4) << std::endl;
+
+    // RGB image (small)
+    tensor<uint8_t, 4, 4, 3> image; // height x width x channels
+    image.fill(128);
+    std::cout << "   4x4 RGB image, pixel(0,0,0) = " << static_cast<int>(image(0, 0, 0)) << std::endl;
+
+    // Batch of feature maps (batch x channels x height x width)
+    tensor<float, 2, 3, 4, 4> batch;
+    batch.fill(0.5f);
+    std::cout << "   Batch of 2x3x4x4 feature maps" << std::endl;
 
     return 0;
 }

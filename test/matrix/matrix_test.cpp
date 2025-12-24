@@ -6,8 +6,9 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
+using namespace datapod::mat;
 
-TEST_SUITE("matrix") {
+TEST_SUITE("mat::matrix") {
     TEST_CASE("construction") {
         matrix<double, 3, 3> m;
         m(0, 0) = 1.0;

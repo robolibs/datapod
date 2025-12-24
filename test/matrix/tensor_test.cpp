@@ -6,123 +6,189 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
+using namespace datapod::mat;
 
-TEST_SUITE("tensor") {
-    TEST_CASE("construction") {
-        tensor<double, 3> t{1.0, 2.0, 3.0};
-        CHECK(t[0] == 1.0);
-        CHECK(t[1] == 2.0);
-        CHECK(t[2] == 3.0);
+TEST_SUITE("mat::tensor") {
+    TEST_CASE("construction 3D") {
+        tensor<double, 2, 3, 4> t;
+        t.fill(0.0);
+        CHECK(t.size() == 24);
+        CHECK(tensor<double, 2, 3, 4>::rank == 3);
     }
 
-    TEST_CASE("deduction guide") {
-        auto t = tensor{1.0, 2.0, 3.0};
-        static_assert(std::is_same_v<decltype(t), tensor<double, 3>>);
-        CHECK(t[0] == 1.0);
+    TEST_CASE("multi-dimensional indexing") {
+        tensor<int, 2, 3, 4> t;
+        t.fill(0);
+
+        // Set specific element
+        t(0, 0, 0) = 1;
+        t(1, 2, 3) = 42;
+        t(0, 1, 2) = 7;
+
+        CHECK(t(0, 0, 0) == 1);
+        CHECK(t(1, 2, 3) == 42);
+        CHECK(t(0, 1, 2) == 7);
     }
 
-    TEST_CASE("tensor with scalar type") {
-        tensor<scalar<double>, 3> t;
-        t[0] = scalar<double>{1.0};
-        t[1] = scalar<double>{2.0};
-        t[2] = scalar<double>{3.0};
+    TEST_CASE("checked access") {
+        tensor<double, 2, 2, 2> t;
+        t.fill(1.0);
 
-        CHECK(t[0].value == 1.0);
-        CHECK(t[1].value == 2.0);
-        CHECK(t[2].value == 3.0);
+        CHECK(t.at(0, 0, 0) == 1.0);
+        CHECK(t.at(1, 1, 1) == 1.0);
+
+        CHECK_THROWS_AS(t.at(2, 0, 0), std::out_of_range);
+        CHECK_THROWS_AS(t.at(0, 2, 0), std::out_of_range);
+        CHECK_THROWS_AS(t.at(0, 0, 2), std::out_of_range);
     }
 
-    TEST_CASE("element access") {
-        tensor<double, 4> t{1.0, 2.0, 3.0, 4.0};
+    TEST_CASE("linear indexing") {
+        tensor<int, 2, 2, 2> t;
+        for (size_t i = 0; i < 8; ++i) {
+            t[i] = static_cast<int>(i);
+        }
 
-        CHECK(t[0] == 1.0);
-        CHECK(t.at(3) == 4.0);
-        CHECK(t.front() == 1.0);
-        CHECK(t.back() == 4.0);
-
-        CHECK_THROWS_AS(t.at(4), std::out_of_range);
+        CHECK(t[0] == 0);
+        CHECK(t[7] == 7);
     }
 
-    TEST_CASE("capacity") {
-        tensor<double, 6> t;
+    TEST_CASE("shape and dimensions") {
+        tensor<double, 3, 4, 5> t;
 
-        CHECK(t.size() == 6);
-        CHECK(t.length() == 6);
+        auto shape = t.shape();
+        CHECK(shape[0] == 3);
+        CHECK(shape[1] == 4);
+        CHECK(shape[2] == 5);
+
+        CHECK(t.dim(0) == 3);
+        CHECK(t.dim(1) == 4);
+        CHECK(t.dim(2) == 5);
+
+        CHECK(t.size() == 60);
         CHECK_FALSE(t.empty());
-        CHECK(tensor<double, 6>::rank == 1);
     }
 
     TEST_CASE("iterators") {
-        tensor<int, 4> t{10, 20, 30, 40};
+        tensor<int, 2, 2, 2> t;
+        t.fill(5);
 
         int sum = 0;
         for (auto val : t) {
             sum += val;
         }
-        CHECK(sum == 100);
+        CHECK(sum == 40); // 8 elements * 5
     }
 
     TEST_CASE("operations") {
-        tensor<double, 5> t;
-        t.fill(7.0);
-        for (size_t i = 0; i < 5; ++i) {
-            CHECK(t[i] == 7.0);
-        }
+        tensor<double, 2, 2, 2> t;
+        t.fill(3.14);
 
-        tensor<int, 3> a{1, 2, 3};
-        tensor<int, 3> b{10, 20, 30};
+        CHECK(t(0, 0, 0) == doctest::Approx(3.14));
+        CHECK(t(1, 1, 1) == doctest::Approx(3.14));
+
+        tensor<int, 2, 2, 2> a;
+        tensor<int, 2, 2, 2> b;
+        a.fill(1);
+        b.fill(2);
         a.swap(b);
-        CHECK(a[0] == 10);
-        CHECK(b[0] == 1);
+
+        CHECK(a(0, 0, 0) == 2);
+        CHECK(b(0, 0, 0) == 1);
     }
 
     TEST_CASE("comparison") {
-        tensor<int, 3> a{1, 2, 3};
-        tensor<int, 3> b{1, 2, 3};
-        tensor<int, 3> c{1, 2, 4};
+        tensor<int, 2, 2, 2> a;
+        tensor<int, 2, 2, 2> b;
+        tensor<int, 2, 2, 2> c;
+
+        a.fill(1);
+        b.fill(1);
+        c.fill(2);
 
         CHECK(a == b);
         CHECK(a != c);
     }
 
     TEST_CASE("reflection") {
-        tensor<double, 3> t{1.0, 2.0, 3.0};
+        tensor<double, 2, 2, 2> t;
+        t.fill(1.5);
+
         auto tuple = t.members();
         auto &arr = std::get<0>(tuple);
-        CHECK(arr[0] == 1.0);
+        CHECK(arr[0] == 1.5);
 
         auto t2 = to_tuple(t);
         auto &arr2 = std::get<0>(t2);
-        CHECK(arr2[1] == 2.0);
+        CHECK(arr2[0] == 1.5);
     }
 
     TEST_CASE("type traits") {
-        CHECK(is_tensor_v<tensor<double, 3>>);
+        CHECK(is_tensor_v<tensor<double, 2, 2, 2>>);
+        CHECK(is_tensor_v<tensor<float, 3, 3, 3>>);
         CHECK_FALSE(is_tensor_v<double>);
     }
 
     TEST_CASE("POD compatibility") {
-        CHECK(std::is_trivially_copyable_v<tensor<double, 3>>);
-        CHECK(std::is_trivially_copyable_v<tensor<int, 6>>);
+        CHECK(std::is_trivially_copyable_v<tensor<double, 2, 2, 2>>);
+        CHECK(std::is_trivially_copyable_v<tensor<int, 3, 3, 3>>);
     }
 
     TEST_CASE("type aliases") {
-        static_assert(std::is_same_v<tensor3d, tensor<double, 3>>);
-        static_assert(std::is_same_v<tensor6f, tensor<float, 6>>);
+        static_assert(std::is_same_v<tensor3d_2x2x2d, tensor<double, 2, 2, 2>>);
+        static_assert(std::is_same_v<tensor3d_3x3x3f, tensor<float, 3, 3, 3>>);
     }
 
     TEST_CASE("alignment") {
-        tensor<double, 4> t;
+        tensor<double, 2, 2, 2> t;
         CHECK(reinterpret_cast<uintptr_t>(t.data()) % 32 == 0);
     }
 
-    TEST_CASE("common use cases") {
-        tensor<double, 3> position{1.0, 2.0, 3.0};
-        CHECK(position.size() == 3);
+    TEST_CASE("4D tensor") {
+        tensor<double, 2, 2, 2, 2> t;
+        t.fill(0.0);
 
-        tensor<double, 6> state;
-        state.fill(0.0);
-        state[0] = 1.0;
-        CHECK(state.size() == 6);
+        CHECK(tensor<double, 2, 2, 2, 2>::rank == 4);
+        CHECK(t.size() == 16);
+
+        t(0, 0, 0, 0) = 1.0;
+        t(1, 1, 1, 1) = 2.0;
+
+        CHECK(t(0, 0, 0, 0) == 1.0);
+        CHECK(t(1, 1, 1, 1) == 2.0);
+    }
+
+    TEST_CASE("row-major layout") {
+        tensor<int, 2, 2, 2> t;
+        // In row-major order, last index changes fastest
+        int val = 0;
+        for (size_t i = 0; i < 2; ++i) {
+            for (size_t j = 0; j < 2; ++j) {
+                for (size_t k = 0; k < 2; ++k) {
+                    t(i, j, k) = val++;
+                }
+            }
+        }
+
+        // Linear access should match row-major order
+        for (size_t i = 0; i < 8; ++i) {
+            CHECK(t[i] == static_cast<int>(i));
+        }
+    }
+
+    TEST_CASE("common use cases") {
+        // 3D voxel grid
+        tensor<float, 16, 16, 16> voxels;
+        voxels.fill(0.0f);
+        CHECK(voxels.size() == 4096);
+
+        // RGB image (small)
+        tensor<uint8_t, 4, 4, 3> image;
+        image.fill(255);
+        CHECK(image.size() == 48);
+
+        // 4D batch of images
+        tensor<float, 2, 3, 4, 4> batch; // batch x channels x height x width
+        batch.fill(1.0f);
+        CHECK(batch.size() == 96);
     }
 }

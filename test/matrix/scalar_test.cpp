@@ -5,8 +5,9 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
+using namespace datapod::mat;
 
-TEST_SUITE("scalar") {
+TEST_SUITE("mat::scalar") {
     TEST_CASE("construction and access") {
         scalar<double> s{42.5};
         CHECK(s.value == 42.5);

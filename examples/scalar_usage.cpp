@@ -1,7 +1,7 @@
 #include <datapod/matrix/scalar.hpp>
 #include <iostream>
 
-using namespace datapod;
+using namespace datapod::mat;
 
 int main() {
     std::cout << "=== scalar Usage Examples ===" << std::endl << std::endl;
