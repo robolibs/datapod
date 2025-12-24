@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.8] - 2025-12-24
+
+### <!-- 0 -->⛰️  Features
+
+- Implement heap allocation for vector, matrix, and tensor types
+- Feat: Add extensive SIMD conversions for geometry types
+
+### <!-- 4 -->⚡ Performance
+
+- Introduce heap allocation for large matrix types
+
 ## [0.0.7] - 2025-12-24
 
 ### <!-- 0 -->⛰️  Features
