@@ -27,7 +27,7 @@ namespace datapod {
          *
          * Design:
          * - Fixed shape (no resizing)
-         * - Row-major storage (C-style)
+         * - Column-major storage (matching Eigen, BLAS, LAPACK, matrix.hpp)
          * - Contiguous storage (cache-friendly)
          * - Aligned for SIMD (32-byte alignment)
          * - POD-compatible
@@ -53,27 +53,63 @@ namespace datapod {
             static constexpr std::array<size_t, rank> dims_ = {Dims...};
             static constexpr size_t size_ = (Dims * ...);
 
-            alignas(32) T data_[size_]; // Row-major storage
+            alignas(32) T data_[size_]; // Column-major storage
 
+            // Default constructor (for aggregate initialization)
+            constexpr tensor() noexcept = default;
+
+            // Composition constructor: construct tensor from slices along last dimension
+            // For tensor<T, D0, D1, ..., Dn>, accepts Dn slices of shape D0 x D1 x ... x D(n-1)
+            template <typename... SliceTypes, typename = std::enable_if_t<(sizeof...(SliceTypes) == dims_[rank - 1] &&
+                                                                           sizeof...(SliceTypes) > 0)>>
+            constexpr tensor(const SliceTypes &...slices) noexcept : data_{} {
+                fill_from_slices<0>(slices...);
+            }
+
+          private:
+            // Calculate slice size (product of all dims except last)
+            static constexpr size_t slice_size() noexcept {
+                size_t s = 1;
+                for (size_t i = 0; i < rank - 1; ++i) {
+                    s *= dims_[i];
+                }
+                return s;
+            }
+
+            // Recursive helper to fill slices
+            template <size_t SliceIdx> constexpr void fill_from_slices() noexcept {}
+
+            template <size_t SliceIdx, typename SliceType, typename... Rest>
+            constexpr void fill_from_slices(const SliceType &slice, const Rest &...rest) noexcept {
+                constexpr size_t sz = slice_size();
+                const T *slice_data = slice.data();
+                for (size_t i = 0; i < sz; ++i) {
+                    data_[i + SliceIdx * sz] = slice_data[i];
+                }
+                fill_from_slices<SliceIdx + 1>(rest...);
+            }
+
+          public:
             // Serialization support
             auto members() noexcept { return std::tie(data_); }
             auto members() const noexcept { return std::tie(data_); }
 
-            // Helper to compute linear index from multi-dimensional indices (row-major)
+            // Helper to compute linear index from multi-dimensional indices (column-major)
           private:
             template <size_t I = 0, typename... Indices>
             static constexpr size_type compute_index(size_type idx, Indices... rest) noexcept {
+                constexpr size_type stride = []() {
+                    constexpr std::array<size_t, rank> d = {Dims...};
+                    size_type s = 1;
+                    for (size_t i = 0; i < I; ++i) {
+                        s *= d[i];
+                    }
+                    return s;
+                }();
+
                 if constexpr (sizeof...(rest) == 0) {
-                    return idx;
+                    return idx * stride;
                 } else {
-                    constexpr size_type stride = []() {
-                        constexpr std::array<size_t, rank> d = {Dims...};
-                        size_type s = 1;
-                        for (size_t i = I + 1; i < rank; ++i) {
-                            s *= d[i];
-                        }
-                        return s;
-                    }();
                     return idx * stride + compute_index<I + 1>(rest...);
                 }
             }
@@ -121,7 +157,7 @@ namespace datapod {
                 return data_[compute_index(static_cast<size_type>(indices)...)];
             }
 
-            // 1D indexing (linear access in row-major order)
+            // 1D indexing (linear access in column-major order)
             constexpr reference operator[](size_type i) noexcept { return data_[i]; }
             constexpr const_reference operator[](size_type i) const noexcept { return data_[i]; }
 
@@ -135,7 +171,7 @@ namespace datapod {
             static constexpr std::array<size_t, rank> shape() noexcept { return dims_; }
             static constexpr size_type dim(size_t i) noexcept { return dims_[i]; }
 
-            // Iterators (linear iteration in row-major order)
+            // Iterators (linear iteration in column-major order)
             constexpr iterator begin() noexcept { return data_; }
             constexpr const_iterator begin() const noexcept { return data_; }
             constexpr const_iterator cbegin() const noexcept { return data_; }

@@ -56,6 +56,30 @@ namespace datapod {
 
             alignas(32) T data_[R * C]; // Column-major: data_[col * R + row]
 
+            // Default constructor (for aggregate initialization)
+            constexpr matrix() noexcept = default;
+
+            // Composition constructor: construct matrix from C column vectors
+            // Usage: matrix<T, R, C> m(vec1, vec2, ..., vecC);
+            template <typename... VecTypes,
+                      typename = std::enable_if_t<(sizeof...(VecTypes) == C && sizeof...(VecTypes) > 0)>>
+            constexpr matrix(const VecTypes &...vecs) noexcept : data_{} {
+                fill_from_vectors<0>(vecs...);
+            }
+
+          private:
+            // Recursive helper to fill columns from vectors
+            template <size_t Col> constexpr void fill_from_vectors() noexcept {}
+
+            template <size_t Col, typename VecType, typename... Rest>
+            constexpr void fill_from_vectors(const VecType &vec, const Rest &...rest) noexcept {
+                for (size_t i = 0; i < R; ++i) {
+                    (*this)(i, Col) = vec[i];
+                }
+                fill_from_vectors<Col + 1>(rest...);
+            }
+
+          public:
             // Serialization support
             auto members() noexcept { return std::tie(data_); }
             auto members() const noexcept { return std::tie(data_); }

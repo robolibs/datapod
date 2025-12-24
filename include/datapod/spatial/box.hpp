@@ -3,6 +3,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../matrix/vector.hpp"
 #include "../sequential/array.hpp"
 #include "pose.hpp"
 #include "size.hpp"

@@ -157,19 +157,19 @@ TEST_SUITE("mat::tensor") {
         CHECK(t(1, 1, 1, 1) == 2.0);
     }
 
-    TEST_CASE("row-major layout") {
+    TEST_CASE("column-major layout") {
         tensor<int, 2, 2, 2> t;
-        // In row-major order, last index changes fastest
+        // In column-major order, first index changes fastest
         int val = 0;
-        for (size_t i = 0; i < 2; ++i) {
+        for (size_t k = 0; k < 2; ++k) {
             for (size_t j = 0; j < 2; ++j) {
-                for (size_t k = 0; k < 2; ++k) {
+                for (size_t i = 0; i < 2; ++i) {
                     t(i, j, k) = val++;
                 }
             }
         }
 
-        // Linear access should match row-major order
+        // Linear access should match column-major order
         for (size_t i = 0; i < 8; ++i) {
             CHECK(t[i] == static_cast<int>(i));
         }

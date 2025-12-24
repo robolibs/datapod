@@ -3,6 +3,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../matrix/vector.hpp"
 #include "../sequential/array.hpp"
 #include "euler.hpp"
 #include "point.hpp"
@@ -88,6 +89,26 @@ namespace datapod {
         // Get the full dimensions (not half-extents)
         inline Size full_size() const noexcept {
             return Size{2.0 * half_extents.x, 2.0 * half_extents.y, 2.0 * half_extents.z};
+        }
+
+        // SIMD conversion: OBB → mat::vector<double, 9> (center(3), half_extents(3), euler(3))
+        inline mat::vector<double, 9> to_mat() const noexcept {
+            mat::vector<double, 9> v;
+            v[0] = center.x;
+            v[1] = center.y;
+            v[2] = center.z;
+            v[3] = half_extents.x;
+            v[4] = half_extents.y;
+            v[5] = half_extents.z;
+            v[6] = orientation.roll;
+            v[7] = orientation.pitch;
+            v[8] = orientation.yaw;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 9> → OBB
+        static inline OBB from_mat(const mat::vector<double, 9> &v) noexcept {
+            return OBB{Point{v[0], v[1], v[2]}, Size{v[3], v[4], v[5]}, Euler{v[6], v[7], v[8]}};
         }
     };
 

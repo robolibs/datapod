@@ -4,6 +4,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../matrix/vector.hpp"
 #include "point.hpp"
 
 namespace datapod {
@@ -96,6 +97,23 @@ namespace datapod {
         }
 
         inline bool operator!=(const AABB &other) const noexcept { return !(*this == other); }
+
+        // SIMD conversion: AABB → mat::vector<double, 6> (min_x, min_y, min_z, max_x, max_y, max_z)
+        inline mat::vector<double, 6> to_mat() const noexcept {
+            mat::vector<double, 6> v;
+            v[0] = min_point.x;
+            v[1] = min_point.y;
+            v[2] = min_point.z;
+            v[3] = max_point.x;
+            v[4] = max_point.y;
+            v[5] = max_point.z;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 6> → AABB
+        static inline AABB from_mat(const mat::vector<double, 6> &v) noexcept {
+            return AABB{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}};
+        }
     };
 
 } // namespace datapod
