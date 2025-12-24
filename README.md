@@ -28,6 +28,57 @@ Datapod is a modern C++20 library providing high-performance, Plain Old Data (PO
 
 Perfect for mobile robots, manipulators, drones, autonomous vehicles, and any robotics system requiring predictable, high-frequency data processing.
 
+### Architecture
+
+Datapod is organized into specialized modules for different robotics domains:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATAPOD LIBRARY                                 │
+├─────────────┬──────────────┬──────────────┬──────────────┬─────────────────┤
+│ Sequential  │ Associative  │   Matrix     │   Spatial    │    Temporal     │
+│ Containers  │  Containers  │   (SIMD)     │   Geometry   │   Time-Series   │
+│             │              │              │              │                 │
+│ ┌─────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌─────────────┐ │
+│ │ Vector  │ │ │   Map    │ │ │  vector  │ │ │  Point   │ │ │ TimeSeries  │ │
+│ │ Array   │ │ │   Set    │ │ │  matrix  │ │ │  Pose    │ │ │ Stamp       │ │
+│ │ String  │ │ │ Multimap │ │ │  tensor  │ │ │  Twist   │ │ │ CircBuf     │ │
+│ └─────────┘ │ └──────────┘ │ └──────────┘ │ │  Odom    │ │ └─────────────┘ │
+│             │              │              │ │  RTree   │ │                 │
+│             │              │              │ └──────────┘ │                 │
+└─────────────┴──────────────┴──────────────┴──────────────┴─────────────────┘
+       │               │              │              │              │
+       └───────────────┴──────────────┴──────────────┴──────────────┘
+                                      │
+                           ┌──────────▼──────────┐
+                           │  Reflection System  │
+                           │  (Serialization)    │
+                           └──────────┬──────────┘
+                                      │
+                        ┌─────────────┼─────────────┐
+                        │             │             │
+                  ┌─────▼─────┐ ┌────▼─────┐ ┌────▼──────┐
+                  │ ROS2 Msgs │ │ Logging  │ │  Network  │
+                  └───────────┘ └──────────┘ └───────────┘
+```
+
+**Data Flow in Robotics Pipeline:**
+
+```
+  Sensors              Datapod Processing           Actuators
+     │                                                   │
+┌────▼────┐         ┌─────────────────────┐       ┌────▼────┐
+│  LiDAR  │────────▶│  RTree<Point>       │       │ Motors  │
+│   IMU   │         │  Spatial Indexing   │       │ Servos  │
+│ Camera  │         └──────────┬──────────┘       └─────▲───┘
+└─────────┘                    │                        │
+                               │                        │
+                      ┌────────▼─────────┐      ┌──────┴──────┐
+                      │  SLAM / Mapping  │      │  Controller │
+                      │  Pose, Odom      │─────▶│  Twist cmd  │
+                      └──────────────────┘      └─────────────┘
+```
+
 ## Installation
 
 ### Quick Start (CMake FetchContent)
@@ -41,7 +92,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(datapod)
 
-target_link_libraries(your_target PRIVATE datapod)
+target_link_libraries(your_robot_node PRIVATE datapod)
 ```
 
 ### Recommended: XMake
