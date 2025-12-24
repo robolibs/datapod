@@ -49,8 +49,9 @@ namespace datapod {
             // IMPORTANT: Check operator== FIRST before to_tuple!
             // Otherwise primitive types like int will use to_tuple and compare incorrectly
             if constexpr (is_eq_comparable_v<Type, Type1>) {
-                // Has operator== - use it
-                return a == b;
+                // Has operator== - use it (cast to common type to avoid sign comparison warnings)
+                using CommonType = std::common_type_t<Type, Type1>;
+                return static_cast<CommonType>(a) == static_cast<CommonType>(b);
             } else if constexpr (is_iterable_v<Type> && is_iterable_v<Type1>) {
                 // Both are iterable - compare element-wise
                 using std::begin;

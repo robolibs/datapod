@@ -1,4 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <datapod/adapters/unique_ptr.hpp>
 #include <doctest/doctest.h>
 #include <string>
@@ -129,7 +128,13 @@ TEST_SUITE("UniquePtr") {
         UniquePtr<int> ptr(new int(999));
         int *raw = ptr.get();
 
+        // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+        // Intentionally testing self-move assignment behavior
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wself-move"
         ptr = std::move(ptr);
+#pragma GCC diagnostic pop
+        // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 
         CHECK(ptr.get() == raw);
         CHECK(*ptr == 999);

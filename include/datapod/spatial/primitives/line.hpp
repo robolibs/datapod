@@ -2,6 +2,7 @@
 
 #include <tuple>
 
+#include "../../matrix/vector.hpp"
 #include "../point.hpp"
 
 namespace datapod {
@@ -43,6 +44,23 @@ namespace datapod {
         }
 
         inline double distance_to(const Point &p) const noexcept { return p.distance_to(closest_point(p)); }
+
+        // SIMD conversion: Line → mat::vector<double, 6> (origin(3), direction(3))
+        inline mat::vector<double, 6> to_mat() const noexcept {
+            mat::vector<double, 6> v;
+            v[0] = origin.x;
+            v[1] = origin.y;
+            v[2] = origin.z;
+            v[3] = direction.x;
+            v[4] = direction.y;
+            v[5] = direction.z;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 6> → Line
+        static inline Line from_mat(const mat::vector<double, 6> &v) noexcept {
+            return Line{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}};
+        }
     };
 
 } // namespace datapod

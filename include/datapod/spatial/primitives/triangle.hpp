@@ -3,6 +3,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../../matrix/vector.hpp"
 #include "../point.hpp"
 
 namespace datapod {
@@ -58,6 +59,26 @@ namespace datapod {
 
             // Point is inside if all signs are the same (not both negative and positive)
             return !(has_neg && has_pos);
+        }
+
+        // SIMD conversion: Triangle → mat::vector<double, 9> (3 points × 3 components each)
+        inline mat::vector<double, 9> to_mat() const noexcept {
+            mat::vector<double, 9> v;
+            v[0] = a.x;
+            v[1] = a.y;
+            v[2] = a.z;
+            v[3] = b.x;
+            v[4] = b.y;
+            v[5] = b.z;
+            v[6] = c.x;
+            v[7] = c.y;
+            v[8] = c.z;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 9> → Triangle
+        static inline Triangle from_mat(const mat::vector<double, 9> &v) noexcept {
+            return Triangle{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}, Point{v[6], v[7], v[8]}};
         }
     };
 

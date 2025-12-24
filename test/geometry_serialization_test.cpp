@@ -497,7 +497,8 @@ TEST_CASE("serialize - Grid<uint8_t> 3x3 with integrity") {
 // ============================================================================
 
 TEST_CASE("serialize - State") {
-    State state{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Velocity{5.0, 0.0, 0.0}, Velocity{0.5, 0.0, 0.0}};
+    State state{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Velocity{5.0, 0.0, 0.0},
+                Velocity{0.5, 0.0, 0.0}};
     auto buf = serialize(state);
 
     auto result = deserialize<Mode::NONE, State>(buf);
@@ -512,7 +513,8 @@ TEST_CASE("serialize - State") {
 }
 
 TEST_CASE("serialize - State with version") {
-    State state{Pose{Point{5.0, 6.0, 7.0}, Quaternion{0.9021, 0.2604, 0.3072, 0.1731}}, Velocity{10.0, 0.0, 0.0}, Velocity{1.0, 0.0, 0.0}};
+    State state{Pose{Point{5.0, 6.0, 7.0}, Quaternion{0.9021, 0.2604, 0.3072, 0.1731}}, Velocity{10.0, 0.0, 0.0},
+                Velocity{1.0, 0.0, 0.0}};
     auto buf = serialize<Mode::WITH_VERSION>(state);
 
     auto result = deserialize<Mode::WITH_VERSION, State>(buf);
@@ -584,8 +586,10 @@ TEST_CASE("serialize - Trajectory empty") {
 TEST_CASE("serialize - Trajectory with states") {
     Vector<State> states;
     states.push_back(State{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Velocity{}, Velocity{}});
-    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Quaternion{0.9689, 0.0, 0.0, 0.2474}}, Velocity{2.5, 0.0, 0.0}, Velocity{0.1, 0.0, 0.0}});
-    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Quaternion{0.8776, 0.0, 0.0, 0.4794}}, Velocity{5.0, 0.0, 0.0}, Velocity{0.2, 0.0, 0.0}});
+    states.push_back(State{Pose{Point{5.0, 0.0, 0.0}, Quaternion{0.9689, 0.0, 0.0, 0.2474}}, Velocity{2.5, 0.0, 0.0},
+                           Velocity{0.1, 0.0, 0.0}});
+    states.push_back(State{Pose{Point{10.0, 5.0, 0.0}, Quaternion{0.8776, 0.0, 0.0, 0.4794}}, Velocity{5.0, 0.0, 0.0},
+                           Velocity{0.2, 0.0, 0.0}});
 
     Trajectory traj{states};
     auto buf = serialize(traj);
@@ -603,7 +607,8 @@ TEST_CASE("serialize - Trajectory with states") {
 
 TEST_CASE("serialize - Trajectory with integrity") {
     Vector<State> states;
-    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Velocity{1.5, 0.3, 0.0}});
+    states.push_back(State{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}},
+                           Velocity{1.5, 0.3, 0.0}, Velocity{0.0, 0.0, 0.0}});
 
     Trajectory traj{states};
     auto buf = serialize<Mode::WITH_INTEGRITY>(traj);
@@ -781,7 +786,8 @@ TEST_CASE("serialize - Gaussian::Circle size check") {
 // ============================================================================
 
 TEST_CASE("serialize - Gaussian::Box") {
-    gaussian::Box gbox{Box{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Size{4.0, 5.0, 6.0}}, 2.0};
+    gaussian::Box gbox{Box{Pose{Point{1.0, 2.0, 3.0}, Quaternion{0.9833, 0.1060, 0.1435, 0.0271}}, Size{4.0, 5.0, 6.0}},
+                       2.0};
     auto buf = serialize(gbox);
 
     auto result = deserialize<Mode::NONE, gaussian::Box>(buf);

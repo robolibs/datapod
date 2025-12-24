@@ -3,6 +3,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../matrix/vector.hpp"
 #include "aabb.hpp"
 #include "point.hpp"
 
@@ -71,6 +72,21 @@ namespace datapod {
 
         // Get the diameter of the sphere
         inline double diameter() const noexcept { return 2.0 * radius; }
+
+        // SIMD conversion: BS → mat::vector<double, 4> (center(3), radius)
+        inline mat::vector<double, 4> to_mat() const noexcept {
+            mat::vector<double, 4> v;
+            v[0] = center.x;
+            v[1] = center.y;
+            v[2] = center.z;
+            v[3] = radius;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 4> → BS
+        static inline BS from_mat(const mat::vector<double, 4> &v) noexcept {
+            return BS{Point{v[0], v[1], v[2]}, v[3]};
+        }
     };
 
 } // namespace datapod

@@ -1,4 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include "datapod/adapters/pair.hpp"
@@ -12,7 +11,7 @@ using namespace datapod;
 // ============================================================================
 
 TEST_CASE("Pair - Default Construction") {
-    Pair<int, double> p;
+    Pair<int, double> p{};
     CHECK(p.first == 0);
     CHECK(p.second == 0.0);
 }

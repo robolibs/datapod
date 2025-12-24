@@ -76,6 +76,36 @@ namespace datapod {
 
             return dx <= hx && dy <= hy && dz <= hz;
         }
+
+        // SIMD conversion: Box → mat::vector<double, 10> (pose(7), size(3))
+        inline mat::vector<double, 10> to_mat() const noexcept {
+            mat::vector<double, 10> v;
+            auto pose_v = pose.to_mat();
+            v[0] = pose_v[0]; // point.x
+            v[1] = pose_v[1]; // point.y
+            v[2] = pose_v[2]; // point.z
+            v[3] = pose_v[3]; // quat.x
+            v[4] = pose_v[4]; // quat.y
+            v[5] = pose_v[5]; // quat.z
+            v[6] = pose_v[6]; // quat.w
+            v[7] = size.x;
+            v[8] = size.y;
+            v[9] = size.z;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 10> → Box
+        static inline Box from_mat(const mat::vector<double, 10> &v) noexcept {
+            mat::vector<double, 7> pose_v;
+            pose_v[0] = v[0];
+            pose_v[1] = v[1];
+            pose_v[2] = v[2];
+            pose_v[3] = v[3];
+            pose_v[4] = v[4];
+            pose_v[5] = v[5];
+            pose_v[6] = v[6];
+            return Box{Pose::from_mat(pose_v), Size{v[7], v[8], v[9]}};
+        }
     };
 
 } // namespace datapod

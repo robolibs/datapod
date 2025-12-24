@@ -351,7 +351,84 @@ Type identification and hashing.
 
 ---
 
-## 12. Root Files (2 files)
+## 12. SIMD Conversion Support (to_mat/from_mat)
+
+Zero-copy conversions between spatial types and SIMD-aligned `mat::vector<double, N>`.
+
+### 12.1 Completed (23 types)
+
+**Core Spatial (5 types):**
+- ✅ `Point` → `mat::vector<double, 3>` (x, y, z)
+- ✅ `Velocity` → `mat::vector<double, 3>` (vx, vy, vz)
+- ✅ `Acceleration` → `mat::vector<double, 3>` (ax, ay, az)
+- ✅ `Euler` → `mat::vector<double, 3>` (roll, pitch, yaw)
+- ✅ `Size` → `mat::vector<double, 3>` (x, y, z)
+
+**Rotation & Pose (2 types):**
+- ✅ `Quaternion` → `mat::vector<double, 4>` (x, y, z, w)
+- ✅ `Pose` → `mat::vector<double, 7>` (point(3), quat(4))
+
+**State Representation (2 types):**
+- ✅ `State` → `mat::vector<double, 13>` (pose(7), velocity(3), angular_velocity(3))
+- ✅ `Odom` → `mat::vector<double, 13>` (pose(7), twist(6))
+
+**Robot Dynamics (3 types):**
+- ✅ `Twist` → `mat::vector<double, 6>` (linear(3), angular(3))
+- ✅ `Wrench` → `mat::vector<double, 6>` (force(3), torque(3))
+- ✅ `Accel` → `mat::vector<double, 6>` (linear(3), angular(3))
+- ✅ `Inertia` → `mat::vector<double, 10>` (mass, com(3), inertia_matrix(6))
+
+**Bounding Volumes (4 types):**
+- ✅ `AABB` → `mat::vector<double, 6>` (min_point(3), max_point(3))
+- ✅ `OBB` → `mat::vector<double, 9>` (center(3), half_extents(3), euler(3))
+- ✅ `Box` → `mat::vector<double, 10>` (pose(7), size(3))
+- ✅ `BS` (BoundingSphere) → `mat::vector<double, 4>` (center(3), radius)
+
+**Primitives (5 types):**
+- ✅ `Circle` → `mat::vector<double, 4>` (center(2), radius, z)
+- ✅ `Rectangle` → `mat::vector<double, 12>` (4 points × 3)
+- ✅ `Square` → `mat::vector<double, 4>` (center(3), side)
+- ✅ `Triangle` → `mat::vector<double, 9>` (3 points × 3)
+- ✅ `Line` → `mat::vector<double, 6>` (origin(3), direction(3))
+- ✅ `Segment` → `mat::vector<double, 6>` (start(3), end(3))
+
+**Special Cases (1 type):**
+- ✅ `Grid<T>` → `mat::matrix<T, R, C>` (compile-time dimensions via `to_mat<R,C>()`)
+
+### 12.2 Remaining (17 types - LOW PRIORITY)
+
+**Gaussian Types (4 files):**
+- ❌ `gaussian/point.hpp` - Variable size (mean + covariance)
+- ❌ `gaussian/circle.hpp` - Variable size
+- ❌ `gaussian/box.hpp` - Variable size
+- ❌ `gaussian/rectangle.hpp` - Variable size
+
+**Complex Types (3 files):**
+- ❌ `complex/path.hpp` - Variable-length vector of Points
+- ❌ `complex/polygon.hpp` - Variable-length rings
+- ❌ `complex/trajectory.hpp` - Variable-length states
+
+**Multi Types (3 files):**
+- ❌ `multi/multi_point.hpp` - Variable-length
+- ❌ `multi/multi_linestring.hpp` - Variable-length
+- ❌ `multi/multi_polygon.hpp` - Variable-length
+
+**Other (7 types):**
+- ❌ `LineString` - Variable-length
+- ❌ `Ring` - Variable-length
+- ❌ `QuadTree` - Hierarchical structure
+- ❌ `RTree` - Hierarchical structure
+- ❌ `TimeSeries` - Variable-length temporal
+- ❌ `CircularBuffer` - Variable-length temporal
+- ❌ `Financial` - Variable-length temporal
+
+**Status:** 23/40 types have SIMD conversions (57.5%)
+- **Note:** Variable-length types (vectors, trees) don't benefit from fixed-size SIMD conversions
+- **Focus:** Fixed-size spatial/robot types ✅ COMPLETE
+
+---
+
+## 13. Root Files (2 files)
 
 | File | Type | Notes |
 |------|------|-------|
@@ -375,13 +452,20 @@ Type identification and hashing.
 | Spatial | 49 | 41 | 8 | 84% |
 | Temporal | 7 | 4 | 3 | 57% |
 | Memory | 5 | 1 | 4 | 20% |
+| SIMD Conversions | 40 | 23 | 17 | 57.5% |
 | **Total User-Facing** | **84** | **65** | **19** | **77%** |
 
 ### Test Coverage
 
-- ✅ **76/76 tests passing (100%)**
+- ✅ **78/79 tests passing (98.7%)**
 - **Missing Tests:** ~15 files
 - **Missing Examples:** ~25 files (many spatial/temporal types could benefit)
+
+### SIMD Coverage
+
+- ✅ **23/40 fixed-size types have to_mat/from_mat (57.5%)**
+- **All fixed-size spatial/robot types COMPLETE**
+- **Remaining:** Variable-length types (low priority)
 
 ---
 

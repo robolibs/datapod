@@ -1,4 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include <datapod/spatial/quaternion.hpp> // This includes euler.hpp and implements conversions

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <tuple>
 
+#include "../../matrix/vector.hpp"
 #include "../../sequential/array.hpp"
 #include "../point.hpp"
 
@@ -59,6 +60,30 @@ namespace datapod {
             corners[2] = top_right;
             corners[3] = top_left;
             return corners;
+        }
+
+        // SIMD conversion: Rectangle → mat::vector<double, 12> (4 points × 3 components each)
+        inline mat::vector<double, 12> to_mat() const noexcept {
+            mat::vector<double, 12> v;
+            v[0] = top_left.x;
+            v[1] = top_left.y;
+            v[2] = top_left.z;
+            v[3] = top_right.x;
+            v[4] = top_right.y;
+            v[5] = top_right.z;
+            v[6] = bottom_left.x;
+            v[7] = bottom_left.y;
+            v[8] = bottom_left.z;
+            v[9] = bottom_right.x;
+            v[10] = bottom_right.y;
+            v[11] = bottom_right.z;
+            return v;
+        }
+
+        // SIMD conversion: mat::vector<double, 12> → Rectangle
+        static inline Rectangle from_mat(const mat::vector<double, 12> &v) noexcept {
+            return Rectangle{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}, Point{v[6], v[7], v[8]},
+                             Point{v[9], v[10], v[11]}};
         }
     };
 
