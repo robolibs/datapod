@@ -113,176 +113,33 @@ Linear algebra and tensor operations.
 
 | File | members() | Test | Example | Status |
 |------|-----------|------|---------|--------|
-| `matrix/matrix.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE |
+| `matrix/matrix.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE (with heap support) |
 | `matrix/scalar.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE |
-| `matrix/tensor.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE |
-| `matrix/vector.hpp` | ✅ | ✅ | ✅ | ⚠️ NEEDS HEAP SUPPORT |
+| `matrix/tensor.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE (with heap_tensor) |
+| `matrix/vector.hpp` | ✅ | ✅ | ✅ | ✅ COMPLETE (with heap support) |
 
-**Status:** 100% COMPLETE (but needs heap allocation for large sizes) ⚠️
+**Status:** 100% COMPLETE ✅
 
-### 4.1 CRITICAL: Add Heap Allocation for Large mat::vector/matrix/tensor
+### 4.1 ✅ DONE: Heap Allocation for Large mat::vector/matrix/tensor
 
-**Problem:** Currently ALL matrix types are stack-allocated:
-- `mat::vector<T, N>` → `alignas(32) T data_[N]`
-- `mat::matrix<T, R, C>` → `alignas(32) T data_[R * C]`
-- `mat::tensor<T, Dims...>` → `alignas(32) T data_[Dims...]`
+**Implemented:** Automatic heap allocation for large sizes based on `HEAP_THRESHOLD = 1024` elements.
 
-This works great for small sizes (robotics: 3D vectors, 3×3 matrices) but **FAILS for large sizes**:
-- `vector<float, 1048576>` = 4MB stack → **CRASH**
-- `matrix<float, 1024, 1024>` = 4MB stack → **CRASH**
-- `tensor<float, 256, 256, 256>` = 64MB stack → **CRASH**
+**Solution implemented:**
+- `mat::vector<T, N>`: Uses heap when `N > 1024`
+- `mat::matrix<T, R, C>`: Uses heap when `R * C > 1024`  
+- `mat::heap_tensor<T, Dims...>`: Explicit heap-allocated tensor type
 
-**Goal:** Support BOTH small (stack, POD, zero-copy) AND large (heap, SIMD-aligned) sizes automatically for **ALL THREE** types.
+**Features:**
+- ✅ Transparent API - same interface for stack and heap versions
+- ✅ Automatic selection at compile-time via template specialization
+- ✅ SIMD-aligned (32-byte) for both stack and heap
+- ✅ Full serialization support for heap types
+- ✅ Type traits: `uses_heap`, `is_pod`, `is_heap_vector_v`, `is_heap_matrix_v`, `is_heap_tensor_v`
+- ✅ Proper copy/move semantics for heap types
+- ✅ Tests in `test/matrix/heap_mat_test.cpp` (32 test cases)
+- ✅ Example in `examples/heap_mat_usage.cpp`
 
-**Solution:** Template specialization based on size threshold - **APPLY TO ALL THREE TYPES**
-
-```cpp
-namespace datapod::mat {
-
-// Size threshold for switching from stack to heap
-constexpr size_t HEAP_THRESHOLD = 1024;  // elements, not bytes
-
-// =============================================================================
-// APPLIES TO: vector<T,N>, matrix<T,R,C>, tensor<T,Dims...>
-// =============================================================================
-
-// =============================================================================
-// PRIMARY TEMPLATE: Small vectors (stack-allocated, POD, zero-copy)
-// =============================================================================
-template <typename T, size_t N, bool UseHeap = (N > HEAP_THRESHOLD)>
-struct vector {
-    static_assert(N > 0, "vector size must be > 0");
-    
-    using value_type = T;
-    using size_type = size_t;
-    static constexpr size_t size_ = N;
-    static constexpr bool is_pod = true;     // POD for serialization
-    static constexpr bool uses_heap = false;
-    
-    // STACK STORAGE - inline data, zero-copy serialization
-    alignas(32) T data_[N];
-    
-    // Default constructible, trivially copyable (POD)
-    constexpr vector() noexcept = default;
-    constexpr vector(const vector&) noexcept = default;
-    constexpr vector& operator=(const vector&) noexcept = default;
-    
-    // API
-    constexpr T& operator[](size_type i) noexcept { return data_[i]; }
-    constexpr const T& operator[](size_type i) const noexcept { return data_[i]; }
-    constexpr T* data() noexcept { return data_; }
-    constexpr const T* data() const noexcept { return data_; }
-    constexpr size_type size() const noexcept { return N; }
-    
-    // ... rest of existing API ...
-    
-    // Serialization - zero-copy (just memcpy the whole struct)
-    auto members() noexcept { return std::tie(data_); }
-    auto members() const noexcept { return std::tie(data_); }
-};
-
-// =============================================================================
-// SPECIALIZATION: Large vectors (heap-allocated, NOT POD, SIMD-aligned)
-// =============================================================================
-template <typename T, size_t N>
-struct vector<T, N, true> {  // UseHeap = true
-    static_assert(N > 0, "vector size must be > 0");
-    
-    using value_type = T;
-    using size_type = size_t;
-    static constexpr size_t size_ = N;
-    static constexpr bool is_pod = false;    // NOT POD (has destructor)
-    static constexpr bool uses_heap = true;
-    
-    // HEAP STORAGE - pointer to aligned allocation
-    T* data_;
-    
-    // Constructor - allocate aligned heap memory
-    vector() : data_(static_cast<T*>(::operator new(sizeof(T) * N, std::align_val_t{32}))) {
-        for (size_t i = 0; i < N; ++i) {
-            new (&data_[i]) T{};  // placement new for initialization
-        }
-    }
-    
-    // Destructor - free heap memory
-    ~vector() {
-        if (data_) {
-            for (size_t i = 0; i < N; ++i) {
-                data_[i].~T();
-            }
-            ::operator delete(data_, std::align_val_t{32});
-        }
-    }
-    
-    // Copy constructor
-    vector(const vector& other) 
-        : data_(static_cast<T*>(::operator new(sizeof(T) * N, std::align_val_t{32}))) {
-        for (size_t i = 0; i < N; ++i) {
-            new (&data_[i]) T(other.data_[i]);
-        }
-    }
-    
-    // Copy assignment
-    vector& operator=(const vector& other) {
-        if (this != &other) {
-            for (size_t i = 0; i < N; ++i) {
-                data_[i] = other.data_[i];
-            }
-        }
-        return *this;
-    }
-    
-    // Move constructor
-    vector(vector&& other) noexcept : data_(other.data_) {
-        other.data_ = nullptr;
-    }
-    
-    // Move assignment
-    vector& operator=(vector&& other) noexcept {
-        if (this != &other) {
-            if (data_) {
-                for (size_t i = 0; i < N; ++i) {
-                    data_[i].~T();
-                }
-                ::operator delete(data_, std::align_val_t{32});
-            }
-            data_ = other.data_;
-            other.data_ = nullptr;
-        }
-        return *this;
-    }
-    
-    // API - SAME AS SMALL VERSION (transparent to users)
-    T& operator[](size_type i) noexcept { return data_[i]; }
-    const T& operator[](size_type i) const noexcept { return data_[i]; }
-    T* data() noexcept { return data_; }
-    const T* data() const noexcept { return data_; }
-    constexpr size_type size() const noexcept { return N; }
-    
-    // ... rest of API identical to small version ...
-    
-    // Serialization - need custom implementation (serialize heap data)
-    // NOT zero-copy - must serialize pointer indirection
-};
-
-} // namespace datapod::mat
-```
-
-**Benefits:**
-1. ✅ **Transparent** - Same API for both small and large vectors
-2. ✅ **Automatic** - Compiler chooses based on size at compile-time
-3. ✅ **Small vectors stay POD** - Zero-copy serialization for robotics (N ≤ 1024)
-4. ✅ **Large vectors work** - Heap allocation for ML/numeric computing (N > 1024)
-5. ✅ **SIMD aligned** - Both use 32-byte alignment (stack: `alignas(32)`, heap: `std::align_val_t{32}`)
-6. ✅ **Zero runtime overhead** - Compile-time template specialization
-7. ✅ **Type-safe** - `is_pod` and `uses_heap` compile-time flags
-
-**Trade-offs:**
-- Large vectors (N > 1024) are **NOT POD** (can't use zero-copy serialization)
-- Need copy/move constructors for heap version (but optimized with move semantics)
-- Slightly more code (but hidden in template specialization)
-
-**Use Cases:**
+**Usage:**
 ```cpp
 // ============================================================================
 // VECTOR - Robotics (small, stack, POD) vs ML (large, heap)
@@ -305,13 +162,13 @@ mat::matrix<float, 1024, 1024> big_mat;  // 4MB heap, SIMD-aligned
 mat::matrix<double, 512, 512> image;     // 2MB heap, SIMD-aligned
 
 // ============================================================================
-// TENSOR - Small (stack, POD) vs Large (heap)
+// TENSOR - Small (stack, POD) vs Large (use heap_tensor)
 // ============================================================================
-mat::tensor<float, 3, 3, 3> small_cube;  // 108 bytes stack, POD
-mat::tensor<float, 10, 10, 10> medium;   // 4KB stack (near threshold)
+mat::tensor<float, 3, 3, 3> small_cube;       // 108 bytes stack, POD
+mat::tensor<float, 10, 10, 10> medium;        // 4KB stack (near threshold)
 
-mat::tensor<float, 256, 256, 256> volume;     // 64MB heap, SIMD-aligned
-mat::tensor<double, 100, 100, 100> density;   // 8MB heap, SIMD-aligned
+mat::heap_tensor<float, 50, 50, 50> volume;   // 500KB heap, SIMD-aligned
+mat::heap_tensor<double, 100, 100, 100> big;  // 8MB heap, SIMD-aligned
 
 // ============================================================================
 // SAME API for ALL - stack or heap is transparent!
@@ -320,54 +177,16 @@ position[0] = 1.0;
 embeddings[0] = 1.0f;
 rotation(0, 0) = 1.0;
 big_mat(0, 0) = 1.0f;
-small_cube[{0,0,0}] = 1.0f;
-volume[{0,0,0}] = 1.0f;
+small_cube(0, 0, 0) = 1.0f;
+volume(0, 0, 0) = 1.0f;
+
+// Type traits to check storage type
+static_assert(mat::vector<double, 3>::is_pod == true);
+static_assert(mat::vector<double, 2000>::uses_heap == true);
+static_assert(mat::is_heap_vector_v<mat::vector<double, 2000>>);
+static_assert(mat::is_heap_matrix_v<mat::matrix<double, 50, 50>>);
+static_assert(mat::is_heap_tensor_v<mat::heap_tensor<float, 10, 10, 10>>);
 ```
-
-**Implementation Plan:**
-
-**Phase 1: Vector (FIRST)**
-1. Add heap specialization to `matrix/vector.hpp`
-   - Threshold calculation: `N > HEAP_THRESHOLD`
-   - Add heap specialization with aligned allocation
-2. Add tests for large vectors
-   - `vector<float, 100000>` - verify heap allocation
-   - `vector<double, 500000>` - verify SIMD alignment
-3. Verify existing small vectors still POD
-
-**Phase 2: Matrix (SECOND)**
-1. Add heap specialization to `matrix/matrix.hpp`
-   - Threshold calculation: `R * C > HEAP_THRESHOLD`
-   - Add heap specialization (same pattern as vector)
-2. Add tests for large matrices
-   - `matrix<float, 1024, 1024>` - 1M elements, heap
-   - `matrix<double, 512, 512>` - 256K elements, heap
-3. Verify small matrices (3×3, 4×4) still POD
-
-**Phase 3: Tensor (THIRD)**
-1. Add heap specialization to `matrix/tensor.hpp`
-   - Threshold calculation: `(Dims * ...) > HEAP_THRESHOLD`
-   - Add heap specialization (same pattern)
-2. Add tests for large tensors
-   - `tensor<float, 256, 256, 256>` - 16M elements, heap
-   - `tensor<double, 100, 100, 100>` - 1M elements, heap
-3. Verify small tensors still POD
-
-**Phase 4: Integration**
-1. Update serialization system to detect `uses_heap` flag
-2. Update documentation in README
-3. Add benchmarks comparing stack vs heap performance
-4. Document threshold tuning (default 1024, configurable?)
-
-**Priority:** HIGH - Critical for numeric computing and ML use cases while preserving robotics POD guarantees
-
-**Status:** 🚧 TODO - Design complete, needs implementation
-
-**Notes:**
-- All three types share the SAME pattern (stack vs heap specialization)
-- Threshold is **per-type** (vector uses N, matrix uses R×C, tensor uses total elements)
-- Small sizes (≤1024 elements) stay POD for zero-copy serialization
-- Large sizes (>1024 elements) use heap with SIMD alignment
 - API is IDENTICAL regardless of storage (transparent to users)
 
 ---
