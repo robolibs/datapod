@@ -5,6 +5,9 @@
 #include <tuple>
 #include <type_traits>
 
+#include "datapod/core/aligned_alloc.hpp"
+#include "datapod/matrix/vector.hpp" // For HEAP_THRESHOLD
+
 namespace datapod {
     namespace mat {
 
@@ -18,9 +21,10 @@ namespace datapod {
          * NOT a container - purely for numeric/mathematical operations.
          *
          * Examples:
-         *   matrix<double, 3, 3> rotation;              // SO(3) rotation matrix
-         *   matrix<double, 6, 6> covariance;            // 6x6 covariance matrix
-         *   matrix<float, 4, 4> transform;              // SE(3) transformation
+         *   matrix<double, 3, 3> rotation;              // SO(3) rotation matrix (stack)
+         *   matrix<double, 6, 6> covariance;            // 6x6 covariance matrix (stack)
+         *   matrix<float, 4, 4> transform;              // SE(3) transformation (stack)
+         *   matrix<float, 1024, 1024> big_mat;          // Large matrix (heap)
          *   matrix<scalar<double>, 3, 3> tagged_mat;    // Matrix of scalars
          *
          * Design:
@@ -28,13 +32,18 @@ namespace datapod {
          * - Column-major storage (matching Eigen, BLAS, LAPACK)
          * - Contiguous storage (cache-friendly)
          * - Aligned for SIMD (32-byte alignment)
-         * - POD-compatible
-         * - Serializable via members()
+         * - Small matrices (R*C <= HEAP_THRESHOLD): POD-compatible, stack-allocated
+         * - Large matrices (R*C > HEAP_THRESHOLD): Heap-allocated, SIMD-aligned
+         * - Serializable via members() or explicit serialize/deserialize
          * - NO math operations (data layer only)
          * - Bridge to Eigen via data() pointer
          * - Accepts both arithmetic types AND scalar<T>
          */
-        template <typename T, size_t R, size_t C> struct matrix {
+
+        // =============================================================================
+        // PRIMARY TEMPLATE: Small matrices (stack-allocated, POD, zero-copy)
+        // =============================================================================
+        template <typename T, size_t R, size_t C, bool UseHeap = (R * C > HEAP_THRESHOLD)> struct matrix {
             // Accept arithmetic types (and scalar<T>, but we can't check that here due to forward declaration)
             // The scalar<T> case will work because it's a POD type
             static_assert(R > 0, "matrix rows must be > 0");
@@ -53,8 +62,10 @@ namespace datapod {
             static constexpr size_t rows_ = R;     // Number of rows
             static constexpr size_t cols_ = C;     // Number of columns
             static constexpr size_t size_ = R * C; // Total elements
+            static constexpr bool is_pod = true;   // POD for zero-copy serialization
+            static constexpr bool uses_heap = false;
 
-            alignas(32) T data_[R * C]; // Column-major: data_[col * R + row]
+            alignas(32) T data_[R * C]; // Column-major: data_[col * R + row] (stack)
 
             // Default constructor (for aggregate initialization)
             constexpr matrix() noexcept = default;
@@ -166,10 +177,173 @@ namespace datapod {
             constexpr bool operator!=(const matrix &other) const noexcept { return !(*this == other); }
         };
 
+        // =============================================================================
+        // SPECIALIZATION: Large matrices (heap-allocated, NOT POD, SIMD-aligned)
+        // =============================================================================
+        template <typename T, size_t R, size_t C> struct matrix<T, R, C, true> {
+            static_assert(R > 0, "matrix rows must be > 0");
+            static_assert(C > 0, "matrix cols must be > 0");
+
+            using value_type = T;
+            using size_type = size_t;
+            using reference = T &;
+            using const_reference = const T &;
+            using pointer = T *;
+            using const_pointer = const T *;
+            using iterator = T *;
+            using const_iterator = const T *;
+
+            static constexpr size_t rank = 2;      // Rank-2 tensor
+            static constexpr size_t rows_ = R;     // Number of rows
+            static constexpr size_t cols_ = C;     // Number of columns
+            static constexpr size_t size_ = R * C; // Total elements
+            static constexpr bool is_pod = false;  // NOT POD (has destructor)
+            static constexpr bool uses_heap = true;
+
+            T *data_; // Heap-allocated, SIMD-aligned, column-major
+
+            // Default constructor - allocate aligned heap memory
+            matrix() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
+                for (size_t i = 0; i < R * C; ++i) {
+                    new (&data_[i]) T{};
+                }
+            }
+
+            // Destructor - free heap memory
+            ~matrix() {
+                if (data_) {
+                    for (size_t i = 0; i < R * C; ++i) {
+                        data_[i].~T();
+                    }
+                    aligned_free(32, data_);
+                }
+            }
+
+            // Copy constructor
+            matrix(const matrix &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
+                for (size_t i = 0; i < R * C; ++i) {
+                    new (&data_[i]) T(other.data_[i]);
+                }
+            }
+
+            // Copy assignment
+            matrix &operator=(const matrix &other) {
+                if (this != &other) {
+                    for (size_t i = 0; i < R * C; ++i) {
+                        data_[i] = other.data_[i];
+                    }
+                }
+                return *this;
+            }
+
+            // Move constructor
+            matrix(matrix &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
+
+            // Move assignment
+            matrix &operator=(matrix &&other) noexcept {
+                if (this != &other) {
+                    if (data_) {
+                        for (size_t i = 0; i < R * C; ++i) {
+                            data_[i].~T();
+                        }
+                        aligned_free(32, data_);
+                    }
+                    data_ = other.data_;
+                    other.data_ = nullptr;
+                }
+                return *this;
+            }
+
+            // Serialization support
+            auto members() noexcept { return std::tie(data_); }
+            auto members() const noexcept { return std::tie(data_); }
+
+            // 2D indexing - column-major layout (SAME API as stack version)
+            reference operator()(size_type row, size_type col) noexcept {
+                return data_[col * R + row]; // Column-major
+            }
+
+            const_reference operator()(size_type row, size_type col) const noexcept {
+                return data_[col * R + row]; // Column-major
+            }
+
+            reference at(size_type row, size_type col) {
+                if (row >= R || col >= C) {
+                    throw std::out_of_range("matrix::at");
+                }
+                return data_[col * R + row];
+            }
+
+            const_reference at(size_type row, size_type col) const {
+                if (row >= R || col >= C) {
+                    throw std::out_of_range("matrix::at");
+                }
+                return data_[col * R + row];
+            }
+
+            // 1D indexing (linear access in column-major order)
+            reference operator[](size_type i) noexcept { return data_[i]; }
+            const_reference operator[](size_type i) const noexcept { return data_[i]; }
+
+            // Raw data access (for Eigen mapping)
+            pointer data() noexcept { return data_; }
+            const_pointer data() const noexcept { return data_; }
+
+            // Dimensions
+            constexpr size_type rows() const noexcept { return R; }
+            constexpr size_type cols() const noexcept { return C; }
+            constexpr size_type size() const noexcept { return R * C; }
+            constexpr bool empty() const noexcept { return false; }
+
+            // Iterators (linear iteration in column-major order)
+            iterator begin() noexcept { return data_; }
+            const_iterator begin() const noexcept { return data_; }
+            const_iterator cbegin() const noexcept { return data_; }
+
+            iterator end() noexcept { return data_ + R * C; }
+            const_iterator end() const noexcept { return data_ + R * C; }
+            const_iterator cend() const noexcept { return data_ + R * C; }
+
+            // Operations
+            void fill(const T &value) noexcept {
+                for (size_type i = 0; i < R * C; ++i) {
+                    data_[i] = value;
+                }
+            }
+
+            void swap(matrix &other) noexcept { std::swap(data_, other.data_); }
+
+            // Set to identity (only for square matrices)
+            template <size_t R_ = R, size_t C_ = C> std::enable_if_t<R_ == C_, void> set_identity() noexcept {
+                fill(T{});
+                for (size_type i = 0; i < R; ++i) {
+                    (*this)(i, i) = T{1};
+                }
+            }
+
+            // Comparison
+            bool operator==(const matrix &other) const noexcept {
+                for (size_type i = 0; i < R * C; ++i) {
+                    if (!(data_[i] == other.data_[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            bool operator!=(const matrix &other) const noexcept { return !(*this == other); }
+        };
+
         // Type traits
         template <typename T> struct is_matrix : std::false_type {};
-        template <typename T, size_t R, size_t C> struct is_matrix<matrix<T, R, C>> : std::true_type {};
+        template <typename T, size_t R, size_t C, bool UseHeap>
+        struct is_matrix<matrix<T, R, C, UseHeap>> : std::true_type {};
         template <typename T> inline constexpr bool is_matrix_v = is_matrix<T>::value;
+
+        // Type trait to check if matrix uses heap
+        template <typename T> struct is_heap_matrix : std::false_type {};
+        template <typename T, size_t R, size_t C> struct is_heap_matrix<matrix<T, R, C, true>> : std::true_type {};
+        template <typename T> inline constexpr bool is_heap_matrix_v = is_heap_matrix<T>::value;
 
         // Common matrix type aliases
         template <typename T> using matrix2x2 = matrix<T, 2, 2>;
