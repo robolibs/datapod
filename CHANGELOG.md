@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.9] - 2025-12-26
+
+### <!-- 0 -->⛰️  Features
+
+- Introduce new mathematical numeric types and utilities
+
 ## [0.0.8] - 2025-12-24
 
 ### <!-- 0 -->⛰️  Features

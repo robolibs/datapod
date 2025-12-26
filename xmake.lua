@@ -1,5 +1,5 @@
 set_project("datapod")
-set_version("0.0.8")
+set_version("0.0.9")
 set_xmakever("2.7.0")
 
 -- Set C++ standard
