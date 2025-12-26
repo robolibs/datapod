@@ -37,6 +37,7 @@
 
 // Complex geometry
 #include "spatial/complex/grid.hpp"
+#include "spatial/complex/layer.hpp"
 #include "spatial/complex/path.hpp"
 #include "spatial/complex/polygon.hpp"
 #include "spatial/complex/trajectory.hpp"
