@@ -297,55 +297,6 @@ TEST_SUITE("mat::polynomial") {
 }
 
 // ============================================================================
-// Dual Quaternion Tests
-// ============================================================================
-
-TEST_SUITE("mat::dual_quaternion") {
-    TEST_CASE("construction") {
-        auto dq = dual_quaterniond::identity();
-        CHECK(dq.rw == doctest::Approx(1.0));
-        CHECK(dq.rx == doctest::Approx(0.0));
-        CHECK(dq.ry == doctest::Approx(0.0));
-        CHECK(dq.rz == doctest::Approx(0.0));
-    }
-
-    TEST_CASE("translation") {
-        auto dq = dual_quaterniond::from_translation(1.0, 2.0, 3.0);
-
-        double tx, ty, tz;
-        dq.get_translation(tx, ty, tz);
-
-        CHECK(tx == doctest::Approx(1.0));
-        CHECK(ty == doctest::Approx(2.0));
-        CHECK(tz == doctest::Approx(3.0));
-    }
-
-    TEST_CASE("transform point") {
-        // Pure translation
-        auto dq = dual_quaterniond::from_translation(1.0, 0.0, 0.0);
-
-        double px = 0.0, py = 0.0, pz = 0.0;
-        dq.transform_point(px, py, pz);
-
-        CHECK(px == doctest::Approx(1.0));
-        CHECK(py == doctest::Approx(0.0));
-        CHECK(pz == doctest::Approx(0.0));
-    }
-
-    TEST_CASE("serialization") {
-        auto original = dual_quaterniond::from_rotation_translation(0.707, 0.0, 0.707, 0.0, // 90° rotation around Y
-                                                                    1.0, 2.0, 3.0           // translation
-        );
-
-        auto buffer = serialize(original);
-        auto restored = deserialize<Mode::NONE, dual_quaterniond>(buffer);
-
-        CHECK(restored.rw == doctest::Approx(original.rw));
-        CHECK(restored.dx == doctest::Approx(original.dx));
-    }
-}
-
-// ============================================================================
 // Phasor Tests
 // ============================================================================
 
@@ -559,7 +510,6 @@ TEST_CASE("all types have members") {
     fraction32 f{1, 2};
     intervald i{1, 2};
     quadraticd p{1, 2, 3};
-    dual_quaterniond dq;
     phasord ph{1, 2};
     mod_1e9_7 m{123};
     octoniond o{1, 2, 3, 4, 5, 6, 7, 8};
@@ -571,7 +521,6 @@ TEST_CASE("all types have members") {
     auto f_members = f.members();
     auto i_members = i.members();
     auto p_members = p.members();
-    auto dq_members = dq.members();
     auto ph_members = ph.members();
     auto m_members = m.members();
     auto o_members = o.members();
@@ -583,7 +532,6 @@ TEST_CASE("all types have members") {
     (void)f_members;
     (void)i_members;
     (void)p_members;
-    (void)dq_members;
     (void)ph_members;
     (void)m_members;
     (void)o_members;
@@ -611,9 +559,6 @@ TEST_CASE("type traits") {
 
     CHECK(is_polynomial_v<quadraticd>);
     CHECK_FALSE(is_polynomial_v<double>);
-
-    CHECK(is_dual_quaternion_v<dual_quaterniond>);
-    CHECK_FALSE(is_dual_quaternion_v<double>);
 
     CHECK(is_phasor_v<phasord>);
     CHECK_FALSE(is_phasor_v<double>);

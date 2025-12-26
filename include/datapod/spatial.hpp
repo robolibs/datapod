@@ -17,6 +17,7 @@
 #include "spatial/quaternion.hpp"
 #include "spatial/size.hpp"
 #include "spatial/state.hpp"
+#include "spatial/transform.hpp"
 #include "spatial/velocity.hpp"
 
 // Bounding volumes
