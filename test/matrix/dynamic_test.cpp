@@ -404,6 +404,178 @@ TEST_CASE("dynamic_tensor: Eigen-style aliases") {
 }
 
 // =============================================================================
+// PARTIALLY DYNAMIC TENSOR TESTS (tensor<T, Dynamic, 4, 5>, etc.)
+// =============================================================================
+
+TEST_CASE("tensor<T, Dynamic, ...>: fully dynamic construction") {
+    SUBCASE("all dims dynamic - 3D") {
+        tensor<double, Dynamic, Dynamic, Dynamic> t(2, 3, 4);
+        CHECK(t.dim(0) == 2);
+        CHECK(t.dim(1) == 3);
+        CHECK(t.dim(2) == 4);
+        CHECK(t.size() == 24);
+    }
+
+    SUBCASE("all dims dynamic - 4D") {
+        tensor<float, Dynamic, Dynamic, Dynamic, Dynamic> t(2, 3, 4, 5);
+        CHECK(t.dim(0) == 2);
+        CHECK(t.dim(1) == 3);
+        CHECK(t.dim(2) == 4);
+        CHECK(t.dim(3) == 5);
+        CHECK(t.size() == 120);
+    }
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
+    SUBCASE("first dim dynamic, others fixed") {
+        // Batch of 4x5 matrices
+        tensor<double, Dynamic, 4, 5> batch(10);
+        CHECK(batch.dim(0) == 10);
+        CHECK(batch.dim(1) == 4);
+        CHECK(batch.dim(2) == 5);
+        CHECK(batch.size() == 200);
+    }
+
+    SUBCASE("middle dim dynamic") {
+        tensor<double, 3, Dynamic, 5> t(10);
+        CHECK(t.dim(0) == 3);
+        CHECK(t.dim(1) == 10);
+        CHECK(t.dim(2) == 5);
+        CHECK(t.size() == 150);
+    }
+
+    SUBCASE("last dim dynamic") {
+        tensor<double, 3, 4, Dynamic> t(10);
+        CHECK(t.dim(0) == 3);
+        CHECK(t.dim(1) == 4);
+        CHECK(t.dim(2) == 10);
+        CHECK(t.size() == 120);
+    }
+
+    SUBCASE("two dims dynamic") {
+        tensor<double, Dynamic, 4, Dynamic> t(3, 5);
+        CHECK(t.dim(0) == 3);
+        CHECK(t.dim(1) == 4);
+        CHECK(t.dim(2) == 5);
+        CHECK(t.size() == 60);
+    }
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: element access") {
+    tensor<double, Dynamic, 4, 5> t(3);
+
+    SUBCASE("write and read") {
+        t(1, 2, 3) = 42.0;
+        CHECK(t(1, 2, 3) == 42.0);
+    }
+
+    SUBCASE("linear indexing") {
+        t[0] = 1.0;
+        t[1] = 2.0;
+        CHECK(t[0] == 1.0);
+        CHECK(t[1] == 2.0);
+    }
+
+    SUBCASE("at() with bounds checking") {
+        CHECK_NOTHROW(t.at(0, 0, 0));
+        CHECK_THROWS_AS(t.at(10, 0, 0), std::out_of_range);
+    }
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: resize") {
+    tensor<double, Dynamic, 4, 5> t(3);
+    CHECK(t.size() == 60);
+
+    t.resize(10);
+    CHECK(t.dim(0) == 10);
+    CHECK(t.dim(1) == 4); // Fixed, unchanged
+    CHECK(t.dim(2) == 5); // Fixed, unchanged
+    CHECK(t.size() == 200);
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: copy and move") {
+    tensor<double, Dynamic, Dynamic, Dynamic> t1(2, 3, 4);
+    t1(0, 0, 0) = 1.0;
+    t1(1, 2, 3) = 42.0;
+
+    SUBCASE("copy constructor") {
+        tensor<double, Dynamic, Dynamic, Dynamic> t2(t1);
+        CHECK(t2.dim(0) == 2);
+        CHECK(t2.dim(1) == 3);
+        CHECK(t2.dim(2) == 4);
+        CHECK(t2(0, 0, 0) == 1.0);
+        CHECK(t2(1, 2, 3) == 42.0);
+    }
+
+    SUBCASE("move constructor") {
+        tensor<double, Dynamic, Dynamic, Dynamic> t2(std::move(t1));
+        CHECK(t2.dim(0) == 2);
+        CHECK(t2(1, 2, 3) == 42.0);
+        CHECK(t1.size() == 0); // Moved-from state
+    }
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: operations") {
+    tensor<double, Dynamic, 4, 5> t(3);
+
+    SUBCASE("fill") {
+        t.fill(3.14);
+        for (size_t i = 0; i < t.size(); ++i) {
+            CHECK(t[i] == 3.14);
+        }
+    }
+
+    SUBCASE("setZero") {
+        t.fill(1.0);
+        t.setZero();
+        for (size_t i = 0; i < t.size(); ++i) {
+            CHECK(t[i] == 0.0);
+        }
+    }
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: type traits") {
+    CHECK(is_partially_dynamic_tensor_v<tensor<double, Dynamic, 4, 5>>);
+    CHECK(is_partially_dynamic_tensor_v<tensor<double, Dynamic, Dynamic, Dynamic>>);
+    CHECK(!is_partially_dynamic_tensor_v<tensor<double, 3, 4, 5>>);
+
+    // is_dynamic_v should include partially dynamic tensors
+    CHECK(is_dynamic_v<tensor<double, Dynamic, 4, 5>>);
+}
+
+TEST_CASE("tensor<T, Dynamic, ...>: serialization") {
+    SUBCASE("fully dynamic 3D tensor") {
+        tensor<double, Dynamic, Dynamic, Dynamic> t1(2, 3, 4);
+        for (size_t i = 0; i < t1.size(); ++i) {
+            t1[i] = static_cast<double>(i);
+        }
+
+        auto buf = serialize(t1);
+        auto t2 = deserialize<Mode::NONE, tensor<double, Dynamic, Dynamic, Dynamic>>(buf);
+
+        CHECK(t2.dim(0) == 2);
+        CHECK(t2.dim(1) == 3);
+        CHECK(t2.dim(2) == 4);
+        CHECK(t1 == t2);
+    }
+
+    SUBCASE("partially dynamic tensor") {
+        tensor<double, Dynamic, 4, 5> t1(3);
+        for (size_t i = 0; i < t1.size(); ++i) {
+            t1[i] = static_cast<double>(i * 2);
+        }
+
+        auto buf = serialize(t1);
+        auto t2 = deserialize<Mode::NONE, tensor<double, Dynamic, 4, 5>>(buf);
+
+        CHECK(t2.dim(0) == 3);
+        CHECK(t2.dim(1) == 4);
+        CHECK(t2.dim(2) == 5);
+        CHECK(t1 == t2);
+    }
+}
+
+// =============================================================================
 // SERIALIZATION TESTS
 // =============================================================================
 

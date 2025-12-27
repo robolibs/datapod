@@ -24,6 +24,7 @@
 
 #include "datapod/core/aligned_alloc.hpp"
 #include "datapod/matrix/matrix.hpp"     // For Dynamic, matrix<T, Dynamic, Dynamic>
+#include "datapod/matrix/tensor.hpp"     // For tensor<T, Dynamic, ...>
 #include "datapod/matrix/vector.hpp"     // For Dynamic, vector<T, Dynamic>
 #include "datapod/sequential/vector.hpp" // For datapod::Vector (shape storage)
 
@@ -344,13 +345,17 @@ namespace datapod {
         // TYPE TRAITS
         // =============================================================================
 
+        // is_dynamic_tensor: for dynamic_tensor<T> (runtime-rank)
         template <typename T> struct is_dynamic_tensor : std::false_type {};
         template <typename T> struct is_dynamic_tensor<dynamic_tensor<T>> : std::true_type {};
         template <typename T> inline constexpr bool is_dynamic_tensor_v = is_dynamic_tensor<T>::value;
 
         // Check if any type is dynamic (vector, matrix, or tensor)
+        // Includes: vector<T, Dynamic>, matrix<T, Dynamic, Dynamic>,
+        //           tensor<T, Dynamic, ...>, and dynamic_tensor<T>
         template <typename T>
-        inline constexpr bool is_dynamic_v = is_dynamic_vector_v<T> || is_dynamic_matrix_v<T> || is_dynamic_tensor_v<T>;
+        inline constexpr bool is_dynamic_v = is_dynamic_vector_v<T> || is_dynamic_matrix_v<T> ||
+                                             is_dynamic_tensor_v<T> || is_partially_dynamic_tensor_v<T>;
 
         // =============================================================================
         // EIGEN-STYLE ALIASES

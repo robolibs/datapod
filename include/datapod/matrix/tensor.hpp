@@ -436,6 +436,312 @@ namespace datapod {
             bool operator!=(const heap_tensor &other) const noexcept { return !(*this == other); }
         };
 
+        // =============================================================================
+        // HELPER: Check if any dimension is Dynamic
+        // =============================================================================
+        template <size_t... Dims> struct has_dynamic_dim : std::bool_constant<((Dims == Dynamic) || ...)> {};
+
+        template <size_t... Dims> inline constexpr bool has_dynamic_dim_v = has_dynamic_dim<Dims...>::value;
+
+        // Count fixed dimensions (non-Dynamic)
+        template <size_t... Dims> struct count_fixed_dims {
+            static constexpr size_t value = ((Dims != Dynamic ? 1 : 0) + ...);
+        };
+
+        // Count dynamic dimensions
+        template <size_t... Dims> struct count_dynamic_dims {
+            static constexpr size_t value = ((Dims == Dynamic ? 1 : 0) + ...);
+        };
+
+        // =============================================================================
+        // DYNAMIC TENSOR: When any dimension is Dynamic
+        // =============================================================================
+        /**
+         * @brief Tensor with some or all dimensions determined at runtime
+         *
+         * When any template dimension is Dynamic, this specialization is used.
+         * Fixed dimensions are known at compile-time, dynamic ones at runtime.
+         *
+         * Examples:
+         *   tensor<double, Dynamic, 4, 5> batch(32);      // 32x4x5 - batch of 4x5 matrices
+         *   tensor<float, Dynamic, 224, 224, 3> imgs(16); // 16x224x224x3 - batch of images
+         *   tensor<double, Dynamic, Dynamic, Dynamic> t(2,3,4); // fully dynamic 2x3x4
+         *
+         * Constructor takes runtime sizes for Dynamic dimensions only, in order.
+         */
+        template <typename T, size_t... Dims>
+        requires(has_dynamic_dim_v<Dims...> && sizeof...(Dims) >= 3)
+        struct tensor<T, Dims...> {
+            using value_type = T;
+            using size_type = size_t;
+            using reference = T &;
+            using const_reference = const T &;
+            using pointer = T *;
+            using const_pointer = const T *;
+            using iterator = T *;
+            using const_iterator = const T *;
+
+            static constexpr size_t rank = sizeof...(Dims);
+            static constexpr std::array<size_t, rank> template_dims_ = {Dims...};
+            static constexpr size_t num_dynamic = count_dynamic_dims<Dims...>::value;
+            static constexpr bool is_pod = false;
+            static constexpr bool uses_heap = true;
+            static constexpr bool is_dynamic = true;
+
+          private:
+            std::array<size_t, rank> dims_;    // Actual dimensions (fixed or runtime)
+            std::array<size_t, rank> strides_; // Strides for indexing
+            size_t size_;
+            T *data_;
+
+            void compute_strides() noexcept {
+                // Column-major strides
+                strides_[0] = 1;
+                for (size_t i = 1; i < rank; ++i) {
+                    strides_[i] = strides_[i - 1] * dims_[i - 1];
+                }
+            }
+
+            void compute_size() noexcept {
+                size_ = 1;
+                for (size_t i = 0; i < rank; ++i) {
+                    size_ *= dims_[i];
+                }
+            }
+
+            void allocate() {
+                if (size_ > 0) {
+                    data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * size_));
+                    for (size_t i = 0; i < size_; ++i) {
+                        new (&data_[i]) T{};
+                    }
+                } else {
+                    data_ = nullptr;
+                }
+            }
+
+            void deallocate() {
+                if (data_) {
+                    for (size_t i = 0; i < size_; ++i) {
+                        data_[i].~T();
+                    }
+                    aligned_free(32, data_);
+                    data_ = nullptr;
+                }
+            }
+
+            // Initialize dims_ from template (fixed) and runtime (dynamic) values
+            template <size_t I = 0, size_t DynIdx = 0>
+            void init_dims(const std::array<size_t, num_dynamic> &dyn_sizes) noexcept {
+                if constexpr (I < rank) {
+                    if constexpr (template_dims_[I] == Dynamic) {
+                        dims_[I] = dyn_sizes[DynIdx];
+                        init_dims<I + 1, DynIdx + 1>(dyn_sizes);
+                    } else {
+                        dims_[I] = template_dims_[I];
+                        init_dims<I + 1, DynIdx>(dyn_sizes);
+                    }
+                }
+            }
+
+          public:
+            // Constructor taking runtime sizes for dynamic dimensions only
+            template <typename... DynSizes>
+            requires(sizeof...(DynSizes) == num_dynamic && (std::is_convertible_v<DynSizes, size_t> && ...))
+            explicit tensor(DynSizes... dyn_sizes) : dims_{}, strides_{}, size_(0), data_(nullptr) {
+                std::array<size_t, num_dynamic> dyn_arr = {static_cast<size_t>(dyn_sizes)...};
+                init_dims(dyn_arr);
+                compute_strides();
+                compute_size();
+                allocate();
+            }
+
+            // Default constructor (only valid if no dynamic dims - but this specialization requires dynamic)
+            // For fully dynamic, creates empty tensor
+            tensor() : dims_{}, strides_{}, size_(0), data_(nullptr) {
+                // Initialize fixed dims from template
+                for (size_t i = 0; i < rank; ++i) {
+                    dims_[i] = (template_dims_[i] == Dynamic) ? 0 : template_dims_[i];
+                }
+                compute_strides();
+                compute_size();
+                // Don't allocate - size is 0 due to dynamic dims being 0
+            }
+
+            // Copy constructor
+            tensor(const tensor &other)
+                : dims_(other.dims_), strides_(other.strides_), size_(other.size_), data_(nullptr) {
+                if (size_ > 0) {
+                    data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * size_));
+                    for (size_t i = 0; i < size_; ++i) {
+                        new (&data_[i]) T(other.data_[i]);
+                    }
+                }
+            }
+
+            // Move constructor
+            tensor(tensor &&other) noexcept
+                : dims_(other.dims_), strides_(other.strides_), size_(other.size_), data_(other.data_) {
+                other.size_ = 0;
+                other.data_ = nullptr;
+            }
+
+            // Destructor
+            ~tensor() { deallocate(); }
+
+            // Copy assignment
+            tensor &operator=(const tensor &other) {
+                if (this != &other) {
+                    deallocate();
+                    dims_ = other.dims_;
+                    strides_ = other.strides_;
+                    size_ = other.size_;
+                    if (size_ > 0) {
+                        data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * size_));
+                        for (size_t i = 0; i < size_; ++i) {
+                            new (&data_[i]) T(other.data_[i]);
+                        }
+                    }
+                }
+                return *this;
+            }
+
+            // Move assignment
+            tensor &operator=(tensor &&other) noexcept {
+                if (this != &other) {
+                    deallocate();
+                    dims_ = other.dims_;
+                    strides_ = other.strides_;
+                    size_ = other.size_;
+                    data_ = other.data_;
+                    other.size_ = 0;
+                    other.data_ = nullptr;
+                }
+                return *this;
+            }
+
+            // Resize (only dynamic dimensions can change)
+            template <typename... DynSizes>
+            requires(sizeof...(DynSizes) == num_dynamic && (std::is_convertible_v<DynSizes, size_t> && ...))
+            void resize(DynSizes... dyn_sizes) {
+                deallocate();
+                std::array<size_t, num_dynamic> dyn_arr = {static_cast<size_t>(dyn_sizes)...};
+                init_dims(dyn_arr);
+                compute_strides();
+                compute_size();
+                allocate();
+            }
+
+            // Multi-dimensional indexing
+            template <typename... Indices>
+            requires(sizeof...(Indices) == rank && (std::is_convertible_v<Indices, size_type> && ...))
+            reference operator()(Indices... indices) noexcept {
+                std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
+                size_type linear = 0;
+                for (size_t i = 0; i < rank; ++i) {
+                    linear += idx_arr[i] * strides_[i];
+                }
+                return data_[linear];
+            }
+
+            template <typename... Indices>
+            requires(sizeof...(Indices) == rank && (std::is_convertible_v<Indices, size_type> && ...))
+            const_reference operator()(Indices... indices) const noexcept {
+                std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
+                size_type linear = 0;
+                for (size_t i = 0; i < rank; ++i) {
+                    linear += idx_arr[i] * strides_[i];
+                }
+                return data_[linear];
+            }
+
+            // Bounds-checked access
+            template <typename... Indices>
+            requires(sizeof...(Indices) == rank && (std::is_convertible_v<Indices, size_type> && ...))
+            reference at(Indices... indices) {
+                std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
+                for (size_t i = 0; i < rank; ++i) {
+                    if (idx_arr[i] >= dims_[i]) {
+                        throw std::out_of_range("tensor::at");
+                    }
+                }
+                size_type linear = 0;
+                for (size_t i = 0; i < rank; ++i) {
+                    linear += idx_arr[i] * strides_[i];
+                }
+                return data_[linear];
+            }
+
+            template <typename... Indices>
+            requires(sizeof...(Indices) == rank && (std::is_convertible_v<Indices, size_type> && ...))
+            const_reference at(Indices... indices) const {
+                std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
+                for (size_t i = 0; i < rank; ++i) {
+                    if (idx_arr[i] >= dims_[i]) {
+                        throw std::out_of_range("tensor::at");
+                    }
+                }
+                size_type linear = 0;
+                for (size_t i = 0; i < rank; ++i) {
+                    linear += idx_arr[i] * strides_[i];
+                }
+                return data_[linear];
+            }
+
+            // Linear indexing
+            reference operator[](size_type i) noexcept { return data_[i]; }
+            const_reference operator[](size_type i) const noexcept { return data_[i]; }
+
+            // Raw data access
+            pointer data() noexcept { return data_; }
+            const_pointer data() const noexcept { return data_; }
+
+            // Dimensions
+            size_type size() const noexcept { return size_; }
+            bool empty() const noexcept { return size_ == 0; }
+            const std::array<size_t, rank> &shape() const noexcept { return dims_; }
+            size_type dim(size_t i) const noexcept { return dims_[i]; }
+            const std::array<size_t, rank> &strides() const noexcept { return strides_; }
+
+            // Iterators
+            iterator begin() noexcept { return data_; }
+            const_iterator begin() const noexcept { return data_; }
+            const_iterator cbegin() const noexcept { return data_; }
+
+            iterator end() noexcept { return data_ + size_; }
+            const_iterator end() const noexcept { return data_ + size_; }
+            const_iterator cend() const noexcept { return data_ + size_; }
+
+            // Operations
+            void fill(const T &value) noexcept {
+                for (size_t i = 0; i < size_; ++i) {
+                    data_[i] = value;
+                }
+            }
+
+            void setZero() { fill(T{}); }
+
+            void swap(tensor &other) noexcept {
+                std::swap(dims_, other.dims_);
+                std::swap(strides_, other.strides_);
+                std::swap(size_, other.size_);
+                std::swap(data_, other.data_);
+            }
+
+            // Comparison
+            bool operator==(const tensor &other) const noexcept {
+                if (dims_ != other.dims_)
+                    return false;
+                for (size_t i = 0; i < size_; ++i) {
+                    if (!(data_[i] == other.data_[i]))
+                        return false;
+                }
+                return true;
+            }
+
+            bool operator!=(const tensor &other) const noexcept { return !(*this == other); }
+        };
+
         // Type traits
         template <typename T> struct is_tensor : std::false_type {};
         template <typename T, size_t... Dims> struct is_tensor<tensor<T, Dims...>> : std::true_type {};
@@ -446,6 +752,15 @@ namespace datapod {
         template <typename T> struct is_heap_tensor : std::false_type {};
         template <typename T, size_t... Dims> struct is_heap_tensor<heap_tensor<T, Dims...>> : std::true_type {};
         template <typename T> inline constexpr bool is_heap_tensor_v = is_heap_tensor<T>::value;
+
+        // Type trait to check if tensor has any dynamic dimensions (partial dynamic)
+        // Note: This is different from dynamic_tensor<T> in dynamic.hpp which has runtime rank
+        template <typename T> struct is_partially_dynamic_tensor : std::false_type {};
+        template <typename T, size_t... Dims>
+        requires(has_dynamic_dim_v<Dims...>)
+        struct is_partially_dynamic_tensor<tensor<T, Dims...>> : std::true_type {};
+        template <typename T>
+        inline constexpr bool is_partially_dynamic_tensor_v = is_partially_dynamic_tensor<T>::value;
 
         // Common tensor type aliases (3D)
         template <typename T> using tensor3d_2x2x2 = tensor<T, 2, 2, 2>;
@@ -459,6 +774,15 @@ namespace datapod {
         using tensor3d_3x3x3d = tensor<double, 3, 3, 3>;
         using tensor3d_4x4x4f = tensor<float, 4, 4, 4>;
         using tensor3d_4x4x4d = tensor<double, 4, 4, 4>;
+
+        // Fully dynamic tensor aliases (all dimensions runtime)
+        template <typename T> using Tensor3Xd = tensor<T, Dynamic, Dynamic, Dynamic>;
+        template <typename T> using Tensor4Xd = tensor<T, Dynamic, Dynamic, Dynamic, Dynamic>;
+
+        using Tensor3Xf = tensor<float, Dynamic, Dynamic, Dynamic>;
+        using Tensor3Xdd = tensor<double, Dynamic, Dynamic, Dynamic>;
+        using Tensor4Xf = tensor<float, Dynamic, Dynamic, Dynamic, Dynamic>;
+        using Tensor4Xdd = tensor<double, Dynamic, Dynamic, Dynamic, Dynamic>;
 
     } // namespace mat
 } // namespace datapod
