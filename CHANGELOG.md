@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.11] - 2025-12-27
+
+### <!-- 0 -->⛰️  Features
+
+- Add `Loc` and `Utm` spatial data structures
+
 ## [0.0.10] - 2025-12-27
 
 ### <!-- 0 -->⛰️  Features
