@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <initializer_list>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -13,6 +15,13 @@ namespace datapod {
 
         // Forward declaration
         template <typename T> struct scalar;
+
+        // =============================================================================
+        // DYNAMIC SIZE SENTINEL (Eigen-style)
+        // =============================================================================
+        // Use this as a template parameter to indicate runtime-sized dimensions.
+        // Example: vector<double, Dynamic> is a runtime-sized vector
+        inline constexpr size_t Dynamic = static_cast<size_t>(-1);
 
         // =============================================================================
         // HEAP ALLOCATION THRESHOLD
@@ -50,7 +59,9 @@ namespace datapod {
         // =============================================================================
         // PRIMARY TEMPLATE: Small vectors (stack-allocated, POD, zero-copy)
         // =============================================================================
-        template <typename T, size_t N, bool UseHeap = (N > HEAP_THRESHOLD)> struct vector {
+        // Note: When N == Dynamic, we want to use the dynamic specialization (false flag)
+        // otherwise use heap allocation for large vectors (N > HEAP_THRESHOLD)
+        template <typename T, size_t N, bool UseHeap = (N != Dynamic && N > HEAP_THRESHOLD)> struct vector {
             // Accept arithmetic types (and scalar<T>, but we can't check that here due to forward declaration)
             // The scalar<T> case will work because it's a POD type
             static_assert(N > 0, "vector size must be > 0");
@@ -316,6 +327,311 @@ namespace datapod {
         using vector4d = vector<double, 4>;
         using vector6f = vector<float, 6>;
         using vector6d = vector<double, 6>;
+
+        // =============================================================================
+        // SPECIALIZATION: Dynamic vectors (runtime-sized, heap-allocated)
+        // =============================================================================
+        /**
+         * @brief Runtime-sized numeric vector
+         *
+         * Specialization for vector<T, Dynamic> - size determined at runtime.
+         * Always heap-allocated with SIMD alignment.
+         *
+         * Examples:
+         *   vector<double, Dynamic> v(100);           // 100-element vector
+         *   vector<float, Dynamic> w = {1, 2, 3, 4};  // From initializer list
+         *   v.resize(200);                            // Resize to 200 elements
+         */
+        template <typename T> struct vector<T, Dynamic, false> {
+            using value_type = T;
+            using size_type = size_t;
+            using reference = T &;
+            using const_reference = const T &;
+            using pointer = T *;
+            using const_pointer = const T *;
+            using iterator = T *;
+            using const_iterator = const T *;
+
+            static constexpr size_t rank = 1;
+            static constexpr bool is_pod = false;
+            static constexpr bool uses_heap = true;
+            static constexpr bool is_dynamic = true;
+
+          private:
+            size_t size_;
+            size_t capacity_;
+            T *data_;
+
+            void allocate(size_t cap) {
+                if (cap > 0) {
+                    data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * cap));
+                    capacity_ = cap;
+                } else {
+                    data_ = nullptr;
+                    capacity_ = 0;
+                }
+            }
+
+            void deallocate() {
+                if (data_) {
+                    for (size_t i = 0; i < size_; ++i) {
+                        data_[i].~T();
+                    }
+                    aligned_free(32, data_);
+                    data_ = nullptr;
+                }
+            }
+
+          public:
+            // Default constructor - empty vector
+            vector() noexcept : size_(0), capacity_(0), data_(nullptr) {}
+
+            // Size constructor - allocate with given size, zero-initialized
+            explicit vector(size_t size) : size_(size), capacity_(0), data_(nullptr) {
+                allocate(size);
+                for (size_t i = 0; i < size_; ++i) {
+                    new (&data_[i]) T{};
+                }
+            }
+
+            // Size + value constructor
+            vector(size_t size, const T &value) : size_(size), capacity_(0), data_(nullptr) {
+                allocate(size);
+                for (size_t i = 0; i < size_; ++i) {
+                    new (&data_[i]) T(value);
+                }
+            }
+
+            // Initializer list constructor
+            vector(std::initializer_list<T> init) : size_(init.size()), capacity_(0), data_(nullptr) {
+                allocate(size_);
+                size_t i = 0;
+                for (const auto &val : init) {
+                    new (&data_[i++]) T(val);
+                }
+            }
+
+            // Copy constructor
+            vector(const vector &other) : size_(other.size_), capacity_(0), data_(nullptr) {
+                allocate(size_);
+                for (size_t i = 0; i < size_; ++i) {
+                    new (&data_[i]) T(other.data_[i]);
+                }
+            }
+
+            // Move constructor
+            vector(vector &&other) noexcept : size_(other.size_), capacity_(other.capacity_), data_(other.data_) {
+                other.size_ = 0;
+                other.capacity_ = 0;
+                other.data_ = nullptr;
+            }
+
+            // Destructor
+            ~vector() { deallocate(); }
+
+            // Copy assignment
+            vector &operator=(const vector &other) {
+                if (this != &other) {
+                    deallocate();
+                    size_ = other.size_;
+                    allocate(size_);
+                    for (size_t i = 0; i < size_; ++i) {
+                        new (&data_[i]) T(other.data_[i]);
+                    }
+                }
+                return *this;
+            }
+
+            // Move assignment
+            vector &operator=(vector &&other) noexcept {
+                if (this != &other) {
+                    deallocate();
+                    size_ = other.size_;
+                    capacity_ = other.capacity_;
+                    data_ = other.data_;
+                    other.size_ = 0;
+                    other.capacity_ = 0;
+                    other.data_ = nullptr;
+                }
+                return *this;
+            }
+
+            // Initializer list assignment
+            vector &operator=(std::initializer_list<T> init) {
+                deallocate();
+                size_ = init.size();
+                allocate(size_);
+                size_t i = 0;
+                for (const auto &val : init) {
+                    new (&data_[i++]) T(val);
+                }
+                return *this;
+            }
+
+            // Element access
+            reference operator[](size_type i) noexcept { return data_[i]; }
+            const_reference operator[](size_type i) const noexcept { return data_[i]; }
+
+            reference at(size_type i) {
+                if (i >= size_) {
+                    throw std::out_of_range("vector::at");
+                }
+                return data_[i];
+            }
+
+            const_reference at(size_type i) const {
+                if (i >= size_) {
+                    throw std::out_of_range("vector::at");
+                }
+                return data_[i];
+            }
+
+            reference front() noexcept { return data_[0]; }
+            const_reference front() const noexcept { return data_[0]; }
+
+            reference back() noexcept { return data_[size_ - 1]; }
+            const_reference back() const noexcept { return data_[size_ - 1]; }
+
+            // Raw data access
+            pointer data() noexcept { return data_; }
+            const_pointer data() const noexcept { return data_; }
+
+            // Capacity
+            size_type size() const noexcept { return size_; }
+            size_type length() const noexcept { return size_; }
+            size_type capacity() const noexcept { return capacity_; }
+            bool empty() const noexcept { return size_ == 0; }
+
+            // Resize
+            void resize(size_t new_size) {
+                if (new_size == size_)
+                    return;
+
+                if (new_size <= capacity_) {
+                    if (new_size < size_) {
+                        for (size_t i = new_size; i < size_; ++i) {
+                            data_[i].~T();
+                        }
+                    } else {
+                        for (size_t i = size_; i < new_size; ++i) {
+                            new (&data_[i]) T{};
+                        }
+                    }
+                    size_ = new_size;
+                } else {
+                    T *new_data = static_cast<T *>(aligned_alloc(32, sizeof(T) * new_size));
+                    for (size_t i = 0; i < size_; ++i) {
+                        new (&new_data[i]) T(std::move(data_[i]));
+                        data_[i].~T();
+                    }
+                    for (size_t i = size_; i < new_size; ++i) {
+                        new (&new_data[i]) T{};
+                    }
+                    if (data_) {
+                        aligned_free(32, data_);
+                    }
+                    data_ = new_data;
+                    capacity_ = new_size;
+                    size_ = new_size;
+                }
+            }
+
+            void resize(size_t new_size, const T &value) {
+                size_t old_size = size_;
+                resize(new_size);
+                for (size_t i = old_size; i < size_; ++i) {
+                    data_[i] = value;
+                }
+            }
+
+            void reserve(size_t new_cap) {
+                if (new_cap <= capacity_)
+                    return;
+
+                T *new_data = static_cast<T *>(aligned_alloc(32, sizeof(T) * new_cap));
+                for (size_t i = 0; i < size_; ++i) {
+                    new (&new_data[i]) T(std::move(data_[i]));
+                    data_[i].~T();
+                }
+                if (data_) {
+                    aligned_free(32, data_);
+                }
+                data_ = new_data;
+                capacity_ = new_cap;
+            }
+
+            void clear() {
+                for (size_t i = 0; i < size_; ++i) {
+                    data_[i].~T();
+                }
+                size_ = 0;
+            }
+
+            void push_back(const T &value) {
+                if (size_ >= capacity_) {
+                    reserve(capacity_ == 0 ? 8 : capacity_ * 2);
+                }
+                new (&data_[size_++]) T(value);
+            }
+
+            void push_back(T &&value) {
+                if (size_ >= capacity_) {
+                    reserve(capacity_ == 0 ? 8 : capacity_ * 2);
+                }
+                new (&data_[size_++]) T(std::move(value));
+            }
+
+            void pop_back() {
+                if (size_ > 0) {
+                    data_[--size_].~T();
+                }
+            }
+
+            // Iterators
+            iterator begin() noexcept { return data_; }
+            const_iterator begin() const noexcept { return data_; }
+            const_iterator cbegin() const noexcept { return data_; }
+
+            iterator end() noexcept { return data_ + size_; }
+            const_iterator end() const noexcept { return data_ + size_; }
+            const_iterator cend() const noexcept { return data_ + size_; }
+
+            // Operations
+            void fill(const T &value) noexcept {
+                for (size_t i = 0; i < size_; ++i) {
+                    data_[i] = value;
+                }
+            }
+
+            void swap(vector &other) noexcept {
+                std::swap(size_, other.size_);
+                std::swap(capacity_, other.capacity_);
+                std::swap(data_, other.data_);
+            }
+
+            // Comparison
+            bool operator==(const vector &other) const noexcept {
+                if (size_ != other.size_)
+                    return false;
+                for (size_t i = 0; i < size_; ++i) {
+                    if (!(data_[i] == other.data_[i]))
+                        return false;
+                }
+                return true;
+            }
+
+            bool operator!=(const vector &other) const noexcept { return !(*this == other); }
+        };
+
+        // Type trait for dynamic vector
+        template <typename T> struct is_dynamic_vector : std::false_type {};
+        template <typename T> struct is_dynamic_vector<vector<T, Dynamic, false>> : std::true_type {};
+        template <typename T> inline constexpr bool is_dynamic_vector_v = is_dynamic_vector<T>::value;
+
+        // Eigen-style aliases for dynamic vectors
+        using VectorXf = vector<float, Dynamic>;
+        using VectorXd = vector<double, Dynamic>;
+        using VectorXi = vector<int, Dynamic>;
 
     } // namespace mat
 } // namespace datapod

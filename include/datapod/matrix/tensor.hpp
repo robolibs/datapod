@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <initializer_list>
 #include <numeric>
 #include <stdexcept>
 #include <tuple>
@@ -69,6 +70,17 @@ namespace datapod {
 
             // Default constructor (for aggregate initialization)
             constexpr tensor() noexcept = default;
+
+            // Brace initialization from flat list (column-major order)
+            // Usage: tensor<double, 2, 2, 2> t = {1, 2, 3, 4, 5, 6, 7, 8};
+            constexpr tensor(std::initializer_list<T> init) noexcept : data_{} {
+                size_t i = 0;
+                for (const auto &val : init) {
+                    if (i >= size_)
+                        break;
+                    data_[i++] = val;
+                }
+            }
 
             // Composition constructor: construct tensor from slices along last dimension
             // For tensor<T, D0, D1, ..., Dn>, accepts Dn slices of shape D0 x D1 x ... x D(n-1)
@@ -295,6 +307,21 @@ namespace datapod {
                     other.data_ = nullptr;
                 }
                 return *this;
+            }
+
+            // Brace initialization from flat list (column-major order)
+            // Usage: heap_tensor<double, 10, 10, 10> t = {1, 2, 3, ...};
+            heap_tensor(std::initializer_list<T> init) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
+                size_t i = 0;
+                for (const auto &val : init) {
+                    if (i >= size_)
+                        break;
+                    new (&data_[i++]) T(val);
+                }
+                // Zero-initialize remaining elements
+                for (; i < size_; ++i) {
+                    new (&data_[i]) T{};
+                }
             }
 
             // Serialization support

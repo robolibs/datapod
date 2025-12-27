@@ -7,11 +7,16 @@
  * This header includes all matrix and tensor types for
  * multi-dimensional array operations and linear algebra.
  *
- * Hierarchy:
+ * Fixed-size types (compile-time dimensions):
  *   - scalar<T>           : rank-0 (0D) - single value
  *   - vector<T, N>        : rank-1 (1D) - fixed-size vector
  *   - matrix<T, R, C>     : rank-2 (2D) - fixed-size matrix
  *   - tensor<T, Dims...>  : rank-N (3D+) - N-dimensional tensor
+ *
+ * Dynamic types (runtime dimensions, Eigen-style):
+ *   - dynamic_vector<T>   : rank-1 (1D) - runtime-sized vector (VectorXd)
+ *   - dynamic_matrix<T>   : rank-2 (2D) - runtime-sized matrix (MatrixXd)
+ *   - dynamic_tensor<T>   : rank-N      - runtime-ranked tensor (TensorXd)
  *
  * Mathematical types (in mat::):
  *   - complex<T>          : Complex numbers (a + bi)
@@ -30,11 +35,14 @@
  * All types are in the datapod::mat namespace.
  */
 
-// Core tensor types
+// Core tensor types (fixed-size)
 #include "matrix/matrix.hpp"
 #include "matrix/scalar.hpp"
 #include "matrix/tensor.hpp"
 #include "matrix/vector.hpp"
+
+// Dynamic tensor types (runtime-sized)
+#include "matrix/dynamic.hpp"
 
 // Mathematical types
 #include "matrix/math/bigint.hpp"

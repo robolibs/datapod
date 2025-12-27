@@ -14,6 +14,7 @@
 #include "datapod/core/equal_to.hpp"
 #include "datapod/core/mode.hpp"
 #include "datapod/core/verify.hpp"
+#include "datapod/matrix/dynamic.hpp"
 #include "datapod/matrix/matrix.hpp"
 #include "datapod/matrix/tensor.hpp"
 #include "datapod/matrix/vector.hpp"
@@ -77,6 +78,10 @@ namespace datapod {
     template <typename T, std::size_t R, std::size_t C>
     struct is_container<mat::matrix<T, R, C, true>> : std::true_type {};
     template <typename T, std::size_t... Dims> struct is_container<mat::heap_tensor<T, Dims...>> : std::true_type {};
+    // Dynamic mat types need special serialization (vector<T, Dynamic>, matrix<T, Dynamic, Dynamic>, dynamic_tensor<T>)
+    template <typename T> struct is_container<mat::vector<T, mat::Dynamic, false>> : std::true_type {};
+    template <typename T> struct is_container<mat::matrix<T, mat::Dynamic, mat::Dynamic, false>> : std::true_type {};
+    template <typename T> struct is_container<mat::dynamic_tensor<T>> : std::true_type {};
     template <typename T> constexpr bool is_container_v = is_container<decay_t<T>>::value;
 
     // Serialize aggregate types (structs) using reflection
@@ -198,6 +203,60 @@ namespace datapod {
     void serialize(Ctx &ctx, mat::heap_tensor<T, Dims...> &value) {
         // Fixed size, just write all elements
         constexpr std::size_t total = (Dims * ...);
+        for (std::size_t i = 0; i < total; ++i) {
+            serialize<M>(ctx, value[i]);
+        }
+    }
+
+    // =============================================================================
+    // Serialize dynamic mat types
+    // =============================================================================
+
+    // Serialize mat::vector<T, Dynamic>
+    // Format: [size_t size][T data[0]][T data[1]]...[T data[size-1]]
+    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::vector<T, mat::Dynamic, false> &value) {
+        // Write size
+        auto const sz = value.size();
+        serialize<M>(ctx, const_cast<std::size_t &>(sz));
+
+        // Write elements
+        for (std::size_t i = 0; i < sz; ++i) {
+            serialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Serialize mat::matrix<T, Dynamic, Dynamic>
+    // Format: [size_t rows][size_t cols][T data[0]]...[T data[rows*cols-1]]
+    template <Mode M, typename Ctx, typename T>
+    void serialize(Ctx &ctx, mat::matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
+        // Write dimensions
+        auto const rows = value.rows();
+        auto const cols = value.cols();
+        serialize<M>(ctx, const_cast<std::size_t &>(rows));
+        serialize<M>(ctx, const_cast<std::size_t &>(cols));
+
+        // Write elements (column-major order)
+        std::size_t total = rows * cols;
+        for (std::size_t i = 0; i < total; ++i) {
+            serialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Serialize mat::dynamic_tensor
+    // Format: [size_t rank][size_t dim0]...[size_t dimN][T data[...]]
+    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::dynamic_tensor<T> &value) {
+        // Write rank (number of dimensions)
+        auto const r = value.rank();
+        serialize<M>(ctx, const_cast<std::size_t &>(r));
+
+        // Write each dimension
+        for (std::size_t i = 0; i < r; ++i) {
+            auto const d = value.dim(i);
+            serialize<M>(ctx, const_cast<std::size_t &>(d));
+        }
+
+        // Write elements (column-major order)
+        std::size_t total = value.size();
         for (std::size_t i = 0; i < total; ++i) {
             serialize<M>(ctx, value[i]);
         }
@@ -431,6 +490,60 @@ namespace datapod {
     void deserialize(Ctx &ctx, mat::heap_tensor<T, Dims...> &value) {
         // Fixed size, read all elements
         constexpr std::size_t total = (Dims * ...);
+        for (std::size_t i = 0; i < total; ++i) {
+            deserialize<M>(ctx, value[i]);
+        }
+    }
+
+    // =============================================================================
+    // Deserialize dynamic mat types
+    // =============================================================================
+
+    // Deserialize mat::vector<T, Dynamic>
+    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::vector<T, mat::Dynamic, false> &value) {
+        // Read size
+        std::size_t sz = 0;
+        deserialize<M>(ctx, sz);
+
+        // Resize and read elements
+        value.resize(sz);
+        for (std::size_t i = 0; i < sz; ++i) {
+            deserialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Deserialize mat::matrix<T, Dynamic, Dynamic>
+    template <Mode M, typename Ctx, typename T>
+    void deserialize(Ctx &ctx, mat::matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
+        // Read dimensions
+        std::size_t rows = 0, cols = 0;
+        deserialize<M>(ctx, rows);
+        deserialize<M>(ctx, cols);
+
+        // Resize and read elements
+        value.resize(rows, cols);
+        std::size_t total = rows * cols;
+        for (std::size_t i = 0; i < total; ++i) {
+            deserialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Deserialize mat::dynamic_tensor
+    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::dynamic_tensor<T> &value) {
+        // Read rank
+        std::size_t r = 0;
+        deserialize<M>(ctx, r);
+
+        // Read dimensions
+        Vector<std::size_t> dims;
+        dims.resize(r);
+        for (std::size_t i = 0; i < r; ++i) {
+            deserialize<M>(ctx, dims[i]);
+        }
+
+        // Resize and read elements
+        value.resize(dims);
+        std::size_t total = value.size();
         for (std::size_t i = 0; i < total; ++i) {
             deserialize<M>(ctx, value[i]);
         }
