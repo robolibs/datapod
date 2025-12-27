@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.12] - 2025-12-27
+
+### <!-- 0 -->⛰️  Features
+
+- Introduce `mat::quaternion` and refactor `spatial::Quaternion`
+
 ## [0.0.11] - 2025-12-27
 
 ### <!-- 0 -->⛰️  Features
