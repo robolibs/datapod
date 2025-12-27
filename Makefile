@@ -39,7 +39,7 @@ build:
 	@echo "Running clang-format on source files..."
 	@find ./src ./include -name "*.cpp" -o -name "*.hpp" -o -name "*.h" | xargs clang-format -i
 ifeq ($(BUILD_SYSTEM),xmake)
-	@xmake 2>&1 | tee >(grep "error:" > "$(TOP_DIR)/.quickfix")
+	@xmake -y 2>&1 | tee >(grep "error:" > "$(TOP_DIR)/.quickfix")
 else
 	@if [ ! -d "$(BUILD_DIR)" ]; then \
 		echo "Build directory doesn't exist, running config first..."; \
@@ -125,6 +125,7 @@ else
 	$(error Invalid documentation type. Use 'make docs TYPE=mdbook' or 'make docs TYPE=doxygen')
 endif
 
+TYPE ?= patch
 
 release:
 	@if [ -z "$(TYPE)" ]; then \
@@ -147,6 +148,10 @@ release:
 		changelog=$$(git cliff --unreleased --strip all); \
 		git cliff --tag $$version --unreleased --prepend CHANGELOG.md; \
 	fi; \
+	# if [ "$(TYPE)" = "minor" ] || [ "$(TYPE)" = "major" ]; then \
+		RELEASE_NAME=$$(aichat "Based on the following changelog, generate a creative release codename. Should be 2 words, poetic or evocative, like 'Frozen Lake' or 'Iron Orchard'. Changelog: $$changelog"); \
+		echo "Release codename: $$RELEASE_NAME"; \
+	# fi; \
 	sed -i -E 's/(project\(.*VERSION )[0-9]+\.[0-9]+\.[0-9]+/\1'$$version'/' CMakeLists.txt; \
 	if [ -f xmake.lua ]; then \
 		sed -i -E 's/(set_version\(")[0-9]+\.[0-9]+\.[0-9]+/\1'$$version'/' xmake.lua; \

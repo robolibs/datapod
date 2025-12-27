@@ -12,12 +12,14 @@
 #include "spatial/acceleration.hpp"
 #include "spatial/euler.hpp"
 #include "spatial/geo.hpp"
+#include "spatial/loc.hpp"
 #include "spatial/point.hpp"
 #include "spatial/pose.hpp"
 #include "spatial/quaternion.hpp"
 #include "spatial/size.hpp"
 #include "spatial/state.hpp"
 #include "spatial/transform.hpp"
+#include "spatial/utm.hpp"
 #include "spatial/velocity.hpp"
 
 // Bounding volumes
