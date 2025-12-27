@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.10] - 2025-12-27
+
+### <!-- 0 -->⛰️  Features
+
+- Add partially dynamic tensor support
+- Add Eigen-style dynamic matrix and tensor types
+- Add complex spatial `Layer` type
+- Move rigid body transform to spatial module
+
 ## [0.0.9] - 2025-12-26
 
 ### <!-- 0 -->⛰️  Features
