@@ -19,7 +19,7 @@ TEST_CASE("Box - Default construction") {
 }
 
 TEST_CASE("Box - Aggregate initialization") {
-    Box box{{{5.0, 5.0, 5.0}, {0.0, 0.0, 0.0}}, {10.0, 20.0, 30.0}};
+    Box box{{{5.0, 5.0, 5.0}, Quaternion{}}, {10.0, 20.0, 30.0}};
     CHECK(box.pose.point.x == 5.0);
     CHECK(box.pose.point.y == 5.0);
     CHECK(box.pose.point.z == 5.0);
@@ -29,14 +29,14 @@ TEST_CASE("Box - Aggregate initialization") {
 }
 
 TEST_CASE("Box - members() reflection") {
-    Box box{{{5.0, 5.0, 5.0}, {0.0, 0.0, 0.0}}, {10.0, 20.0, 30.0}};
+    Box box{{{5.0, 5.0, 5.0}, Quaternion{}}, {10.0, 20.0, 30.0}};
     auto m = box.members();
     CHECK(&std::get<0>(m) == &box.pose);
     CHECK(&std::get<1>(m) == &box.size);
 }
 
 TEST_CASE("Box - const members() reflection") {
-    const Box box{{{5.0, 5.0, 5.0}, {0.0, 0.0, 0.0}}, {10.0, 20.0, 30.0}};
+    const Box box{{{5.0, 5.0, 5.0}, Quaternion{}}, {10.0, 20.0, 30.0}};
     auto m = box.members();
     CHECK(&std::get<0>(m) == &box.pose);
     CHECK(&std::get<1>(m) == &box.size);
@@ -47,7 +47,7 @@ TEST_CASE("Box - const members() reflection") {
 // ============================================================================
 
 TEST_CASE("Box - center returns pose point") {
-    Box box{{{10.0, 20.0, 30.0}, {0.0, 0.0, 0.0}}, {5.0, 5.0, 5.0}};
+    Box box{{{10.0, 20.0, 30.0}, Quaternion{}}, {5.0, 5.0, 5.0}};
     Point c = box.center();
     CHECK(c.x == doctest::Approx(10.0));
     CHECK(c.y == doctest::Approx(20.0));
@@ -55,7 +55,7 @@ TEST_CASE("Box - center returns pose point") {
 }
 
 TEST_CASE("Box - center at origin") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point c = box.center();
     CHECK(c.x == doctest::Approx(0.0));
     CHECK(c.y == doctest::Approx(0.0));
@@ -67,22 +67,22 @@ TEST_CASE("Box - center at origin") {
 // ============================================================================
 
 TEST_CASE("Box - volume of degenerate box") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {0.0, 0.0, 0.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {0.0, 0.0, 0.0}};
     CHECK(box.volume() == doctest::Approx(0.0));
 }
 
 TEST_CASE("Box - volume of unit cube") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {1.0, 1.0, 1.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {1.0, 1.0, 1.0}};
     CHECK(box.volume() == doctest::Approx(1.0));
 }
 
 TEST_CASE("Box - volume of 2x3x4 box") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {2.0, 3.0, 4.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {2.0, 3.0, 4.0}};
     CHECK(box.volume() == doctest::Approx(24.0));
 }
 
 TEST_CASE("Box - volume of 10x10x10 cube") {
-    Box box{{{5.0, 5.0, 5.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{5.0, 5.0, 5.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     CHECK(box.volume() == doctest::Approx(1000.0));
 }
 
@@ -91,22 +91,22 @@ TEST_CASE("Box - volume of 10x10x10 cube") {
 // ============================================================================
 
 TEST_CASE("Box - surface area of degenerate box") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {0.0, 0.0, 0.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {0.0, 0.0, 0.0}};
     CHECK(box.surface_area() == doctest::Approx(0.0));
 }
 
 TEST_CASE("Box - surface area of unit cube") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {1.0, 1.0, 1.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {1.0, 1.0, 1.0}};
     CHECK(box.surface_area() == doctest::Approx(6.0));
 }
 
 TEST_CASE("Box - surface area of 2x2x2 cube") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {2.0, 2.0, 2.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {2.0, 2.0, 2.0}};
     CHECK(box.surface_area() == doctest::Approx(24.0));
 }
 
 TEST_CASE("Box - surface area of 2x3x4 box") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {2.0, 3.0, 4.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {2.0, 3.0, 4.0}};
     // 2*(2*3 + 3*4 + 4*2) = 2*(6 + 12 + 8) = 52
     CHECK(box.surface_area() == doctest::Approx(52.0));
 }
@@ -116,13 +116,13 @@ TEST_CASE("Box - surface area of 2x3x4 box") {
 // ============================================================================
 
 TEST_CASE("Box - corners returns 8 points") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     auto corners = box.corners();
     CHECK(corners.size() == 8);
 }
 
 TEST_CASE("Box - corners of unit cube at origin") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {1.0, 1.0, 1.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {1.0, 1.0, 1.0}};
     auto corners = box.corners();
 
     // Check corner 0: bottom-back-left (-0.5, -0.5, -0.5)
@@ -142,7 +142,7 @@ TEST_CASE("Box - corners of unit cube at origin") {
 }
 
 TEST_CASE("Box - corners of box with offset center") {
-    Box box{{{10.0, 20.0, 30.0}, {0.0, 0.0, 0.0}}, {6.0, 8.0, 10.0}};
+    Box box{{{10.0, 20.0, 30.0}, Quaternion{}}, {6.0, 8.0, 10.0}};
     auto corners = box.corners();
 
     // Center is at (10, 20, 30), half-extents are (3, 4, 5)
@@ -158,7 +158,7 @@ TEST_CASE("Box - corners of box with offset center") {
 }
 
 TEST_CASE("Box - corners symmetric around center") {
-    Box box{{{5.0, 5.0, 5.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{5.0, 5.0, 5.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     auto corners = box.corners();
 
     // All corners should be equidistant from center
@@ -176,48 +176,48 @@ TEST_CASE("Box - corners symmetric around center") {
 // ============================================================================
 
 TEST_CASE("Box - contains center point") {
-    Box box{{{10.0, 10.0, 10.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{10.0, 10.0, 10.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     CHECK(box.contains(box.center()));
 }
 
 TEST_CASE("Box - contains point inside") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point inside{2.0, 3.0, 4.0};
     CHECK(box.contains(inside));
 }
 
 TEST_CASE("Box - contains point on face") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point onFace{5.0, 0.0, 0.0}; // On +X face
     CHECK(box.contains(onFace));
 }
 
 TEST_CASE("Box - does not contain point outside X") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point outside{6.0, 0.0, 0.0};
     CHECK_FALSE(box.contains(outside));
 }
 
 TEST_CASE("Box - does not contain point outside Y") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point outside{0.0, 6.0, 0.0};
     CHECK_FALSE(box.contains(outside));
 }
 
 TEST_CASE("Box - does not contain point outside Z") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point outside{0.0, 0.0, 6.0};
     CHECK_FALSE(box.contains(outside));
 }
 
 TEST_CASE("Box - does not contain far point") {
-    Box box{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}, {1.0, 1.0, 1.0}};
+    Box box{{{0.0, 0.0, 0.0}, Quaternion{}}, {1.0, 1.0, 1.0}};
     Point outside{100.0, 100.0, 100.0};
     CHECK_FALSE(box.contains(outside));
 }
 
 TEST_CASE("Box - contains with offset center") {
-    Box box{{{20.0, 30.0, 40.0}, {0.0, 0.0, 0.0}}, {10.0, 10.0, 10.0}};
+    Box box{{{20.0, 30.0, 40.0}, Quaternion{}}, {10.0, 10.0, 10.0}};
     Point inside{22.0, 32.0, 42.0};
     CHECK(box.contains(inside));
 }

@@ -63,7 +63,7 @@ namespace datapod {
 
         inline bool operator!=(const Euler &other) const noexcept { return !(*this == other); }
 
-        // Conversion to Quaternion (implementation at end of quaternion.hpp)
+        // Conversion to Quaternion (implementation in quaternion.hpp after Quaternion is defined)
         inline Quaternion to_quaternion() const noexcept;
 
         // Conversion to/from mat::vector for SIMD operations

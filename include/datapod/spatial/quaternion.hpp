@@ -1,119 +1,166 @@
 #pragma once
 
-#include <cmath>
-#include <tuple>
+/**
+ * @file quaternion.hpp
+ * @brief Spatial quaternion for 3D rotations
+ *
+ * This file provides the Quaternion struct which extends mat::quaternion<double>
+ * with spatial/robotics-specific functionality like Euler angle conversion.
+ *
+ * For pure mathematical quaternion operations, see: datapod/matrix/math/quaternion.hpp
+ */
 
-#include "datapod/matrix/vector.hpp"
+#include "datapod/matrix/math/quaternion.hpp"
+#include "datapod/spatial/euler.hpp"
 
 namespace datapod {
-
-    // Forward declaration
-    struct Euler;
 
     /**
-     * @brief Unit quaternion for 3D rotation (w, x, y, z) - POD
+     * @brief Unit quaternion for 3D rotation - extends mat::quaternion<double>
      *
-     * Pure aggregate struct with rotation utility methods.
-     * Use aggregate initialization: Quaternion{1.0, 0.0, 0.0, 0.0}
-     * w is the real part, (x, y, z) is the imaginary part.
-     * Fully serializable and reflectable.
+     * Inherits all mathematical operations from mat::quaternion<double> and adds
+     * spatial-specific functionality like Euler angle conversion.
+     *
+     * Convention: (w, x, y, z) where w is the scalar (real) part.
+     * Identity: Quaternion{1, 0, 0, 0} represents no rotation.
+     *
+     * Examples:
+     *   Quaternion q{1.0, 0.0, 0.0, 0.0};  // Identity (no rotation)
+     *   Quaternion q2 = Quaternion::from_euler(roll, pitch, yaw);
+     *   Euler e = q2.to_euler();           // Convert to Euler angles
+     *   auto rotated = q * q2;             // Compose rotations (Hamilton product)
      */
-    struct Quaternion {
-        double w = 1.0; // Real part
-        double x = 0.0; // Imaginary i
-        double y = 0.0; // Imaginary j
-        double z = 0.0; // Imaginary k
+    struct Quaternion : public mat::quaternion<double> {
+        using Base = mat::quaternion<double>;
 
-        auto members() noexcept { return std::tie(w, x, y, z); }
-        auto members() const noexcept { return std::tie(w, x, y, z); }
+        // Inherit constructors
+        using Base::Base;
 
-        // Utility
-        inline bool is_set() const noexcept { return w != 1.0 || x != 0.0 || y != 0.0 || z != 0.0; }
+        // Default constructor - identity quaternion
+        constexpr Quaternion() noexcept : Base(1.0, 0.0, 0.0, 0.0) {}
 
-        inline double magnitude() const noexcept { return std::sqrt(w * w + x * x + y * y + z * z); }
+        // Constructor from base type (implicit conversion)
+        constexpr Quaternion(const Base &q) noexcept : Base(q) {}
+        constexpr Quaternion(Base &&q) noexcept : Base(std::move(q)) {}
 
-        inline Quaternion normalized() const noexcept {
-            const double mag = magnitude();
-            if (mag < 1e-10) {
-                return Quaternion{1.0, 0.0, 0.0, 0.0}; // Identity quaternion
-            }
-            return Quaternion{w / mag, x / mag, y / mag, z / mag};
+        // Aggregate-style constructor
+        constexpr Quaternion(double w_, double x_, double y_, double z_) noexcept : Base(w_, x_, y_, z_) {}
+
+        // ===== SPATIAL-SPECIFIC METHODS =====
+
+        /**
+         * @brief Convert to Euler angles
+         * @return Euler angles (roll, pitch, yaw in radians)
+         */
+        inline Euler to_euler() const noexcept {
+            double r, p, y;
+            Base::to_euler(r, p, y);
+            return Euler{r, p, y};
         }
 
-        inline Quaternion conjugate() const noexcept { return Quaternion{w, -x, -y, -z}; }
-
-        // Operators
-        inline Quaternion operator*(const Quaternion &other) const noexcept {
-            return Quaternion{w * other.w - x * other.x - y * other.y - z * other.z,
-                              w * other.x + x * other.w + y * other.z - z * other.y,
-                              w * other.y - x * other.z + y * other.w + z * other.x,
-                              w * other.z + x * other.y - y * other.x + z * other.w};
+        /**
+         * @brief Create quaternion from Euler angles
+         * @param e Euler angles (roll, pitch, yaw in radians)
+         * @return Unit quaternion representing the rotation
+         */
+        static inline Quaternion from_euler(const Euler &e) noexcept {
+            return Quaternion{Base::from_euler(e.roll, e.pitch, e.yaw)};
         }
 
-        inline bool operator==(const Quaternion &other) const noexcept {
-            return w == other.w && x == other.x && y == other.y && z == other.z;
+        // Re-expose static factories with correct return type
+        static constexpr Quaternion identity() noexcept { return Quaternion{1.0, 0.0, 0.0, 0.0}; }
+
+        static inline Quaternion from_axis_angle(double ax, double ay, double az, double angle) noexcept {
+            return Quaternion{Base::from_axis_angle(ax, ay, az, angle)};
         }
 
-        inline bool operator!=(const Quaternion &other) const noexcept { return !(*this == other); }
-
-        // Conversion to Euler (implementation below, after including euler.hpp)
-        inline Euler to_euler() const noexcept;
-
-        // Conversion to/from mat::vector for SIMD operations
-        inline mat::vector<double, 4> to_mat() const noexcept { return mat::vector<double, 4>{w, x, y, z}; }
-
-        static inline Quaternion from_mat(const mat::vector<double, 4> &v) noexcept {
-            return Quaternion{v[0], v[1], v[2], v[3]};
+        static inline Quaternion from_euler(double roll, double pitch, double yaw) noexcept {
+            return Quaternion{Base::from_euler(roll, pitch, yaw)};
         }
+
+        // Override operations that return Base to return Quaternion instead
+        constexpr Quaternion conjugate() const noexcept { return Quaternion{Base::conjugate()}; }
+
+        inline Quaternion inverse() const noexcept { return Quaternion{Base::inverse()}; }
+
+        constexpr Quaternion unit_inverse() const noexcept { return Quaternion{Base::unit_inverse()}; }
+
+        inline Quaternion normalized() const noexcept { return Quaternion{Base::normalized()}; }
+
+        // Operators that return Quaternion
+        constexpr Quaternion operator-() const noexcept { return Quaternion{Base::operator-()}; }
+        constexpr Quaternion operator+() const noexcept { return *this; }
     };
 
-} // namespace datapod
-
-// Include Euler after Quaternion struct is complete
-#include "euler.hpp"
-
-namespace datapod {
-
-    // Implementation of conversion methods (both structs are now complete)
-
-    inline Quaternion Euler::to_quaternion() const noexcept {
-        const double cr = std::cos(roll * 0.5);
-        const double sr = std::sin(roll * 0.5);
-        const double cp = std::cos(pitch * 0.5);
-        const double sp = std::sin(pitch * 0.5);
-        const double cy = std::cos(yaw * 0.5);
-        const double sy = std::sin(yaw * 0.5);
-
-        return Quaternion{
-            cr * cp * cy + sr * sp * sy, // w
-            sr * cp * cy - cr * sp * sy, // x
-            cr * sp * cy + sr * cp * sy, // y
-            cr * cp * sy - sr * sp * cy  // z
-        };
+    // Binary operators returning Quaternion
+    inline Quaternion operator+(const Quaternion &a, const Quaternion &b) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(a) +
+                          static_cast<const mat::quaternion<double> &>(b)};
     }
 
-    inline Euler Quaternion::to_euler() const noexcept {
-        // Roll (x-axis rotation)
-        const double sinr_cosp = 2.0 * (w * x + y * z);
-        const double cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
-        const double roll = std::atan2(sinr_cosp, cosr_cosp);
-
-        // Pitch (y-axis rotation)
-        const double sinp = 2.0 * (w * y - z * x);
-        double pitch;
-        if (std::abs(sinp) >= 1.0) {
-            // Gimbal lock case
-            pitch = std::copysign(1.5707963267948966, sinp); // Use 90 degrees (PI/2)
-        } else {
-            pitch = std::asin(sinp);
-        }
-
-        // Yaw (z-axis rotation)
-        const double siny_cosp = 2.0 * (w * z + x * y);
-        const double cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
-        const double yaw = std::atan2(siny_cosp, cosy_cosp);
-
-        return Euler{roll, pitch, yaw};
+    inline Quaternion operator-(const Quaternion &a, const Quaternion &b) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(a) -
+                          static_cast<const mat::quaternion<double> &>(b)};
     }
+
+    inline Quaternion operator*(const Quaternion &a, const Quaternion &b) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(a) *
+                          static_cast<const mat::quaternion<double> &>(b)};
+    }
+
+    inline Quaternion operator/(const Quaternion &a, const Quaternion &b) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(a) /
+                          static_cast<const mat::quaternion<double> &>(b)};
+    }
+
+    inline Quaternion operator*(const Quaternion &q, double s) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(q) * s};
+    }
+
+    inline Quaternion operator*(double s, const Quaternion &q) noexcept { return q * s; }
+
+    inline Quaternion operator/(const Quaternion &q, double s) noexcept {
+        return Quaternion{static_cast<const mat::quaternion<double> &>(q) / s};
+    }
+
+    // Interpolation returning Quaternion
+    inline Quaternion lerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
+        return Quaternion{mat::lerp(static_cast<const mat::quaternion<double> &>(a),
+                                    static_cast<const mat::quaternion<double> &>(b), t)};
+    }
+
+    inline Quaternion nlerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
+        return Quaternion{mat::nlerp(static_cast<const mat::quaternion<double> &>(a),
+                                     static_cast<const mat::quaternion<double> &>(b), t)};
+    }
+
+    inline Quaternion slerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
+        return Quaternion{mat::slerp(static_cast<const mat::quaternion<double> &>(a),
+                                     static_cast<const mat::quaternion<double> &>(b), t)};
+    }
+
+    // ===== EULER IMPLEMENTATION =====
+
+    inline Quaternion Euler::to_quaternion() const noexcept { return Quaternion::from_euler(roll, pitch, yaw); }
+
+    // ===== FLOAT VERSION =====
+
+    /**
+     * @brief Single-precision quaternion for 3D rotation
+     */
+    struct Quaternionf : public mat::quaternion<float> {
+        using Base = mat::quaternion<float>;
+        using Base::Base;
+
+        constexpr Quaternionf() noexcept : Base(1.0f, 0.0f, 0.0f, 0.0f) {}
+        constexpr Quaternionf(const Base &q) noexcept : Base(q) {}
+        constexpr Quaternionf(float w_, float x_, float y_, float z_) noexcept : Base(w_, x_, y_, z_) {}
+
+        static constexpr Quaternionf identity() noexcept { return Quaternionf{1.0f, 0.0f, 0.0f, 0.0f}; }
+
+        constexpr Quaternionf conjugate() const noexcept { return Quaternionf{Base::conjugate()}; }
+        inline Quaternionf inverse() const noexcept { return Quaternionf{Base::inverse()}; }
+        inline Quaternionf normalized() const noexcept { return Quaternionf{Base::normalized()}; }
+    };
 
 } // namespace datapod
