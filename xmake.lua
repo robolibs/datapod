@@ -68,54 +68,11 @@ option("tests")
     set_description("Enable tests")
 option_end()
 
-option("rerun")
-    set_default(false)
-    set_showmenu(true)
-    set_description("Enable rerun_sdk support")
-option_end()
-
 option("short_namespace")
     set_default(true)
     set_showmenu(true)
     set_description("Enable short namespace alias (dp)")
 option_end()
-
--- Define rerun_sdk package (from ~/.local installation)
-package("rerun_sdk")
-    set_kind("library", {headeronly = false})
-
-    on_fetch(function (package)
-        local home = os.getenv("HOME")
-        if not home then
-            return
-        end
-
-        local result = {}
-        -- Link in correct order: rerun_sdk -> rerun_c -> arrow
-        result.links = {"rerun_sdk", "rerun_c__linux_x64", "arrow", "arrow_bundled_dependencies"}
-        result.linkdirs = {path.join(home, ".local/lib")}
-        result.includedirs = {path.join(home, ".local/include")}
-
-        -- Check if library exists
-        local libpath = path.join(home, ".local/lib/librerun_sdk.a")
-        if os.isfile(libpath) then
-            return result
-        end
-    end)
-
-    on_install(function (package)
-        -- Already installed in ~/.local, nothing to do
-        local home = os.getenv("HOME")
-        package:addenv("PATH", path.join(home, ".local/bin"))
-    end)
-package_end()
-
--- Add required packages conditionally
-if has_config("examples") then
-    add_requires("rerun_sdk")
-elseif has_config("rerun") then
-    add_requires("rerun_sdk")
-end
 
 if has_config("tests") then
     add_requires("doctest")
@@ -137,16 +94,6 @@ target("datapod")
         add_defines("SHORT_NAMESPACE", {public = true})
     end
 
-    -- Conditional rerun support (only if package is found)
-    if has_config("examples") or has_config("rerun") then
-        on_load(function (target)
-            if target:pkg("rerun_sdk") then
-                target:add("defines", "HAS_RERUN")
-            end
-        end)
-        add_packages("rerun_sdk")
-    end
-
     -- Set install files
     add_installfiles("include/(datapod/**.hpp)")
     on_install(function (target)
@@ -166,14 +113,6 @@ if has_config("examples") and os.projectdir() == os.curdir() then
 
             -- Always enable SHORT_NAMESPACE for examples
             add_defines("SHORT_NAMESPACE")
-
-            -- Always try to add rerun_sdk for examples (matching CMake behavior)
-            on_load(function (target)
-                if target:pkg("rerun_sdk") then
-                    target:add("defines", "HAS_RERUN")
-                end
-            end)
-            add_packages("rerun_sdk")
 
             add_includedirs("include")
         target_end()

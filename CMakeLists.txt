@@ -90,10 +90,6 @@ export(EXPORT ${project_name}Targets
 
 # --------------------------------------------------------------------------------------------------
 if(${project_name_upper}_BUILD_EXAMPLES)
-  add_definitions(-DHAS_RERUN)
-  find_package(rerun_sdk QUIET)
-  list(APPEND ext_deps rerun_sdk)
-
   file(GLOB exe CONFIGURE_DEPENDS examples/*.cpp)
   # ----------------------------------------------
   set(exec_names)
