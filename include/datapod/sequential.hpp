@@ -11,6 +11,7 @@
 #include "sequential/array.hpp"
 #include "sequential/bitvec.hpp"
 #include "sequential/cstring.hpp"
+#include "sequential/deque.hpp"
 #include "sequential/fixed_queue.hpp"
 #include "sequential/flat_matrix.hpp"
 #include "sequential/forward_list.hpp"
