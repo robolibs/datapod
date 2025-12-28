@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.13] - 2025-12-28
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Update build and configuration scripts
+
 ## [0.0.12] - 2025-12-27
 
 ### <!-- 0 -->⛰️  Features
