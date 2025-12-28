@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.14] - 2025-12-28
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Remove rerun_sdk support from build systems
+
+### Build
+
+- Optimize xmake compilation speed
+
 ## [0.0.13] - 2025-12-28
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks
