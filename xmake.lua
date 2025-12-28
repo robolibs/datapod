@@ -75,7 +75,7 @@ option("rerun")
 option_end()
 
 option("short_namespace")
-    set_default(false)
+    set_default(true)
     set_showmenu(true)
     set_description("Enable short namespace alias (dp)")
 option_end()

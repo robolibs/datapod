@@ -20,7 +20,7 @@ set(params
 string(TOUPPER ${project_name} project_name_upper)
 option(${project_name_upper}_BUILD_EXAMPLES "Build examples" OFF)
 option(${project_name_upper}_ENABLE_TESTS "Enable tests" OFF)
-option(SHORT_NAMESPACE "Enable short namespace alias (dp)" OFF)
+option(SHORT_NAMESPACE "Enable short namespace alias (dp)" ON)
 include(FetchContent)
 
 # --------------------------------------------------------------------------------------------------
