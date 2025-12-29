@@ -16,6 +16,7 @@
 #include "sequential/flat_matrix.hpp"
 #include "sequential/forward_list.hpp"
 #include "sequential/heap.hpp"
+#include "sequential/indexed_heap.hpp"
 #include "sequential/list.hpp"
 #include "sequential/nvec.hpp"
 #include "sequential/paged_vecvec.hpp"
