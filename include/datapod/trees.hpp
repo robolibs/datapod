@@ -17,7 +17,7 @@
 
 // TODO: Uncomment as each structure is implemented
 #include "trees/binary_tree.hpp"
+#include "trees/nary_tree.hpp"
 #include "trees/ordered_map.hpp"
 #include "trees/ordered_set.hpp"
-// #include "trees/nary_tree.hpp"
 // #include "trees/trie.hpp"
