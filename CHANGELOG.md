@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.15] - 2025-12-29
+
+### <!-- 0 -->⛰️  Features
+
+- Implement Trie (prefix tree) data structure
+- Implement N-ary tree data structure
+- Implement index-based BinaryTree
+- Add IndexedHeap for priority queues with key updates
+- Add OrderedSet container based on Red-Black Tree
+- Add `OrderedMap` data structure
+- Introduce Deque data structure
+- Add heap/priority queue data structure
+- Add `List` data structure
+- Add ForwardList sequential container
+
 ## [0.0.14] - 2025-12-28
 
 ### <!-- 1 -->🐛 Bug Fixes
