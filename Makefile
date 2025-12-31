@@ -187,32 +187,7 @@ HAS_CODENAME := $(shell command -v git-codename 2>/dev/null)
 
 release:
 	@if [ -z "$(TYPE)" ]; then \
-		echo "Release type not specified. Use 'make release TYPE=[patch|minor|major]'"; \
+		echo "Release type not specified. Use 'make release TYPE=[patch|minor|major|m.m.p]'"; \
 		exit 1; \
 	fi; \
-	CURRENT_VERSION=$$(cat VERSION | tr -d '[:space:]'); \
-	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION"; \
-	case "$(TYPE)" in \
-		major) MAJOR=$$((MAJOR+1)); MINOR=0; PATCH=0 ;; \
-		minor) MINOR=$$((MINOR+1)); PATCH=0 ;; \
-		patch) PATCH=$$((PATCH+1)); ;; \
-		*) echo "Invalid release type. Use patch, minor or major."; exit 1 ;; \
-	esac; \
-	version="$$MAJOR.$$MINOR.$$PATCH"; \
-	if [ -n "$(LATEST_TAG)" ]; then \
-		changelog=$$(git cliff $(LATEST_TAG)..HEAD --strip all); \
-		git cliff --tag $$version $(LATEST_TAG)..HEAD --prepend CHANGELOG.md; \
-	else \
-		changelog=$$(git cliff --unreleased --strip all); \
-		git cliff --tag $$version --unreleased --prepend CHANGELOG.md; \
-	fi; \
-	if { [ "$(TYPE)" = "minor" ] || [ "$(TYPE)" = "major" ]; } && [ -n "$(HAS_CODENAME)" ]; then \
-		RELEASE_NAME=$$(git-codename "$$changelog"); \
-		echo "-------------- $$RELEASE_NAME --------------"; \
-	fi; \
-	echo "$$version" > VERSION; \
-	git add -A && git commit -m "chore(release): prepare for $$version"; \
-	echo "$$changelog"; \
-	git tag -a $$version -m "$$version" -m "$$changelog"; \
-	git push --follow-tags --force --set-upstream origin develop; \
-	gh release create $$version --notes "$$changelog"
+	git rel $(TYPE)
