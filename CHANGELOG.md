@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.16] - 2025-12-31
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Improve compiler selection and warning handling
+- Add Zig as a supported build system
+- Streamline build system and project configuration
+
+### Build
+
+- Update .envrc for build environment
+- Refactor release command in Makefile
+- Simplify release process and version management
+
 ## [0.0.15] - 2025-12-29
 
 ### <!-- 0 -->⛰️  Features
