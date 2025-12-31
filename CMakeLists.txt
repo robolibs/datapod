@@ -11,10 +11,10 @@ set(PROJECT_VERSION "0.0.16")
 #   Find:   set(LIB_DEPS "name" ...)  # Uses find_package
 #   Pkg:    set(LIB_DEPS "pkg::name" ...)  # Uses pkg-config
 set(LIB_DEPS
-    # "datapod|https://github.com/robolibs/datapod.git|0.0.15"
+    # "datapod|https://github.com/robolibs/datapod.git|0.0.16"
 )
 set(EXAMPLE_DEPS
-    # additional deps for examples (lib deps are auto-included)
+    # "pkg::rerun_sdk"
 )
 set(TEST_DEPS
     "doctest|https://github.com/doctest/doctest.git|v2.4.12"
@@ -69,6 +69,15 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(${COMMON_FLAGS} -Wno-unknown-warning-option)
 else()
     add_compile_options(${COMMON_FLAGS})
+endif()
+
+# Architecture-specific SIMD flags
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i[3-6]86")
+    add_compile_options(-mavx -mavx2 -mfma)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    # ARM64: NEON is enabled by default
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    add_compile_options(-mfpu=neon -mfloat-abi=hard)
 endif()
 
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPER)
