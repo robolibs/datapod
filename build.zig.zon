@@ -1,0 +1,22 @@
+.{
+    .name = .datapod,
+    .version = "0.0.15",
+    .fingerprint = 0x52be076754a90d6e,
+    .minimum_zig_version = "0.13.0",
+    .dependencies = .{
+        .doctest = .{
+            .url = "https://github.com/doctest/doctest/archive/refs/tags/v2.4.12.tar.gz",
+            .hash = "N-V-__8AAIVNNwDmACXf-T5aWPMuVqSaksnF74yoBBnafoTi",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "include",
+        "src",
+        "LICENSE",
+        "README.md",
+        "VERSION",
+    },
+}
