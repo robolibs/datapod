@@ -9,6 +9,7 @@ set(PROJECT_VERSION "0.0.16")
 # Dependencies formats:
 #   Git:    set(LIB_DEPS "name|https://github.com/org/repo.git|tag" ...)
 #   Find:   set(LIB_DEPS "name" ...)  # Uses find_package
+#   Pkg:    set(LIB_DEPS "pkg::name" ...)  # Uses pkg-config
 set(LIB_DEPS
     # "datapod|https://github.com/robolibs/datapod.git|0.0.15"
 )
@@ -86,6 +87,9 @@ function(process_deps dep_list out_targets)
     foreach(dep IN LISTS ${dep_list})
         # Check if it's a git dependency (contains |)
         string(FIND "${dep}" "|" has_pipe)
+        # Check if it's a pkg-config dependency (starts with pkg::)
+        string(FIND "${dep}" "pkg::" is_pkg)
+
         if(has_pipe GREATER -1)
             # Parse: name|url|tag
             string(REPLACE "|" ";" dep_parts "${dep}")
@@ -99,6 +103,12 @@ function(process_deps dep_list out_targets)
             )
             FetchContent_MakeAvailable(${dep_name})
             list(APPEND targets ${dep_name})
+        elseif(is_pkg EQUAL 0)
+            # pkg-config dependency: pkg::name
+            string(SUBSTRING "${dep}" 5 -1 pkg_name)
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(${pkg_name} REQUIRED IMPORTED_TARGET ${pkg_name})
+            list(APPEND targets PkgConfig::${pkg_name})
         else()
             # Simple dependency - use find_package
             find_package(${dep} REQUIRED)
