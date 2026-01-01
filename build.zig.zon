@@ -1,6 +1,6 @@
 .{
     .name = .datapod,
-    .version = "0.0.17",
+    .version = "0.0.18",
     .fingerprint = 0x52be076754a90d6e,
     .minimum_zig_version = "0.13.0",
     .dependencies = .{

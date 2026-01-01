@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.18] - 2026-01-01
+
+### <!-- 0 -->⛰️  Features
+
+- Add serialization for C-style arrays
+
 ## [0.0.17] - 2026-01-01
 
 ### <!-- 1 -->🐛 Bug Fixes
