@@ -62,13 +62,22 @@ if is_plat("linux", "macosx") then
     end)
 end
 
+-- SIMD configuration option
+option("simd", {default = true, showmenu = true, description = "Enable SIMD optimizations"})
+
 -- Architecture-specific SIMD flags
-if is_arch("x86_64", "x64", "i386", "x86") then
-    add_cxxflags("-mavx", "-mavx2", "-mfma")
-elseif is_arch("arm64", "arm64-v8a", "aarch64") then
-    -- ARM64: NEON is enabled by default
-elseif is_arch("arm", "armv7", "armv7-a") then
-    add_cxxflags("-mfpu=neon", "-mfloat-abi=hard")
+if get_config("simd") ~= false then
+    if is_arch("x86_64", "x64", "i386", "x86") then
+        add_cxxflags("-mavx", "-mavx2", "-mfma")
+    elseif is_arch("arm64", "arm64-v8a", "aarch64") then
+        -- ARM64: NEON is enabled by default
+    elseif is_arch("arm", "armv7", "armv7-a") then
+        add_cxxflags("-mfpu=neon", "-mfloat-abi=hard")
+    end
+else
+    -- Define macro to disable SIMD in the code
+    add_defines("DATAPOD_SIMD_DISABLED")
+    print("SIMD optimizations disabled")
 end
 
 
@@ -187,6 +196,7 @@ local function add_binaries(pattern, opts)
             add_deps(PROJECT_NAME)
             add_includedirs("include")
             add_defines("SHORT_NAMESPACE")
+            add_defines("PROJECT_DIR=\"" .. os.projectdir() .. "\"")
 
             if opts.packages then
                 for _, pkg in ipairs(opts.packages) do add_packages(pkg) end

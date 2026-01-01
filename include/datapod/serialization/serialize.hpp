@@ -75,6 +75,8 @@ namespace datapod {
     struct is_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
     // Heap-allocated mat types need special serialization
     template <typename T, std::size_t N> struct is_container<mat::vector<T, N, true>> : std::true_type {};
+    // Stack-allocated mat types also need special serialization
+    template <typename T, std::size_t N> struct is_container<mat::vector<T, N, false>> : std::true_type {};
     template <typename T, std::size_t R, std::size_t C>
     struct is_container<mat::matrix<T, R, C, true>> : std::true_type {};
     template <typename T, std::size_t... Dims> struct is_container<mat::heap_tensor<T, Dims...>> : std::true_type {};
@@ -186,6 +188,15 @@ namespace datapod {
     // Serialize heap-allocated mat::vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
     void serialize(Ctx &ctx, mat::vector<T, N, true> &value) {
+        // Fixed size, just write all elements
+        for (std::size_t i = 0; i < N; ++i) {
+            serialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Serialize stack-allocated mat::vector
+    template <Mode M, typename Ctx, typename T, std::size_t N>
+    void serialize(Ctx &ctx, mat::vector<T, N, false> &value) {
         // Fixed size, just write all elements
         for (std::size_t i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
@@ -495,6 +506,15 @@ namespace datapod {
     // Deserialize heap-allocated mat::vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
     void deserialize(Ctx &ctx, mat::vector<T, N, true> &value) {
+        // Fixed size, read all elements
+        for (std::size_t i = 0; i < N; ++i) {
+            deserialize<M>(ctx, value[i]);
+        }
+    }
+
+    // Deserialize stack-allocated mat::vector
+    template <Mode M, typename Ctx, typename T, std::size_t N>
+    void deserialize(Ctx &ctx, mat::vector<T, N, false> &value) {
         // Fixed size, read all elements
         for (std::size_t i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
