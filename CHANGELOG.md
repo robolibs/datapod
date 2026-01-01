@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.17] - 2026-01-01
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Properly handle SIMD and stack-allocated vectors
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Add architecture-specific SIMD flags
+- Add support for pkg-config dependencies
+
 ## [0.0.16] - 2025-12-31
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks
