@@ -150,6 +150,13 @@ namespace datapod {
         }
     }
 
+    // Serialize C-style arrays (T[N])
+    template <Mode M, typename Ctx, typename T, std::size_t N> void serialize(Ctx &ctx, T (&value)[N]) {
+        for (std::size_t i = 0; i < N; ++i) {
+            serialize<M>(ctx, value[i]);
+        }
+    }
+
     // Serialize Tuple
     template <Mode M, typename Ctx, typename... Ts> void serialize(Ctx &ctx, Tuple<Ts...> &value) {
         apply([&](auto &...elems) { (serialize<M>(ctx, elems), ...); }, value);
@@ -444,6 +451,13 @@ namespace datapod {
     template <Mode M, typename Ctx, typename T, std::size_t N> void deserialize(Ctx &ctx, Array<T, N> &value) {
         for (auto &elem : value) {
             deserialize<M>(ctx, elem);
+        }
+    }
+
+    // Deserialize C-style arrays (T[N])
+    template <Mode M, typename Ctx, typename T, std::size_t N> void deserialize(Ctx &ctx, T (&value)[N]) {
+        for (std::size_t i = 0; i < N; ++i) {
+            deserialize<M>(ctx, value[i]);
         }
     }
 
