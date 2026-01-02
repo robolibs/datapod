@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.19] - 2026-01-02
+
+### <!-- 0 -->⛰️  Features
+
+- Implement Vectra for small object optimization
+- Implement Pool segregated free-list allocator
+- Implement Arena linear allocator with bump-pointer semantics
+
 ## [0.0.18] - 2026-01-01
 
 ### <!-- 0 -->⛰️  Features
