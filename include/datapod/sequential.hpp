@@ -24,6 +24,7 @@
 #include "sequential/stack.hpp"
 #include "sequential/string.hpp"
 #include "sequential/vector.hpp"
+#include "sequential/vectra.hpp"
 #include "sequential/vecvec.hpp"
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
