@@ -33,8 +33,8 @@ Perfect for mobile robots, manipulators, drones, autonomous vehicles, and any ro
 Datapod is organized into specialized modules for different robotics domains:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              DATAPOD LIBRARY                                 │
+┌────────────────────────────────────────────────────────────────────────────┐
+│                              DATAPOD LIBRARY                               │
 ├─────────────┬──────────────┬──────────────┬──────────────┬─────────────────┤
 │ Sequential  │ Associative  │   Matrix     │   Spatial    │    Temporal     │
 │ Containers  │  Containers  │   (SIMD)     │   Geometry   │   Time-Series   │
@@ -57,26 +57,9 @@ Datapod is organized into specialized modules for different robotics domains:
                                       │
                         ┌─────────────┼─────────────┐
                         │             │             │
-                  ┌─────▼─────┐ ┌────▼─────┐ ┌────▼──────┐
+                  ┌─────▼─────┐ ┌─────▼────┐ ┌──────▼────┐
                   │ ROS2 Msgs │ │ Logging  │ │  Network  │
                   └───────────┘ └──────────┘ └───────────┘
-```
-
-**Data Flow in Robotics Pipeline:**
-
-```
-  Sensors              Datapod Processing           Actuators
-     │                                                   │
-┌────▼────┐         ┌─────────────────────┐       ┌────▼────┐
-│  LiDAR  │────────▶│  RTree<Point>       │       │ Motors  │
-│   IMU   │         │  Spatial Indexing   │       │ Servos  │
-│ Camera  │         └──────────┬──────────┘       └─────▲───┘
-└─────────┘                    │                        │
-                               │                        │
-                      ┌────────▼─────────┐      ┌──────┴──────┐
-                      │  SLAM / Mapping  │      │  Controller │
-                      │  Pose, Odom      │─────▶│  Twist cmd  │
-                      └──────────────────┘      └─────────────┘
 ```
 
 ## Installation
