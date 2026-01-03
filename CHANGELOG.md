@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.22] - 2026-01-03
+
+### <!-- 0 -->⛰️  Features
+
+- Rename mat types to PascalCase
+
 ## [0.0.21] - 2026-01-03
 
 ### <!-- 3 -->📚 Documentation
