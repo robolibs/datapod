@@ -13,20 +13,20 @@ namespace datapod {
     namespace mat {
 
         // Forward declaration
-        template <typename T> struct scalar;
+        template <typename T> struct Scalar;
 
         /**
-         * @brief Matrix (rank-2, 2-D only) - fixed-size numeric matrix
+         * @brief Matrix (rank-2, 2-D only) - fixed-size numeric Matrix
          *
          * Mathematical tensor of order 2 - represents a linear operator.
          * NOT a container - purely for numeric/mathematical operations.
          *
          * Examples:
-         *   matrix<double, 3, 3> rotation;              // SO(3) rotation matrix (stack)
-         *   matrix<double, 6, 6> covariance;            // 6x6 covariance matrix (stack)
-         *   matrix<float, 4, 4> transform;              // SE(3) transformation (stack)
-         *   matrix<float, 1024, 1024> big_mat;          // Large matrix (heap)
-         *   matrix<scalar<double>, 3, 3> tagged_mat;    // Matrix of scalars
+         *   Matrix<double, 3, 3> rotation;              // SO(3) rotation Matrix (stack)
+         *   Matrix<double, 6, 6> covariance;            // 6x6 covariance Matrix (stack)
+         *   Matrix<float, 4, 4> transform;              // SE(3) transformation (stack)
+         *   Matrix<float, 1024, 1024> big_mat;          // Large Matrix (heap)
+         *   Matrix<scalar<double>, 3, 3> tagged_mat;    // Matrix of scalars
          *
          * Design:
          * - Fixed shape R×C (no resizing)
@@ -48,11 +48,11 @@ namespace datapod {
         // otherwise use heap allocation for large matrices (R * C > HEAP_THRESHOLD)
         template <typename T, size_t R, size_t C,
                   bool UseHeap = (R != Dynamic && C != Dynamic && R * C > HEAP_THRESHOLD)>
-        struct matrix {
+        struct Matrix {
             // Accept arithmetic types (and scalar<T>, but we can't check that here due to forward declaration)
             // The scalar<T> case will work because it's a POD type
-            static_assert(R > 0, "matrix rows must be > 0");
-            static_assert(C > 0, "matrix cols must be > 0");
+            static_assert(R > 0, "Matrix rows must be > 0");
+            static_assert(C > 0, "Matrix cols must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -73,11 +73,11 @@ namespace datapod {
             alignas(32) T data_[R * C]; // Column-major: data_[col * R + row] (stack)
 
             // Default constructor (zero-initialized)
-            constexpr matrix() noexcept : data_{} {}
+            constexpr Matrix() noexcept : data_{} {}
 
             // Brace initialization from flat list (column-major order)
-            // Usage: matrix<double, 2, 2> m = {1, 2, 3, 4}; // col0={1,2}, col1={3,4}
-            constexpr matrix(std::initializer_list<T> init) noexcept : data_{} {
+            // Usage: Matrix<double, 2, 2> m = {1, 2, 3, 4}; // col0={1,2}, col1={3,4}
+            constexpr Matrix(std::initializer_list<T> init) noexcept : data_{} {
                 size_t i = 0;
                 for (const auto &val : init) {
                     if (i >= R * C)
@@ -86,11 +86,11 @@ namespace datapod {
                 }
             }
 
-            // Composition constructor: construct matrix from C column vectors
-            // Usage: matrix<T, R, C> m(vec1, vec2, ..., vecC);
+            // Composition constructor: construct Matrix from C column vectors
+            // Usage: Matrix<T, R, C> m(vec1, vec2, ..., vecC);
             template <typename... VecTypes,
                       typename = std::enable_if_t<(sizeof...(VecTypes) == C && sizeof...(VecTypes) > 0)>>
-            constexpr matrix(const VecTypes &...vecs) noexcept : data_{} {
+            constexpr Matrix(const VecTypes &...vecs) noexcept : data_{} {
                 fill_from_vectors<0>(vecs...);
             }
 
@@ -122,14 +122,14 @@ namespace datapod {
 
             constexpr reference at(size_type row, size_type col) {
                 if (row >= R || col >= C) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * R + row];
             }
 
             constexpr const_reference at(size_type row, size_type col) const {
                 if (row >= R || col >= C) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * R + row];
             }
@@ -164,7 +164,7 @@ namespace datapod {
                 }
             }
 
-            constexpr void swap(matrix &other) noexcept {
+            constexpr void swap(Matrix &other) noexcept {
                 for (size_type i = 0; i < R * C; ++i) {
                     T tmp = data_[i];
                     data_[i] = other.data_[i];
@@ -181,7 +181,7 @@ namespace datapod {
             }
 
             // Comparison
-            constexpr bool operator==(const matrix &other) const noexcept {
+            constexpr bool operator==(const Matrix &other) const noexcept {
                 for (size_type i = 0; i < R * C; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -190,15 +190,15 @@ namespace datapod {
                 return true;
             }
 
-            constexpr bool operator!=(const matrix &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Matrix &other) const noexcept { return !(*this == other); }
         };
 
         // =============================================================================
         // SPECIALIZATION: Large matrices (heap-allocated, NOT POD, SIMD-aligned)
         // =============================================================================
-        template <typename T, size_t R, size_t C> struct matrix<T, R, C, true> {
-            static_assert(R > 0, "matrix rows must be > 0");
-            static_assert(C > 0, "matrix cols must be > 0");
+        template <typename T, size_t R, size_t C> struct Matrix<T, R, C, true> {
+            static_assert(R > 0, "Matrix rows must be > 0");
+            static_assert(C > 0, "Matrix cols must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -219,14 +219,14 @@ namespace datapod {
             T *data_; // Heap-allocated, SIMD-aligned, column-major
 
             // Default constructor - allocate aligned heap memory
-            matrix() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
+            Matrix() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
                 for (size_t i = 0; i < R * C; ++i) {
                     new (&data_[i]) T{};
                 }
             }
 
             // Destructor - free heap memory
-            ~matrix() {
+            ~Matrix() {
                 if (data_) {
                     for (size_t i = 0; i < R * C; ++i) {
                         data_[i].~T();
@@ -236,14 +236,14 @@ namespace datapod {
             }
 
             // Copy constructor
-            matrix(const matrix &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
+            Matrix(const Matrix &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
                 for (size_t i = 0; i < R * C; ++i) {
                     new (&data_[i]) T(other.data_[i]);
                 }
             }
 
             // Copy assignment
-            matrix &operator=(const matrix &other) {
+            Matrix &operator=(const Matrix &other) {
                 if (this != &other) {
                     for (size_t i = 0; i < R * C; ++i) {
                         data_[i] = other.data_[i];
@@ -253,10 +253,10 @@ namespace datapod {
             }
 
             // Move constructor
-            matrix(matrix &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
+            Matrix(Matrix &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
 
             // Move assignment
-            matrix &operator=(matrix &&other) noexcept {
+            Matrix &operator=(Matrix &&other) noexcept {
                 if (this != &other) {
                     if (data_) {
                         for (size_t i = 0; i < R * C; ++i) {
@@ -271,8 +271,8 @@ namespace datapod {
             }
 
             // Brace initialization from flat list (column-major order)
-            // Usage: matrix<double, 100, 100> m = {1, 2, 3, ...};
-            matrix(std::initializer_list<T> init) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
+            // Usage: Matrix<double, 100, 100> m = {1, 2, 3, ...};
+            Matrix(std::initializer_list<T> init) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * R * C))) {
                 size_t i = 0;
                 for (const auto &val : init) {
                     if (i >= R * C)
@@ -300,14 +300,14 @@ namespace datapod {
 
             reference at(size_type row, size_type col) {
                 if (row >= R || col >= C) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * R + row];
             }
 
             const_reference at(size_type row, size_type col) const {
                 if (row >= R || col >= C) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * R + row];
             }
@@ -342,7 +342,7 @@ namespace datapod {
                 }
             }
 
-            void swap(matrix &other) noexcept { std::swap(data_, other.data_); }
+            void swap(Matrix &other) noexcept { std::swap(data_, other.data_); }
 
             // Set to identity (only for square matrices)
             template <size_t R_ = R, size_t C_ = C> std::enable_if_t<R_ == C_, void> set_identity() noexcept {
@@ -353,7 +353,7 @@ namespace datapod {
             }
 
             // Comparison
-            bool operator==(const matrix &other) const noexcept {
+            bool operator==(const Matrix &other) const noexcept {
                 for (size_type i = 0; i < R * C; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -362,51 +362,51 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const matrix &other) const noexcept { return !(*this == other); }
+            bool operator!=(const Matrix &other) const noexcept { return !(*this == other); }
         };
 
         // Type traits
         template <typename T> struct is_matrix : std::false_type {};
         template <typename T, size_t R, size_t C, bool UseHeap>
-        struct is_matrix<matrix<T, R, C, UseHeap>> : std::true_type {};
+        struct is_matrix<Matrix<T, R, C, UseHeap>> : std::true_type {};
         template <typename T> inline constexpr bool is_matrix_v = is_matrix<T>::value;
 
-        // Type trait to check if matrix uses heap
+        // Type trait to check if Matrix uses heap
         template <typename T> struct is_heap_matrix : std::false_type {};
-        template <typename T, size_t R, size_t C> struct is_heap_matrix<matrix<T, R, C, true>> : std::true_type {};
+        template <typename T, size_t R, size_t C> struct is_heap_matrix<Matrix<T, R, C, true>> : std::true_type {};
         template <typename T> inline constexpr bool is_heap_matrix_v = is_heap_matrix<T>::value;
 
-        // Common matrix type aliases
-        template <typename T> using matrix2x2 = matrix<T, 2, 2>;
-        template <typename T> using matrix3x3 = matrix<T, 3, 3>;
-        template <typename T> using matrix4x4 = matrix<T, 4, 4>;
-        template <typename T> using matrix6x6 = matrix<T, 6, 6>;
+        // Common Matrix type aliases
+        template <typename T> using Matrix2x2 = Matrix<T, 2, 2>;
+        template <typename T> using Matrix3x3 = Matrix<T, 3, 3>;
+        template <typename T> using Matrix4x4 = Matrix<T, 4, 4>;
+        template <typename T> using Matrix6x6 = Matrix<T, 6, 6>;
 
         // Common numeric types
-        using matrix2x2f = matrix<float, 2, 2>;
-        using matrix2x2d = matrix<double, 2, 2>;
-        using matrix3x3f = matrix<float, 3, 3>;
-        using matrix3x3d = matrix<double, 3, 3>;
-        using matrix4x4f = matrix<float, 4, 4>;
-        using matrix4x4d = matrix<double, 4, 4>;
-        using matrix6x6f = matrix<float, 6, 6>;
-        using matrix6x6d = matrix<double, 6, 6>;
+        using Matrix2x2f = Matrix<float, 2, 2>;
+        using Matrix2x2d = Matrix<double, 2, 2>;
+        using Matrix3x3f = Matrix<float, 3, 3>;
+        using Matrix3x3d = Matrix<double, 3, 3>;
+        using Matrix4x4f = Matrix<float, 4, 4>;
+        using Matrix4x4d = Matrix<double, 4, 4>;
+        using Matrix6x6f = Matrix<float, 6, 6>;
+        using Matrix6x6d = Matrix<double, 6, 6>;
 
         // =============================================================================
         // SPECIALIZATION: Dynamic matrices (runtime-sized, heap-allocated)
         // =============================================================================
         /**
-         * @brief Runtime-sized numeric matrix
+         * @brief Runtime-sized numeric Matrix
          *
-         * Specialization for matrix<T, Dynamic, Dynamic> - dimensions at runtime.
+         * Specialization for Matrix<T, Dynamic, Dynamic> - dimensions at runtime.
          * Always heap-allocated with SIMD alignment. Column-major storage.
          *
          * Examples:
-         *   matrix<double, Dynamic, Dynamic> m(100, 100);   // 100x100 matrix
-         *   matrix<float, Dynamic, Dynamic> A(3, 4);        // 3x4 matrix
+         *   Matrix<double, Dynamic, Dynamic> m(100, 100);   // 100x100 Matrix
+         *   Matrix<float, Dynamic, Dynamic> A(3, 4);        // 3x4 Matrix
          *   m.resize(200, 200);                             // Resize to 200x200
          */
-        template <typename T> struct matrix<T, Dynamic, Dynamic, false> {
+        template <typename T> struct Matrix<T, Dynamic, Dynamic, false> {
             using value_type = T;
             using size_type = size_t;
             using reference = T &;
@@ -446,11 +446,11 @@ namespace datapod {
             }
 
           public:
-            // Default constructor - empty matrix
-            matrix() noexcept : rows_(0), cols_(0), data_(nullptr) {}
+            // Default constructor - empty Matrix
+            Matrix() noexcept : rows_(0), cols_(0), data_(nullptr) {}
 
             // Size constructor
-            matrix(size_t rows, size_t cols) : rows_(rows), cols_(cols), data_(nullptr) {
+            Matrix(size_t rows, size_t cols) : rows_(rows), cols_(cols), data_(nullptr) {
                 size_t total = rows_ * cols_;
                 allocate(total);
                 for (size_t i = 0; i < total; ++i) {
@@ -459,7 +459,7 @@ namespace datapod {
             }
 
             // Size + value constructor
-            matrix(size_t rows, size_t cols, const T &value) : rows_(rows), cols_(cols), data_(nullptr) {
+            Matrix(size_t rows, size_t cols, const T &value) : rows_(rows), cols_(cols), data_(nullptr) {
                 size_t total = rows_ * cols_;
                 allocate(total);
                 for (size_t i = 0; i < total; ++i) {
@@ -468,7 +468,7 @@ namespace datapod {
             }
 
             // Initializer list constructor (column-major order)
-            matrix(size_t rows, size_t cols, std::initializer_list<T> init) : rows_(rows), cols_(cols), data_(nullptr) {
+            Matrix(size_t rows, size_t cols, std::initializer_list<T> init) : rows_(rows), cols_(cols), data_(nullptr) {
                 size_t total = rows_ * cols_;
                 allocate(total);
                 for (size_t i = 0; i < total; ++i) {
@@ -483,7 +483,7 @@ namespace datapod {
             }
 
             // Copy constructor
-            matrix(const matrix &other) : rows_(other.rows_), cols_(other.cols_), data_(nullptr) {
+            Matrix(const Matrix &other) : rows_(other.rows_), cols_(other.cols_), data_(nullptr) {
                 size_t total = rows_ * cols_;
                 allocate(total);
                 for (size_t i = 0; i < total; ++i) {
@@ -492,17 +492,17 @@ namespace datapod {
             }
 
             // Move constructor
-            matrix(matrix &&other) noexcept : rows_(other.rows_), cols_(other.cols_), data_(other.data_) {
+            Matrix(Matrix &&other) noexcept : rows_(other.rows_), cols_(other.cols_), data_(other.data_) {
                 other.rows_ = 0;
                 other.cols_ = 0;
                 other.data_ = nullptr;
             }
 
             // Destructor
-            ~matrix() { deallocate(); }
+            ~Matrix() { deallocate(); }
 
             // Copy assignment
-            matrix &operator=(const matrix &other) {
+            Matrix &operator=(const Matrix &other) {
                 if (this != &other) {
                     deallocate();
                     rows_ = other.rows_;
@@ -517,7 +517,7 @@ namespace datapod {
             }
 
             // Move assignment
-            matrix &operator=(matrix &&other) noexcept {
+            Matrix &operator=(Matrix &&other) noexcept {
                 if (this != &other) {
                     deallocate();
                     rows_ = other.rows_;
@@ -536,14 +536,14 @@ namespace datapod {
 
             reference at(size_type row, size_type col) {
                 if (row >= rows_ || col >= cols_) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * rows_ + row];
             }
 
             const_reference at(size_type row, size_type col) const {
                 if (row >= rows_ || col >= cols_) {
-                    throw std::out_of_range("matrix::at");
+                    throw std::out_of_range("Matrix::at");
                 }
                 return data_[col * rows_ + row];
             }
@@ -625,7 +625,7 @@ namespace datapod {
                 }
             }
 
-            void swap(matrix &other) noexcept {
+            void swap(Matrix &other) noexcept {
                 std::swap(rows_, other.rows_);
                 std::swap(cols_, other.cols_);
                 std::swap(data_, other.data_);
@@ -633,7 +633,7 @@ namespace datapod {
 
             void setIdentity() {
                 if (rows_ != cols_) {
-                    throw std::logic_error("setIdentity requires square matrix");
+                    throw std::logic_error("setIdentity requires square Matrix");
                 }
                 fill(T{});
                 for (size_t i = 0; i < rows_; ++i) {
@@ -644,7 +644,7 @@ namespace datapod {
             void setZero() { fill(T{}); }
 
             // Comparison
-            bool operator==(const matrix &other) const noexcept {
+            bool operator==(const Matrix &other) const noexcept {
                 if (rows_ != other.rows_ || cols_ != other.cols_)
                     return false;
                 size_t total = rows_ * cols_;
@@ -655,18 +655,18 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const matrix &other) const noexcept { return !(*this == other); }
+            bool operator!=(const Matrix &other) const noexcept { return !(*this == other); }
         };
 
-        // Type trait for dynamic matrix
+        // Type trait for dynamic Matrix
         template <typename T> struct is_dynamic_matrix : std::false_type {};
-        template <typename T> struct is_dynamic_matrix<matrix<T, Dynamic, Dynamic, false>> : std::true_type {};
+        template <typename T> struct is_dynamic_matrix<Matrix<T, Dynamic, Dynamic, false>> : std::true_type {};
         template <typename T> inline constexpr bool is_dynamic_matrix_v = is_dynamic_matrix<T>::value;
 
         // Eigen-style aliases for dynamic matrices
-        using MatrixXf = matrix<float, Dynamic, Dynamic>;
-        using MatrixXd = matrix<double, Dynamic, Dynamic>;
-        using MatrixXi = matrix<int, Dynamic, Dynamic>;
+        using MatrixXf = Matrix<float, Dynamic, Dynamic>;
+        using MatrixXd = Matrix<double, Dynamic, Dynamic>;
+        using MatrixXi = Matrix<int, Dynamic, Dynamic>;
 
     } // namespace mat
 } // namespace datapod

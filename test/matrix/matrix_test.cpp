@@ -6,11 +6,11 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
-using namespace datapod::mat;
+// Not using datapod::mat to avoid Vector conflict
 
 TEST_SUITE("mat::matrix") {
     TEST_CASE("construction") {
-        matrix<double, 3, 3> m;
+        mat::Matrix<double, 3, 3> m;
         m(0, 0) = 1.0;
         m(1, 1) = 2.0;
         m(2, 2) = 3.0;
@@ -21,18 +21,18 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("matrix with scalar type") {
-        matrix<scalar<double>, 2, 2> m;
-        m(0, 0) = scalar<double>{1.0};
-        m(0, 1) = scalar<double>{2.0};
-        m(1, 0) = scalar<double>{3.0};
-        m(1, 1) = scalar<double>{4.0};
+        mat::Matrix<mat::Scalar<double>, 2, 2> m;
+        m(0, 0) = mat::Scalar<double>{1.0};
+        m(0, 1) = mat::Scalar<double>{2.0};
+        m(1, 0) = mat::Scalar<double>{3.0};
+        m(1, 1) = mat::Scalar<double>{4.0};
 
         CHECK(m(0, 0).value == 1.0);
         CHECK(m(1, 1).value == 4.0);
     }
 
     TEST_CASE("element access 2D") {
-        matrix<double, 2, 2> m;
+        mat::Matrix<double, 2, 2> m;
         m(0, 0) = 1.0;
         m(0, 1) = 2.0;
         m(1, 0) = 4.0;
@@ -48,17 +48,17 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("dimensions") {
-        matrix<double, 3, 3> m; // Changed to square matrix
+        mat::Matrix<double, 3, 3> m; // Changed to square matrix
 
         CHECK(m.rows() == 3);
         CHECK(m.cols() == 3);
         CHECK(m.size() == 9);
         CHECK_FALSE(m.empty());
-        CHECK(matrix<double, 3, 3>::rank == 2);
+        CHECK(mat::Matrix<double, 3, 3>::rank == 2);
     }
 
     TEST_CASE("iterators") {
-        matrix<int, 2, 2> m;
+        mat::Matrix<int, 2, 2> m;
         m(0, 0) = 1;
         m(0, 1) = 2;
         m(1, 0) = 3;
@@ -72,18 +72,18 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("operations") {
-        matrix<double, 2, 2> m;
+        mat::Matrix<double, 2, 2> m;
         m.fill(5.0);
         CHECK(m(0, 0) == 5.0);
         CHECK(m(1, 1) == 5.0);
 
-        matrix<int, 2, 2> a;
+        mat::Matrix<int, 2, 2> a;
         a(0, 0) = 1;
         a(0, 1) = 2;
         a(1, 0) = 3;
         a(1, 1) = 4;
 
-        matrix<int, 2, 2> b;
+        mat::Matrix<int, 2, 2> b;
         b(0, 0) = 10;
         b(0, 1) = 20;
         b(1, 0) = 30;
@@ -95,7 +95,7 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("set identity") {
-        matrix<double, 3, 3> m;
+        mat::Matrix<double, 3, 3> m;
         m.fill(0.0);
         m.set_identity();
 
@@ -107,19 +107,19 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("comparison") {
-        matrix<int, 2, 2> a;
+        mat::Matrix<int, 2, 2> a;
         a(0, 0) = 1;
         a(0, 1) = 2;
         a(1, 0) = 3;
         a(1, 1) = 4;
 
-        matrix<int, 2, 2> b;
+        mat::Matrix<int, 2, 2> b;
         b(0, 0) = 1;
         b(0, 1) = 2;
         b(1, 0) = 3;
         b(1, 1) = 4;
 
-        matrix<int, 2, 2> c;
+        mat::Matrix<int, 2, 2> c;
         c(0, 0) = 1;
         c(0, 1) = 2;
         c(1, 0) = 3;
@@ -130,7 +130,7 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("reflection") {
-        matrix<double, 2, 2> m;
+        mat::Matrix<double, 2, 2> m;
         m(0, 0) = 1.0;
         m(0, 1) = 2.0;
         m(1, 0) = 3.0;
@@ -146,27 +146,27 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("type traits") {
-        CHECK(is_matrix_v<matrix<double, 3, 3>>);
-        CHECK_FALSE(is_matrix_v<double>);
+        CHECK(mat::is_matrix_v<mat::Matrix<double, 3, 3>>);
+        CHECK_FALSE(mat::is_matrix_v<double>);
     }
 
     TEST_CASE("POD compatibility") {
-        CHECK(std::is_trivially_copyable_v<matrix<double, 3, 3>>);
-        CHECK(std::is_trivially_copyable_v<matrix<int, 4, 4>>);
+        CHECK(std::is_trivially_copyable_v<mat::Matrix<double, 3, 3>>);
+        CHECK(std::is_trivially_copyable_v<mat::Matrix<int, 4, 4>>);
     }
 
     TEST_CASE("type aliases") {
-        static_assert(std::is_same_v<matrix3x3d, matrix<double, 3, 3>>);
-        static_assert(std::is_same_v<matrix4x4f, matrix<float, 4, 4>>);
+        static_assert(std::is_same_v<mat::Matrix3x3d, mat::Matrix<double, 3, 3>>);
+        static_assert(std::is_same_v<mat::Matrix4x4f, mat::Matrix<float, 4, 4>>);
     }
 
     TEST_CASE("alignment") {
-        matrix<double, 3, 3> m;
+        mat::Matrix<double, 3, 3> m;
         CHECK(reinterpret_cast<uintptr_t>(m.data()) % 32 == 0);
     }
 
     TEST_CASE("column-major layout") {
-        matrix<int, 2, 2> m;
+        mat::Matrix<int, 2, 2> m;
         // Fill column by column
         m(0, 0) = 1;
         m(1, 0) = 2; // Column 0
@@ -181,16 +181,16 @@ TEST_SUITE("mat::matrix") {
     }
 
     TEST_CASE("common use cases") {
-        matrix<double, 3, 3> rotation;
+        mat::Matrix<double, 3, 3> rotation;
         rotation.set_identity();
         CHECK(rotation(0, 0) == 1.0);
 
-        matrix<double, 4, 4> transform;
+        mat::Matrix<double, 4, 4> transform;
         transform.fill(0.0);
         transform.set_identity();
         CHECK(transform(3, 3) == 1.0);
 
-        matrix<double, 6, 6> covariance;
+        mat::Matrix<double, 6, 6> covariance;
         covariance.fill(0.0);
         CHECK(covariance.size() == 36);
     }

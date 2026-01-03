@@ -91,9 +91,9 @@ namespace datapod {
             return Size{2.0 * half_extents.x, 2.0 * half_extents.y, 2.0 * half_extents.z};
         }
 
-        // SIMD conversion: OBB → mat::vector<double, 9> (center(3), half_extents(3), euler(3))
-        inline mat::vector<double, 9> to_mat() const noexcept {
-            mat::vector<double, 9> v;
+        // SIMD conversion: OBB → mat::Vector<double, 9> (center(3), half_extents(3), euler(3))
+        inline mat::Vector<double, 9> to_mat() const noexcept {
+            mat::Vector<double, 9> v;
             v[0] = center.x;
             v[1] = center.y;
             v[2] = center.z;
@@ -106,8 +106,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 9> → OBB
-        static inline OBB from_mat(const mat::vector<double, 9> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 9> → OBB
+        static inline OBB from_mat(const mat::Vector<double, 9> &v) noexcept {
             return OBB{Point{v[0], v[1], v[2]}, Size{v[3], v[4], v[5]}, Euler{v[6], v[7], v[8]}};
         }
     };

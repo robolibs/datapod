@@ -16,20 +16,20 @@ namespace datapod {
     namespace mat {
 
         // Forward declaration
-        template <typename T> struct scalar;
+        template <typename T> struct Scalar;
 
         /**
          * @brief Tensor (rank-N, N-dimensional) - fixed-size N-dimensional numeric array
          *
-         * Mathematical tensor of arbitrary order (3D and higher).
+         * Mathematical Tensor of arbitrary order (3D and higher).
          * NOT a container - purely for numeric/mathematical operations.
          *
          * Examples:
-         *   tensor<double, 3, 3, 3> cube;                  // 3x3x3 cube (stack)
-         *   tensor<float, 2, 3, 4> volume;                 // 2x3x4 volume (stack)
-         *   tensor<float, 256, 256, 256> big_vol;          // Large volume (heap, automatic)
-         *   tensor<double, 2, 2, 2, 2> rank4;              // Rank-4 tensor (stack)
-         *   tensor<scalar<double>, 4, 4, 4> tagged;        // Tensor of scalars
+         *   Tensor<double, 3, 3, 3> cube;                  // 3x3x3 cube (stack)
+         *   Tensor<float, 2, 3, 4> volume;                 // 2x3x4 volume (stack)
+         *   Tensor<float, 256, 256, 256> big_vol;          // Large volume (heap, automatic)
+         *   Tensor<double, 2, 2, 2, 2> rank4;              // Rank-4 Tensor (stack)
+         *   Tensor<scalar<double>, 4, 4, 4> tagged;        // Tensor of scalars
          *
          * Design:
          * - Fixed shape (no resizing)
@@ -46,10 +46,10 @@ namespace datapod {
         // =============================================================================
         // STACK-ALLOCATED TENSOR (small tensors, POD, zero-copy)
         // =============================================================================
-        template <typename T, size_t... Dims> struct tensor {
+        template <typename T, size_t... Dims> struct Tensor {
             static_assert(sizeof...(Dims) >= 3,
-                          "tensor requires at least 3 dimensions (use vector for 1D, matrix for 2D)");
-            static_assert(((Dims > 0) && ...), "all tensor dimensions must be > 0");
+                          "Tensor requires at least 3 dimensions (use vector for 1D, matrix for 2D)");
+            static_assert(((Dims > 0) && ...), "all Tensor dimensions must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -69,11 +69,11 @@ namespace datapod {
             alignas(32) T data_[size_]; // Column-major storage (stack)
 
             // Default constructor (for aggregate initialization)
-            constexpr tensor() noexcept = default;
+            constexpr Tensor() noexcept = default;
 
             // Brace initialization from flat list (column-major order)
-            // Usage: tensor<double, 2, 2, 2> t = {1, 2, 3, 4, 5, 6, 7, 8};
-            constexpr tensor(std::initializer_list<T> init) noexcept : data_{} {
+            // Usage: Tensor<double, 2, 2, 2> t = {1, 2, 3, 4, 5, 6, 7, 8};
+            constexpr Tensor(std::initializer_list<T> init) noexcept : data_{} {
                 size_t i = 0;
                 for (const auto &val : init) {
                     if (i >= size_)
@@ -82,11 +82,11 @@ namespace datapod {
                 }
             }
 
-            // Composition constructor: construct tensor from slices along last dimension
-            // For tensor<T, D0, D1, ..., Dn>, accepts Dn slices of shape D0 x D1 x ... x D(n-1)
+            // Composition constructor: construct Tensor from slices along last dimension
+            // For Tensor<T, D0, D1, ..., Dn>, accepts Dn slices of shape D0 x D1 x ... x D(n-1)
             template <typename... SliceTypes, typename = std::enable_if_t<(sizeof...(SliceTypes) == dims_[rank - 1] &&
                                                                            sizeof...(SliceTypes) > 0)>>
-            constexpr tensor(const SliceTypes &...slices) noexcept : data_{} {
+            constexpr Tensor(const SliceTypes &...slices) noexcept : data_{} {
                 fill_from_slices<0>(slices...);
             }
 
@@ -162,7 +162,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("tensor::at");
+                        throw std::out_of_range("Tensor::at");
                     }
                 }
                 return data_[compute_index(static_cast<size_type>(indices)...)];
@@ -175,7 +175,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("tensor::at");
+                        throw std::out_of_range("Tensor::at");
                     }
                 }
                 return data_[compute_index(static_cast<size_type>(indices)...)];
@@ -211,7 +211,7 @@ namespace datapod {
                 }
             }
 
-            constexpr void swap(tensor &other) noexcept {
+            constexpr void swap(Tensor &other) noexcept {
                 for (size_type i = 0; i < size_; ++i) {
                     T tmp = data_[i];
                     data_[i] = other.data_[i];
@@ -220,7 +220,7 @@ namespace datapod {
             }
 
             // Comparison
-            constexpr bool operator==(const tensor &other) const noexcept {
+            constexpr bool operator==(const Tensor &other) const noexcept {
                 for (size_type i = 0; i < size_; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -229,16 +229,16 @@ namespace datapod {
                 return true;
             }
 
-            constexpr bool operator!=(const tensor &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Tensor &other) const noexcept { return !(*this == other); }
         };
 
         // =============================================================================
         // HEAP-ALLOCATED TENSOR (large tensors, NOT POD, SIMD-aligned)
         // =============================================================================
-        template <typename T, size_t... Dims> struct heap_tensor {
+        template <typename T, size_t... Dims> struct HeapTensor {
             static_assert(sizeof...(Dims) >= 3,
-                          "heap_tensor requires at least 3 dimensions (use vector for 1D, matrix for 2D)");
-            static_assert(((Dims > 0) && ...), "all tensor dimensions must be > 0");
+                          "HeapTensor requires at least 3 dimensions (use vector for 1D, matrix for 2D)");
+            static_assert(((Dims > 0) && ...), "all Tensor dimensions must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -258,14 +258,14 @@ namespace datapod {
             T *data_; // Heap-allocated, SIMD-aligned, column-major
 
             // Default constructor - allocate aligned heap memory
-            heap_tensor() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
+            HeapTensor() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
                 for (size_t i = 0; i < size_; ++i) {
                     new (&data_[i]) T{};
                 }
             }
 
             // Destructor - free heap memory
-            ~heap_tensor() {
+            ~HeapTensor() {
                 if (data_) {
                     for (size_t i = 0; i < size_; ++i) {
                         data_[i].~T();
@@ -275,14 +275,14 @@ namespace datapod {
             }
 
             // Copy constructor
-            heap_tensor(const heap_tensor &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
+            HeapTensor(const HeapTensor &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
                 for (size_t i = 0; i < size_; ++i) {
                     new (&data_[i]) T(other.data_[i]);
                 }
             }
 
             // Copy assignment
-            heap_tensor &operator=(const heap_tensor &other) {
+            HeapTensor &operator=(const HeapTensor &other) {
                 if (this != &other) {
                     for (size_t i = 0; i < size_; ++i) {
                         data_[i] = other.data_[i];
@@ -292,10 +292,10 @@ namespace datapod {
             }
 
             // Move constructor
-            heap_tensor(heap_tensor &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
+            HeapTensor(HeapTensor &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
 
             // Move assignment
-            heap_tensor &operator=(heap_tensor &&other) noexcept {
+            HeapTensor &operator=(HeapTensor &&other) noexcept {
                 if (this != &other) {
                     if (data_) {
                         for (size_t i = 0; i < size_; ++i) {
@@ -310,8 +310,8 @@ namespace datapod {
             }
 
             // Brace initialization from flat list (column-major order)
-            // Usage: heap_tensor<double, 10, 10, 10> t = {1, 2, 3, ...};
-            heap_tensor(std::initializer_list<T> init) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
+            // Usage: HeapTensor<double, 10, 10, 10> t = {1, 2, 3, ...};
+            HeapTensor(std::initializer_list<T> init) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * size_))) {
                 size_t i = 0;
                 for (const auto &val : init) {
                     if (i >= size_)
@@ -349,7 +349,7 @@ namespace datapod {
             }
 
           public:
-            // Multi-dimensional indexing - SAME API as stack tensor
+            // Multi-dimensional indexing - SAME API as stack Tensor
             template <typename... Indices,
                       typename = std::enable_if_t<sizeof...(Indices) == rank &&
                                                   (std::is_convertible_v<Indices, size_type> && ...)>>
@@ -372,7 +372,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("heap_tensor::at");
+                        throw std::out_of_range("HeapTensor::at");
                     }
                 }
                 return data_[compute_index(static_cast<size_type>(indices)...)];
@@ -385,7 +385,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("heap_tensor::at");
+                        throw std::out_of_range("HeapTensor::at");
                     }
                 }
                 return data_[compute_index(static_cast<size_type>(indices)...)];
@@ -421,10 +421,10 @@ namespace datapod {
                 }
             }
 
-            void swap(heap_tensor &other) noexcept { std::swap(data_, other.data_); }
+            void swap(HeapTensor &other) noexcept { std::swap(data_, other.data_); }
 
             // Comparison
-            bool operator==(const heap_tensor &other) const noexcept {
+            bool operator==(const HeapTensor &other) const noexcept {
                 for (size_type i = 0; i < size_; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -433,7 +433,7 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const heap_tensor &other) const noexcept { return !(*this == other); }
+            bool operator!=(const HeapTensor &other) const noexcept { return !(*this == other); }
         };
 
         // =============================================================================
@@ -463,15 +463,15 @@ namespace datapod {
          * Fixed dimensions are known at compile-time, dynamic ones at runtime.
          *
          * Examples:
-         *   tensor<double, Dynamic, 4, 5> batch(32);      // 32x4x5 - batch of 4x5 matrices
-         *   tensor<float, Dynamic, 224, 224, 3> imgs(16); // 16x224x224x3 - batch of images
-         *   tensor<double, Dynamic, Dynamic, Dynamic> t(2,3,4); // fully dynamic 2x3x4
+         *   Tensor<double, Dynamic, 4, 5> batch(32);      // 32x4x5 - batch of 4x5 matrices
+         *   Tensor<float, Dynamic, 224, 224, 3> imgs(16); // 16x224x224x3 - batch of images
+         *   Tensor<double, Dynamic, Dynamic, Dynamic> t(2,3,4); // fully dynamic 2x3x4
          *
          * Constructor takes runtime sizes for Dynamic dimensions only, in order.
          */
         template <typename T, size_t... Dims>
         requires(has_dynamic_dim_v<Dims...> && sizeof...(Dims) >= 3)
-        struct tensor<T, Dims...> {
+        struct Tensor<T, Dims...> {
             using value_type = T;
             using size_type = size_t;
             using reference = T &;
@@ -548,7 +548,7 @@ namespace datapod {
             // Constructor taking runtime sizes for dynamic dimensions only
             template <typename... DynSizes>
             requires(sizeof...(DynSizes) == num_dynamic && (std::is_convertible_v<DynSizes, size_t> && ...))
-            explicit tensor(DynSizes... dyn_sizes) : dims_{}, strides_{}, size_(0), data_(nullptr) {
+            explicit Tensor(DynSizes... dyn_sizes) : dims_{}, strides_{}, size_(0), data_(nullptr) {
                 std::array<size_t, num_dynamic> dyn_arr = {static_cast<size_t>(dyn_sizes)...};
                 init_dims(dyn_arr);
                 compute_strides();
@@ -557,8 +557,8 @@ namespace datapod {
             }
 
             // Default constructor (only valid if no dynamic dims - but this specialization requires dynamic)
-            // For fully dynamic, creates empty tensor
-            tensor() : dims_{}, strides_{}, size_(0), data_(nullptr) {
+            // For fully dynamic, creates empty Tensor
+            Tensor() : dims_{}, strides_{}, size_(0), data_(nullptr) {
                 // Initialize fixed dims from template
                 for (size_t i = 0; i < rank; ++i) {
                     dims_[i] = (template_dims_[i] == Dynamic) ? 0 : template_dims_[i];
@@ -569,7 +569,7 @@ namespace datapod {
             }
 
             // Copy constructor
-            tensor(const tensor &other)
+            Tensor(const Tensor &other)
                 : dims_(other.dims_), strides_(other.strides_), size_(other.size_), data_(nullptr) {
                 if (size_ > 0) {
                     data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * size_));
@@ -580,17 +580,17 @@ namespace datapod {
             }
 
             // Move constructor
-            tensor(tensor &&other) noexcept
+            Tensor(Tensor &&other) noexcept
                 : dims_(other.dims_), strides_(other.strides_), size_(other.size_), data_(other.data_) {
                 other.size_ = 0;
                 other.data_ = nullptr;
             }
 
             // Destructor
-            ~tensor() { deallocate(); }
+            ~Tensor() { deallocate(); }
 
             // Copy assignment
-            tensor &operator=(const tensor &other) {
+            Tensor &operator=(const Tensor &other) {
                 if (this != &other) {
                     deallocate();
                     dims_ = other.dims_;
@@ -607,7 +607,7 @@ namespace datapod {
             }
 
             // Move assignment
-            tensor &operator=(tensor &&other) noexcept {
+            Tensor &operator=(Tensor &&other) noexcept {
                 if (this != &other) {
                     deallocate();
                     dims_ = other.dims_;
@@ -662,7 +662,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("tensor::at");
+                        throw std::out_of_range("Tensor::at");
                     }
                 }
                 size_type linear = 0;
@@ -678,7 +678,7 @@ namespace datapod {
                 std::array<size_type, rank> idx_arr = {static_cast<size_type>(indices)...};
                 for (size_t i = 0; i < rank; ++i) {
                     if (idx_arr[i] >= dims_[i]) {
-                        throw std::out_of_range("tensor::at");
+                        throw std::out_of_range("Tensor::at");
                     }
                 }
                 size_type linear = 0;
@@ -721,7 +721,7 @@ namespace datapod {
 
             void setZero() { fill(T{}); }
 
-            void swap(tensor &other) noexcept {
+            void swap(Tensor &other) noexcept {
                 std::swap(dims_, other.dims_);
                 std::swap(strides_, other.strides_);
                 std::swap(size_, other.size_);
@@ -729,7 +729,7 @@ namespace datapod {
             }
 
             // Comparison
-            bool operator==(const tensor &other) const noexcept {
+            bool operator==(const Tensor &other) const noexcept {
                 if (dims_ != other.dims_)
                     return false;
                 for (size_t i = 0; i < size_; ++i) {
@@ -739,50 +739,50 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const tensor &other) const noexcept { return !(*this == other); }
+            bool operator!=(const Tensor &other) const noexcept { return !(*this == other); }
         };
 
         // Type traits
         template <typename T> struct is_tensor : std::false_type {};
-        template <typename T, size_t... Dims> struct is_tensor<tensor<T, Dims...>> : std::true_type {};
-        template <typename T, size_t... Dims> struct is_tensor<heap_tensor<T, Dims...>> : std::true_type {};
+        template <typename T, size_t... Dims> struct is_tensor<Tensor<T, Dims...>> : std::true_type {};
+        template <typename T, size_t... Dims> struct is_tensor<HeapTensor<T, Dims...>> : std::true_type {};
         template <typename T> inline constexpr bool is_tensor_v = is_tensor<T>::value;
 
-        // Type trait to check if tensor uses heap
+        // Type trait to check if Tensor uses heap
         template <typename T> struct is_heap_tensor : std::false_type {};
-        template <typename T, size_t... Dims> struct is_heap_tensor<heap_tensor<T, Dims...>> : std::true_type {};
+        template <typename T, size_t... Dims> struct is_heap_tensor<HeapTensor<T, Dims...>> : std::true_type {};
         template <typename T> inline constexpr bool is_heap_tensor_v = is_heap_tensor<T>::value;
 
-        // Type trait to check if tensor has any dynamic dimensions (partial dynamic)
+        // Type trait to check if Tensor has any dynamic dimensions (partial dynamic)
         // Note: This is different from dynamic_tensor<T> in dynamic.hpp which has runtime rank
         template <typename T> struct is_partially_dynamic_tensor : std::false_type {};
         template <typename T, size_t... Dims>
         requires(has_dynamic_dim_v<Dims...>)
-        struct is_partially_dynamic_tensor<tensor<T, Dims...>> : std::true_type {};
+        struct is_partially_dynamic_tensor<Tensor<T, Dims...>> : std::true_type {};
         template <typename T>
         inline constexpr bool is_partially_dynamic_tensor_v = is_partially_dynamic_tensor<T>::value;
 
-        // Common tensor type aliases (3D)
-        template <typename T> using tensor3d_2x2x2 = tensor<T, 2, 2, 2>;
-        template <typename T> using tensor3d_3x3x3 = tensor<T, 3, 3, 3>;
-        template <typename T> using tensor3d_4x4x4 = tensor<T, 4, 4, 4>;
+        // Common Tensor type aliases (3D)
+        template <typename T> using tensor3d_2x2x2 = Tensor<T, 2, 2, 2>;
+        template <typename T> using tensor3d_3x3x3 = Tensor<T, 3, 3, 3>;
+        template <typename T> using tensor3d_4x4x4 = Tensor<T, 4, 4, 4>;
 
         // Common numeric types (3D cubes)
-        using tensor3d_2x2x2f = tensor<float, 2, 2, 2>;
-        using tensor3d_2x2x2d = tensor<double, 2, 2, 2>;
-        using tensor3d_3x3x3f = tensor<float, 3, 3, 3>;
-        using tensor3d_3x3x3d = tensor<double, 3, 3, 3>;
-        using tensor3d_4x4x4f = tensor<float, 4, 4, 4>;
-        using tensor3d_4x4x4d = tensor<double, 4, 4, 4>;
+        using tensor3d_2x2x2f = Tensor<float, 2, 2, 2>;
+        using tensor3d_2x2x2d = Tensor<double, 2, 2, 2>;
+        using tensor3d_3x3x3f = Tensor<float, 3, 3, 3>;
+        using tensor3d_3x3x3d = Tensor<double, 3, 3, 3>;
+        using tensor3d_4x4x4f = Tensor<float, 4, 4, 4>;
+        using tensor3d_4x4x4d = Tensor<double, 4, 4, 4>;
 
-        // Fully dynamic tensor aliases (all dimensions runtime)
-        template <typename T> using Tensor3Xd = tensor<T, Dynamic, Dynamic, Dynamic>;
-        template <typename T> using Tensor4Xd = tensor<T, Dynamic, Dynamic, Dynamic, Dynamic>;
+        // Fully dynamic Tensor aliases (all dimensions runtime)
+        template <typename T> using Tensor3Xd = Tensor<T, Dynamic, Dynamic, Dynamic>;
+        template <typename T> using Tensor4Xd = Tensor<T, Dynamic, Dynamic, Dynamic, Dynamic>;
 
-        using Tensor3Xf = tensor<float, Dynamic, Dynamic, Dynamic>;
-        using Tensor3Xdd = tensor<double, Dynamic, Dynamic, Dynamic>;
-        using Tensor4Xf = tensor<float, Dynamic, Dynamic, Dynamic, Dynamic>;
-        using Tensor4Xdd = tensor<double, Dynamic, Dynamic, Dynamic, Dynamic>;
+        using Tensor3Xf = Tensor<float, Dynamic, Dynamic, Dynamic>;
+        using Tensor3Xdd = Tensor<double, Dynamic, Dynamic, Dynamic>;
+        using Tensor4Xf = Tensor<float, Dynamic, Dynamic, Dynamic, Dynamic>;
+        using Tensor4Xdd = Tensor<double, Dynamic, Dynamic, Dynamic, Dynamic>;
 
     } // namespace mat
 } // namespace datapod

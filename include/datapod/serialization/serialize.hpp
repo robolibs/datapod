@@ -74,19 +74,19 @@ namespace datapod {
               typename Eq>
     struct is_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
     // Heap-allocated mat types need special serialization
-    template <typename T, std::size_t N> struct is_container<mat::vector<T, N, true>> : std::true_type {};
+    template <typename T, std::size_t N> struct is_container<mat::Vector<T, N, true>> : std::true_type {};
     // Stack-allocated mat types also need special serialization
-    template <typename T, std::size_t N> struct is_container<mat::vector<T, N, false>> : std::true_type {};
+    template <typename T, std::size_t N> struct is_container<mat::Vector<T, N, false>> : std::true_type {};
     template <typename T, std::size_t R, std::size_t C>
-    struct is_container<mat::matrix<T, R, C, true>> : std::true_type {};
-    template <typename T, std::size_t... Dims> struct is_container<mat::heap_tensor<T, Dims...>> : std::true_type {};
+    struct is_container<mat::Matrix<T, R, C, true>> : std::true_type {};
+    template <typename T, std::size_t... Dims> struct is_container<mat::HeapTensor<T, Dims...>> : std::true_type {};
     // Dynamic mat types need special serialization (vector<T, Dynamic>, matrix<T, Dynamic, Dynamic>)
-    template <typename T> struct is_container<mat::vector<T, mat::Dynamic, false>> : std::true_type {};
-    template <typename T> struct is_container<mat::matrix<T, mat::Dynamic, mat::Dynamic, false>> : std::true_type {};
+    template <typename T> struct is_container<mat::Vector<T, mat::Dynamic, false>> : std::true_type {};
+    template <typename T> struct is_container<mat::Matrix<T, mat::Dynamic, mat::Dynamic, false>> : std::true_type {};
     // Dynamic tensor (any dimension is Dynamic) - use SFINAE to detect
     template <typename T, std::size_t... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
-    struct is_container<mat::tensor<T, Dims...>> : std::true_type {};
+    struct is_container<mat::Tensor<T, Dims...>> : std::true_type {};
     template <typename T> constexpr bool is_container_v = is_container<decay_t<T>>::value;
 
     // Serialize aggregate types (structs) using reflection
@@ -192,36 +192,36 @@ namespace datapod {
     // Serialize heap-allocated mat types
     // =============================================================================
 
-    // Serialize heap-allocated mat::vector
+    // Serialize heap-allocated mat::Vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
-    void serialize(Ctx &ctx, mat::vector<T, N, true> &value) {
+    void serialize(Ctx &ctx, mat::Vector<T, N, true> &value) {
         // Fixed size, just write all elements
         for (std::size_t i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
-    // Serialize stack-allocated mat::vector
+    // Serialize stack-allocated mat::Vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
-    void serialize(Ctx &ctx, mat::vector<T, N, false> &value) {
+    void serialize(Ctx &ctx, mat::Vector<T, N, false> &value) {
         // Fixed size, just write all elements
         for (std::size_t i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
-    // Serialize heap-allocated mat::matrix
+    // Serialize heap-allocated mat::Matrix
     template <Mode M, typename Ctx, typename T, std::size_t R, std::size_t C>
-    void serialize(Ctx &ctx, mat::matrix<T, R, C, true> &value) {
+    void serialize(Ctx &ctx, mat::Matrix<T, R, C, true> &value) {
         // Fixed size, just write all elements (column-major order)
         for (std::size_t i = 0; i < R * C; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
-    // Serialize heap-allocated mat::heap_tensor
+    // Serialize heap-allocated mat::HeapTensor
     template <Mode M, typename Ctx, typename T, std::size_t... Dims>
-    void serialize(Ctx &ctx, mat::heap_tensor<T, Dims...> &value) {
+    void serialize(Ctx &ctx, mat::HeapTensor<T, Dims...> &value) {
         // Fixed size, just write all elements
         constexpr std::size_t total = (Dims * ...);
         for (std::size_t i = 0; i < total; ++i) {
@@ -233,9 +233,9 @@ namespace datapod {
     // Serialize dynamic mat types
     // =============================================================================
 
-    // Serialize mat::vector<T, Dynamic>
+    // Serialize mat::Vector<T, Dynamic>
     // Format: [size_t size][T data[0]][T data[1]]...[T data[size-1]]
-    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::vector<T, mat::Dynamic, false> &value) {
+    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::Vector<T, mat::Dynamic, false> &value) {
         // Write size
         auto const sz = value.size();
         serialize<M>(ctx, const_cast<std::size_t &>(sz));
@@ -246,10 +246,10 @@ namespace datapod {
         }
     }
 
-    // Serialize mat::matrix<T, Dynamic, Dynamic>
+    // Serialize mat::Matrix<T, Dynamic, Dynamic>
     // Format: [size_t rows][size_t cols][T data[0]]...[T data[rows*cols-1]]
     template <Mode M, typename Ctx, typename T>
-    void serialize(Ctx &ctx, mat::matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
+    void serialize(Ctx &ctx, mat::Matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
         // Write dimensions
         auto const rows = value.rows();
         auto const cols = value.cols();
@@ -263,9 +263,9 @@ namespace datapod {
         }
     }
 
-    // Serialize mat::dynamic_tensor (fully runtime-ranked)
+    // Serialize mat::DynamicTensor (fully runtime-ranked)
     // Format: [size_t rank][size_t dim0]...[size_t dimN][T data[...]]
-    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::dynamic_tensor<T> &value) {
+    template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::DynamicTensor<T> &value) {
         // Write rank (number of dimensions)
         auto const r = value.rank();
         serialize<M>(ctx, const_cast<std::size_t &>(r));
@@ -283,12 +283,12 @@ namespace datapod {
         }
     }
 
-    // Serialize mat::tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
+    // Serialize mat::Tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
     // Format: [size_t dyn_dim0][size_t dyn_dim1]...[T data[...]]
     // Only dynamic dimensions are serialized (fixed ones are known at compile-time)
     template <Mode M, typename Ctx, typename T, std::size_t... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
-    void serialize(Ctx &ctx, mat::tensor<T, Dims...> &value) {
+    void serialize(Ctx &ctx, mat::Tensor<T, Dims...> &value) {
         // Write only the dynamic dimensions
         constexpr std::array<std::size_t, sizeof...(Dims)> template_dims = {Dims...};
         for (std::size_t i = 0; i < sizeof...(Dims); ++i) {
@@ -517,36 +517,36 @@ namespace datapod {
     // Deserialize heap-allocated mat types
     // =============================================================================
 
-    // Deserialize heap-allocated mat::vector
+    // Deserialize heap-allocated mat::Vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
-    void deserialize(Ctx &ctx, mat::vector<T, N, true> &value) {
+    void deserialize(Ctx &ctx, mat::Vector<T, N, true> &value) {
         // Fixed size, read all elements
         for (std::size_t i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
-    // Deserialize stack-allocated mat::vector
+    // Deserialize stack-allocated mat::Vector
     template <Mode M, typename Ctx, typename T, std::size_t N>
-    void deserialize(Ctx &ctx, mat::vector<T, N, false> &value) {
+    void deserialize(Ctx &ctx, mat::Vector<T, N, false> &value) {
         // Fixed size, read all elements
         for (std::size_t i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
-    // Deserialize heap-allocated mat::matrix
+    // Deserialize heap-allocated mat::Matrix
     template <Mode M, typename Ctx, typename T, std::size_t R, std::size_t C>
-    void deserialize(Ctx &ctx, mat::matrix<T, R, C, true> &value) {
+    void deserialize(Ctx &ctx, mat::Matrix<T, R, C, true> &value) {
         // Fixed size, read all elements (column-major order)
         for (std::size_t i = 0; i < R * C; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
-    // Deserialize heap-allocated mat::heap_tensor
+    // Deserialize heap-allocated mat::HeapTensor
     template <Mode M, typename Ctx, typename T, std::size_t... Dims>
-    void deserialize(Ctx &ctx, mat::heap_tensor<T, Dims...> &value) {
+    void deserialize(Ctx &ctx, mat::HeapTensor<T, Dims...> &value) {
         // Fixed size, read all elements
         constexpr std::size_t total = (Dims * ...);
         for (std::size_t i = 0; i < total; ++i) {
@@ -558,8 +558,8 @@ namespace datapod {
     // Deserialize dynamic mat types
     // =============================================================================
 
-    // Deserialize mat::vector<T, Dynamic>
-    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::vector<T, mat::Dynamic, false> &value) {
+    // Deserialize mat::Vector<T, Dynamic>
+    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::Vector<T, mat::Dynamic, false> &value) {
         // Read size
         std::size_t sz = 0;
         deserialize<M>(ctx, sz);
@@ -571,9 +571,9 @@ namespace datapod {
         }
     }
 
-    // Deserialize mat::matrix<T, Dynamic, Dynamic>
+    // Deserialize mat::Matrix<T, Dynamic, Dynamic>
     template <Mode M, typename Ctx, typename T>
-    void deserialize(Ctx &ctx, mat::matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
+    void deserialize(Ctx &ctx, mat::Matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
         // Read dimensions
         std::size_t rows = 0, cols = 0;
         deserialize<M>(ctx, rows);
@@ -587,8 +587,8 @@ namespace datapod {
         }
     }
 
-    // Deserialize mat::dynamic_tensor (fully runtime-ranked)
-    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::dynamic_tensor<T> &value) {
+    // Deserialize mat::DynamicTensor (fully runtime-ranked)
+    template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::DynamicTensor<T> &value) {
         // Read rank
         std::size_t r = 0;
         deserialize<M>(ctx, r);
@@ -608,11 +608,11 @@ namespace datapod {
         }
     }
 
-    // Deserialize mat::tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
+    // Deserialize mat::Tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
     // Helper to collect dynamic dimensions and call resize
     template <Mode M, typename Ctx, typename T, std::size_t... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
-    void deserialize(Ctx &ctx, mat::tensor<T, Dims...> &value) {
+    void deserialize(Ctx &ctx, mat::Tensor<T, Dims...> &value) {
         constexpr std::size_t rank = sizeof...(Dims);
         constexpr std::array<std::size_t, rank> template_dims = {Dims...};
         constexpr std::size_t num_dynamic = mat::count_dynamic_dims<Dims...>::value;

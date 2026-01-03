@@ -73,9 +73,9 @@ namespace datapod {
         // Get the diameter of the sphere
         inline double diameter() const noexcept { return 2.0 * radius; }
 
-        // SIMD conversion: BS → mat::vector<double, 4> (center(3), radius)
-        inline mat::vector<double, 4> to_mat() const noexcept {
-            mat::vector<double, 4> v;
+        // SIMD conversion: BS → mat::Vector<double, 4> (center(3), radius)
+        inline mat::Vector<double, 4> to_mat() const noexcept {
+            mat::Vector<double, 4> v;
             v[0] = center.x;
             v[1] = center.y;
             v[2] = center.z;
@@ -83,8 +83,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 4> → BS
-        static inline BS from_mat(const mat::vector<double, 4> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 4> → BS
+        static inline BS from_mat(const mat::Vector<double, 4> &v) noexcept {
             return BS{Point{v[0], v[1], v[2]}, v[3]};
         }
     };

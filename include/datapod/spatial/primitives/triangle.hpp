@@ -61,9 +61,9 @@ namespace datapod {
             return !(has_neg && has_pos);
         }
 
-        // SIMD conversion: Triangle → mat::vector<double, 9> (3 points × 3 components each)
-        inline mat::vector<double, 9> to_mat() const noexcept {
-            mat::vector<double, 9> v;
+        // SIMD conversion: Triangle → mat::Vector<double, 9> (3 points × 3 components each)
+        inline mat::Vector<double, 9> to_mat() const noexcept {
+            mat::Vector<double, 9> v;
             v[0] = a.x;
             v[1] = a.y;
             v[2] = a.z;
@@ -76,8 +76,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 9> → Triangle
-        static inline Triangle from_mat(const mat::vector<double, 9> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 9> → Triangle
+        static inline Triangle from_mat(const mat::Vector<double, 9> &v) noexcept {
             return Triangle{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}, Point{v[6], v[7], v[8]}};
         }
     };

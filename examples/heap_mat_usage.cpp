@@ -1,6 +1,6 @@
 /**
  * @file heap_mat_usage.cpp
- * @brief Demonstrates heap-allocated mat::vector, mat::matrix, and mat::heap_tensor
+ * @brief Demonstrates heap-allocated mat::Vector, mat::Matrix, and mat::HeapTensor
  *
  * This example shows how datapod automatically uses heap allocation for large
  * mathematical types that would overflow the stack, while keeping small types
@@ -21,7 +21,6 @@
 #include <iostream>
 
 using namespace datapod;
-using namespace datapod::mat;
 
 int main() {
     std::cout << "=== Heap-Allocated Mat Types Usage Examples ===" << std::endl << std::endl;
@@ -29,28 +28,28 @@ int main() {
     // =========================================================================
     // 1. HEAP THRESHOLD DEMONSTRATION
     // =========================================================================
-    std::cout << "1. Heap Threshold (HEAP_THRESHOLD = " << HEAP_THRESHOLD << " elements):" << std::endl;
+    std::cout << "1. Heap Threshold (HEAP_THRESHOLD = " << mat::HEAP_THRESHOLD << " elements):" << std::endl;
     std::cout << std::endl;
 
     // Small vector - stack allocated
-    std::cout << "   vector<double, 3>:" << std::endl;
-    std::cout << "      uses_heap = " << std::boolalpha << vector<double, 3>::uses_heap << std::endl;
-    std::cout << "      is_pod    = " << vector<double, 3>::is_pod << std::endl;
+    std::cout << "   mat::Vector<double, 3>:" << std::endl;
+    std::cout << "      uses_heap = " << std::boolalpha << mat::Vector<double, 3>::uses_heap << std::endl;
+    std::cout << "      is_pod    = " << mat::Vector<double, 3>::is_pod << std::endl;
 
     // Large vector - heap allocated
-    std::cout << "   vector<double, 2000>:" << std::endl;
-    std::cout << "      uses_heap = " << vector<double, 2000>::uses_heap << std::endl;
-    std::cout << "      is_pod    = " << vector<double, 2000>::is_pod << std::endl;
+    std::cout << "   mat::Vector<double, 2000>:" << std::endl;
+    std::cout << "      uses_heap = " << mat::Vector<double, 2000>::uses_heap << std::endl;
+    std::cout << "      is_pod    = " << mat::Vector<double, 2000>::is_pod << std::endl;
 
     // Small matrix - stack allocated
-    std::cout << "   matrix<double, 3, 3> (9 elements):" << std::endl;
-    std::cout << "      uses_heap = " << matrix<double, 3, 3>::uses_heap << std::endl;
-    std::cout << "      is_pod    = " << matrix<double, 3, 3>::is_pod << std::endl;
+    std::cout << "   mat::Matrix<double, 3, 3> (9 elements):" << std::endl;
+    std::cout << "      uses_heap = " << mat::Matrix<double, 3, 3>::uses_heap << std::endl;
+    std::cout << "      is_pod    = " << mat::Matrix<double, 3, 3>::is_pod << std::endl;
 
     // Large matrix - heap allocated
-    std::cout << "   matrix<double, 50, 50> (2500 elements):" << std::endl;
-    std::cout << "      uses_heap = " << matrix<double, 50, 50>::uses_heap << std::endl;
-    std::cout << "      is_pod    = " << matrix<double, 50, 50>::is_pod << std::endl;
+    std::cout << "   mat::Matrix<double, 50, 50> (2500 elements):" << std::endl;
+    std::cout << "      uses_heap = " << mat::Matrix<double, 50, 50>::uses_heap << std::endl;
+    std::cout << "      is_pod    = " << mat::Matrix<double, 50, 50>::is_pod << std::endl;
     std::cout << std::endl;
 
     // =========================================================================
@@ -60,7 +59,7 @@ int main() {
 
     // This would crash with stack allocation (40KB on stack!)
     // With heap allocation, it works fine
-    vector<float, 10000> embeddings;
+    mat::Vector<float, 10000> embeddings;
     embeddings.fill(0.0f);
 
     // Set some values
@@ -85,7 +84,7 @@ int main() {
     std::cout << "3. Large Matrix (image data, 100x100):" << std::endl;
 
     // 100x100 matrix = 10000 elements = 80KB for double
-    matrix<double, 100, 100> image;
+    mat::Matrix<double, 100, 100> image;
     image.fill(0.0);
 
     // Set some pixel values
@@ -105,8 +104,8 @@ int main() {
     // =========================================================================
     std::cout << "4. Heap Tensor (3D volume, 20x20x20):" << std::endl;
 
-    // heap_tensor is explicitly for large tensors
-    heap_tensor<float, 20, 20, 20> volume; // 8000 elements
+    // HeapTensor is explicitly for large tensors
+    mat::HeapTensor<float, 20, 20, 20> volume; // 8000 elements
     volume.fill(0.0f);
 
     // Set some voxel values
@@ -128,16 +127,16 @@ int main() {
     // =========================================================================
     std::cout << "5. Copy and Move Semantics:" << std::endl;
 
-    vector<double, 2000> v1;
+    mat::Vector<double, 2000> v1;
     v1.fill(42.0);
 
     // Copy - creates independent copy
-    vector<double, 2000> v2 = v1;
+    mat::Vector<double, 2000> v2 = v1;
     v1[0] = 999.0;
     std::cout << "   After copy, v1[0] = " << v1[0] << ", v2[0] = " << v2[0] << std::endl;
 
     // Move - transfers ownership (efficient)
-    vector<double, 2000> v3 = std::move(v1);
+    mat::Vector<double, 2000> v3 = std::move(v1);
     std::cout << "   After move, v3[0] = " << v3[0] << std::endl;
     std::cout << std::endl;
 
@@ -146,7 +145,7 @@ int main() {
     // =========================================================================
     std::cout << "6. Serialization (round-trip):" << std::endl;
 
-    vector<float, 2000> original;
+    mat::Vector<float, 2000> original;
     for (size_t i = 0; i < 2000; ++i) {
         original[i] = static_cast<float>(i) * 0.001f;
     }
@@ -156,7 +155,7 @@ int main() {
     std::cout << "   Serialized size = " << buf.size() << " bytes" << std::endl;
 
     // Deserialize back
-    auto restored = deserialize<Mode::NONE, vector<float, 2000>>(buf);
+    auto restored = deserialize<Mode::NONE, mat::Vector<float, 2000>>(buf);
 
     // Verify
     bool match = true;
@@ -175,10 +174,10 @@ int main() {
     std::cout << "7. Transparent API (same code for stack/heap):" << std::endl;
 
     // Small vector (stack)
-    vector<double, 3> small_vec{1.0, 2.0, 3.0};
+    mat::Vector<double, 3> small_vec{1.0, 2.0, 3.0};
 
     // Large vector (heap)
-    vector<double, 2000> large_vec;
+    mat::Vector<double, 2000> large_vec;
     large_vec[0] = 1.0;
     large_vec[1] = 2.0;
     large_vec[2] = 3.0;
@@ -196,14 +195,14 @@ int main() {
     std::cout << "8. Use Cases Summary:" << std::endl;
     std::cout << std::endl;
     std::cout << "   STACK (N <= 1024, POD, zero-copy):" << std::endl;
-    std::cout << "      - Robotics: vector<double, 3> for position" << std::endl;
-    std::cout << "      - Robotics: matrix<double, 3, 3> for rotation" << std::endl;
-    std::cout << "      - Robotics: matrix<double, 6, 6> for covariance" << std::endl;
+    std::cout << "      - Robotics: mat::Vector<double, 3> for position" << std::endl;
+    std::cout << "      - Robotics: mat::Matrix<double, 3, 3> for rotation" << std::endl;
+    std::cout << "      - Robotics: mat::Matrix<double, 6, 6> for covariance" << std::endl;
     std::cout << std::endl;
     std::cout << "   HEAP (N > 1024, SIMD-aligned):" << std::endl;
-    std::cout << "      - ML: vector<float, 1000000> for embeddings" << std::endl;
-    std::cout << "      - Image: matrix<float, 1024, 1024> for pixels" << std::endl;
-    std::cout << "      - Volume: heap_tensor<float, 256, 256, 256> for 3D data" << std::endl;
+    std::cout << "      - ML: mat::Vector<float, 1000000> for embeddings" << std::endl;
+    std::cout << "      - Image: mat::Matrix<float, 1024, 1024> for pixels" << std::endl;
+    std::cout << "      - Volume: mat::HeapTensor<float, 256, 256, 256> for 3D data" << std::endl;
     std::cout << std::endl;
 
     std::cout << "=== Done ===" << std::endl;

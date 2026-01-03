@@ -62,9 +62,9 @@ namespace datapod {
         }
 
         // Conversion to/from mat::vector for SIMD operations
-        inline mat::vector<double, 3> to_mat() const noexcept { return mat::vector<double, 3>{x, y, z}; }
+        inline mat::Vector<double, 3> to_mat() const noexcept { return mat::Vector<double, 3>{x, y, z}; }
 
-        static inline Size from_mat(const mat::vector<double, 3> &v) noexcept { return Size{v[0], v[1], v[2]}; }
+        static inline Size from_mat(const mat::Vector<double, 3> &v) noexcept { return Size{v[0], v[1], v[2]}; }
     };
 
 } // namespace datapod

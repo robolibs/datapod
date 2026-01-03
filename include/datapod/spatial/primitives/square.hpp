@@ -45,9 +45,9 @@ namespace datapod {
             return corners;
         }
 
-        // SIMD conversion: Square → mat::vector<double, 4> (center(3), side)
-        inline mat::vector<double, 4> to_mat() const noexcept {
-            mat::vector<double, 4> v;
+        // SIMD conversion: Square → mat::Vector<double, 4> (center(3), side)
+        inline mat::Vector<double, 4> to_mat() const noexcept {
+            mat::Vector<double, 4> v;
             v[0] = center.x;
             v[1] = center.y;
             v[2] = center.z;
@@ -55,8 +55,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 4> → Square
-        static inline Square from_mat(const mat::vector<double, 4> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 4> → Square
+        static inline Square from_mat(const mat::Vector<double, 4> &v) noexcept {
             return Square{Point{v[0], v[1], v[2]}, v[3]};
         }
     };

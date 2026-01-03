@@ -17,13 +17,13 @@ namespace datapod {
          * Fully serializable via members().
          *
          * Examples:
-         *   fraction<int> f{1, 2};     // 1/2
-         *   fraction<int> g{2, 3};     // 2/3
+         *   Fraction<int> f{1, 2};     // 1/2
+         *   Fraction<int> g{2, 3};     // 2/3
          *   auto h = f + g;            // 7/6
          *   auto d = f.to_double();    // 0.5
          */
-        template <typename T> struct fraction {
-            static_assert(std::is_integral_v<T>, "fraction<T> requires integral type");
+        template <typename T> struct Fraction {
+            static_assert(std::is_integral_v<T>, "Fraction<T> requires integral type");
 
             using value_type = T;
             static constexpr size_t rank = 0;
@@ -36,14 +36,14 @@ namespace datapod {
             auto members() const noexcept { return std::tie(num, den); }
 
             // Construction
-            constexpr fraction() noexcept = default;
-            constexpr fraction(T n) noexcept : num(n), den{1} {}
-            constexpr fraction(T n, T d) noexcept : num(n), den(d) { normalize(); }
+            constexpr Fraction() noexcept = default;
+            constexpr Fraction(T n) noexcept : num(n), den{1} {}
+            constexpr Fraction(T n, T d) noexcept : num(n), den(d) { normalize(); }
 
             // From floating point (approximate)
-            static inline fraction from_double(double value, T max_denom = 1000000) noexcept {
+            static inline Fraction from_double(double value, T max_denom = 1000000) noexcept {
                 if (value == 0.0)
-                    return fraction{T{0}, T{1}};
+                    return Fraction{T{0}, T{1}};
 
                 bool negative = value < 0;
                 value = negative ? -value : value;
@@ -70,7 +70,7 @@ namespace datapod {
                     x = 1.0 / (x - static_cast<double>(a));
                 }
 
-                return fraction{negative ? -n1 : n1, d1};
+                return Fraction{negative ? -n1 : n1, d1};
             }
 
             // Normalization (reduce to lowest terms, ensure positive denominator)
@@ -105,10 +105,10 @@ namespace datapod {
             constexpr bool is_set() const noexcept { return num != 0; }
 
             // Absolute value
-            constexpr fraction abs() const noexcept { return fraction{num < 0 ? -num : num, den}; }
+            constexpr Fraction abs() const noexcept { return Fraction{num < 0 ? -num : num, den}; }
 
             // Reciprocal
-            constexpr fraction reciprocal() const noexcept { return fraction{den, num}; }
+            constexpr Fraction reciprocal() const noexcept { return Fraction{den, num}; }
 
             // Floor and ceiling
             constexpr T floor() const noexcept {
@@ -124,28 +124,28 @@ namespace datapod {
             }
 
             // Compound assignment
-            constexpr fraction &operator+=(const fraction &other) noexcept {
+            constexpr Fraction &operator+=(const Fraction &other) noexcept {
                 num = num * other.den + other.num * den;
                 den = den * other.den;
                 normalize();
                 return *this;
             }
 
-            constexpr fraction &operator-=(const fraction &other) noexcept {
+            constexpr Fraction &operator-=(const Fraction &other) noexcept {
                 num = num * other.den - other.num * den;
                 den = den * other.den;
                 normalize();
                 return *this;
             }
 
-            constexpr fraction &operator*=(const fraction &other) noexcept {
+            constexpr Fraction &operator*=(const Fraction &other) noexcept {
                 num *= other.num;
                 den *= other.den;
                 normalize();
                 return *this;
             }
 
-            constexpr fraction &operator/=(const fraction &other) noexcept {
+            constexpr Fraction &operator/=(const Fraction &other) noexcept {
                 num *= other.den;
                 den *= other.num;
                 normalize();
@@ -153,20 +153,20 @@ namespace datapod {
             }
 
             // Unary operators
-            constexpr fraction operator-() const noexcept { return fraction{-num, den}; }
-            constexpr fraction operator+() const noexcept { return *this; }
+            constexpr Fraction operator-() const noexcept { return Fraction{-num, den}; }
+            constexpr Fraction operator+() const noexcept { return *this; }
 
             // Comparison
-            constexpr bool operator==(const fraction &other) const noexcept {
+            constexpr bool operator==(const Fraction &other) const noexcept {
                 return num == other.num && den == other.den;
             }
-            constexpr bool operator!=(const fraction &other) const noexcept { return !(*this == other); }
-            constexpr bool operator<(const fraction &other) const noexcept { return num * other.den < other.num * den; }
-            constexpr bool operator<=(const fraction &other) const noexcept {
+            constexpr bool operator!=(const Fraction &other) const noexcept { return !(*this == other); }
+            constexpr bool operator<(const Fraction &other) const noexcept { return num * other.den < other.num * den; }
+            constexpr bool operator<=(const Fraction &other) const noexcept {
                 return num * other.den <= other.num * den;
             }
-            constexpr bool operator>(const fraction &other) const noexcept { return num * other.den > other.num * den; }
-            constexpr bool operator>=(const fraction &other) const noexcept {
+            constexpr bool operator>(const Fraction &other) const noexcept { return num * other.den > other.num * den; }
+            constexpr bool operator>=(const Fraction &other) const noexcept {
                 return num * other.den >= other.num * den;
             }
 
@@ -182,54 +182,54 @@ namespace datapod {
         };
 
         // Binary operators
-        template <typename T> constexpr fraction<T> operator+(const fraction<T> &a, const fraction<T> &b) noexcept {
-            fraction<T> r{a.num * b.den + b.num * a.den, a.den * b.den};
+        template <typename T> constexpr Fraction<T> operator+(const Fraction<T> &a, const Fraction<T> &b) noexcept {
+            Fraction<T> r{a.num * b.den + b.num * a.den, a.den * b.den};
             r.normalize();
             return r;
         }
 
-        template <typename T> constexpr fraction<T> operator-(const fraction<T> &a, const fraction<T> &b) noexcept {
-            fraction<T> r{a.num * b.den - b.num * a.den, a.den * b.den};
+        template <typename T> constexpr Fraction<T> operator-(const Fraction<T> &a, const Fraction<T> &b) noexcept {
+            Fraction<T> r{a.num * b.den - b.num * a.den, a.den * b.den};
             r.normalize();
             return r;
         }
 
-        template <typename T> constexpr fraction<T> operator*(const fraction<T> &a, const fraction<T> &b) noexcept {
-            fraction<T> r{a.num * b.num, a.den * b.den};
+        template <typename T> constexpr Fraction<T> operator*(const Fraction<T> &a, const Fraction<T> &b) noexcept {
+            Fraction<T> r{a.num * b.num, a.den * b.den};
             r.normalize();
             return r;
         }
 
-        template <typename T> constexpr fraction<T> operator/(const fraction<T> &a, const fraction<T> &b) noexcept {
-            fraction<T> r{a.num * b.den, a.den * b.num};
+        template <typename T> constexpr Fraction<T> operator/(const Fraction<T> &a, const Fraction<T> &b) noexcept {
+            Fraction<T> r{a.num * b.den, a.den * b.num};
             r.normalize();
             return r;
         }
 
         // Scalar operations
-        template <typename T> constexpr fraction<T> operator*(const fraction<T> &f, T s) noexcept {
-            fraction<T> r{f.num * s, f.den};
+        template <typename T> constexpr Fraction<T> operator*(const Fraction<T> &f, T s) noexcept {
+            Fraction<T> r{f.num * s, f.den};
             r.normalize();
             return r;
         }
 
-        template <typename T> constexpr fraction<T> operator*(T s, const fraction<T> &f) noexcept { return f * s; }
+        template <typename T> constexpr Fraction<T> operator*(T s, const Fraction<T> &f) noexcept { return f * s; }
 
-        template <typename T> constexpr fraction<T> operator/(const fraction<T> &f, T s) noexcept {
-            fraction<T> r{f.num, f.den * s};
+        template <typename T> constexpr Fraction<T> operator/(const Fraction<T> &f, T s) noexcept {
+            Fraction<T> r{f.num, f.den * s};
             r.normalize();
             return r;
         }
 
         // Power function
-        template <typename T> constexpr fraction<T> pow(const fraction<T> &base, int exp) noexcept {
+        template <typename T> constexpr Fraction<T> pow(const Fraction<T> &base, int exp) noexcept {
             if (exp == 0)
-                return fraction<T>{T{1}, T{1}};
+                return Fraction<T>{T{1}, T{1}};
             if (exp < 0)
                 return pow(base.reciprocal(), -exp);
 
-            fraction<T> result{T{1}, T{1}};
-            fraction<T> b = base;
+            Fraction<T> result{T{1}, T{1}};
+            Fraction<T> b = base;
             while (exp > 0) {
                 if (exp & 1)
                     result *= b;
@@ -241,12 +241,12 @@ namespace datapod {
 
         // Type traits
         template <typename T> struct is_fraction : std::false_type {};
-        template <typename T> struct is_fraction<fraction<T>> : std::true_type {};
+        template <typename T> struct is_fraction<Fraction<T>> : std::true_type {};
         template <typename T> inline constexpr bool is_fraction_v = is_fraction<T>::value;
 
         // Type aliases
-        using fraction32 = fraction<int32_t>;
-        using fraction64 = fraction<int64_t>;
+        using fraction32 = Fraction<int32_t>;
+        using fraction64 = Fraction<int64_t>;
 
     } // namespace mat
 } // namespace datapod

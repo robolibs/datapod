@@ -5,13 +5,13 @@
  * @brief Re-exports dynamic types and provides additional utilities
  *
  * This header is for convenience - it re-exports the dynamic specializations
- * from vector.hpp and matrix.hpp, plus provides the dynamic_tensor type.
+ * from vector.hpp and matrix.hpp, plus provides the DynamicTensor type.
  *
  * The Dynamic sentinel and specializations are defined in their respective files:
  *   - vector<T, Dynamic>  in vector.hpp
  *   - matrix<T, Dynamic, Dynamic>  in matrix.hpp
  *
- * For tensors, we provide a separate dynamic_tensor<T> class since tensors
+ * For tensors, we provide a separate DynamicTensor<T> class since tensors
  * have variadic dimension parameters and can't easily use the Dynamic sentinel.
  * This follows Eigen's approach where Tensor<T, Rank> has fixed rank.
  */
@@ -48,11 +48,11 @@ namespace datapod {
          * Serialization format: [size_t rank][size_t dim0]...[size_t dimN][T data[...]]
          *
          * Examples:
-         *   dynamic_tensor<double> t({10, 20, 30});  // 10x20x30 tensor (rank 3)
-         *   dynamic_tensor<float> cube({64, 64, 64}); // 64^3 cube
+         *   DynamicTensor<double> t({10, 20, 30});  // 10x20x30 tensor (rank 3)
+         *   DynamicTensor<float> cube({64, 64, 64}); // 64^3 cube
          *   t.resize({20, 30, 40});                   // Resize (can change rank too!)
          */
-        template <typename T> struct dynamic_tensor {
+        template <typename T> struct DynamicTensor {
             using value_type = T;
             using size_type = size_t;
             using reference = T &;
@@ -118,10 +118,10 @@ namespace datapod {
 
           public:
             // Default constructor - empty tensor (rank 0)
-            dynamic_tensor() noexcept : dims_(), strides_(), size_(0), data_(nullptr) {}
+            DynamicTensor() noexcept : dims_(), strides_(), size_(0), data_(nullptr) {}
 
             // Shape constructor (initializer_list)
-            explicit dynamic_tensor(std::initializer_list<size_t> shape)
+            explicit DynamicTensor(std::initializer_list<size_t> shape)
                 : dims_(), strides_(), size_(0), data_(nullptr) {
                 dims_.reserve(shape.size());
                 for (size_t d : shape) {
@@ -133,7 +133,7 @@ namespace datapod {
             }
 
             // Shape constructor from vector
-            explicit dynamic_tensor(const datapod::Vector<size_t> &shape)
+            explicit DynamicTensor(const datapod::Vector<size_t> &shape)
                 : dims_(shape), strides_(), size_(0), data_(nullptr) {
                 compute_strides();
                 compute_size();
@@ -141,7 +141,7 @@ namespace datapod {
             }
 
             // Copy constructor
-            dynamic_tensor(const dynamic_tensor &other)
+            DynamicTensor(const DynamicTensor &other)
                 : dims_(other.dims_), strides_(other.strides_), size_(other.size_), data_(nullptr) {
                 if (size_ > 0) {
                     data_ = static_cast<T *>(aligned_alloc(32, sizeof(T) * size_));
@@ -152,7 +152,7 @@ namespace datapod {
             }
 
             // Move constructor
-            dynamic_tensor(dynamic_tensor &&other) noexcept
+            DynamicTensor(DynamicTensor &&other) noexcept
                 : dims_(std::move(other.dims_)), strides_(std::move(other.strides_)), size_(other.size_),
                   data_(other.data_) {
                 other.size_ = 0;
@@ -160,10 +160,10 @@ namespace datapod {
             }
 
             // Destructor
-            ~dynamic_tensor() { deallocate(); }
+            ~DynamicTensor() { deallocate(); }
 
             // Copy assignment
-            dynamic_tensor &operator=(const dynamic_tensor &other) {
+            DynamicTensor &operator=(const DynamicTensor &other) {
                 if (this != &other) {
                     deallocate();
                     dims_ = other.dims_;
@@ -180,7 +180,7 @@ namespace datapod {
             }
 
             // Move assignment
-            dynamic_tensor &operator=(dynamic_tensor &&other) noexcept {
+            DynamicTensor &operator=(DynamicTensor &&other) noexcept {
                 if (this != &other) {
                     deallocate();
                     dims_ = std::move(other.dims_);
@@ -233,13 +233,13 @@ namespace datapod {
             // Bounds-checked access
             reference at(std::initializer_list<size_t> indices) {
                 if (indices.size() != dims_.size()) {
-                    throw std::invalid_argument("dynamic_tensor::at: wrong number of indices");
+                    throw std::invalid_argument("DynamicTensor::at: wrong number of indices");
                 }
                 size_t linear = 0;
                 size_t i = 0;
                 for (size_t idx : indices) {
                     if (idx >= dims_[i]) {
-                        throw std::out_of_range("dynamic_tensor::at");
+                        throw std::out_of_range("DynamicTensor::at");
                     }
                     linear += idx * strides_[i++];
                 }
@@ -248,13 +248,13 @@ namespace datapod {
 
             const_reference at(std::initializer_list<size_t> indices) const {
                 if (indices.size() != dims_.size()) {
-                    throw std::invalid_argument("dynamic_tensor::at: wrong number of indices");
+                    throw std::invalid_argument("DynamicTensor::at: wrong number of indices");
                 }
                 size_t linear = 0;
                 size_t i = 0;
                 for (size_t idx : indices) {
                     if (idx >= dims_[i]) {
-                        throw std::out_of_range("dynamic_tensor::at");
+                        throw std::out_of_range("DynamicTensor::at");
                     }
                     linear += idx * strides_[i++];
                 }
@@ -316,7 +316,7 @@ namespace datapod {
 
             void setZero() { fill(T{}); }
 
-            void swap(dynamic_tensor &other) noexcept {
+            void swap(DynamicTensor &other) noexcept {
                 dims_.swap(other.dims_);
                 strides_.swap(other.strides_);
                 std::swap(size_, other.size_);
@@ -324,7 +324,7 @@ namespace datapod {
             }
 
             // Comparison
-            bool operator==(const dynamic_tensor &other) const noexcept {
+            bool operator==(const DynamicTensor &other) const noexcept {
                 if (dims_.size() != other.dims_.size())
                     return false;
                 for (size_t i = 0; i < dims_.size(); ++i) {
@@ -338,21 +338,21 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const dynamic_tensor &other) const noexcept { return !(*this == other); }
+            bool operator!=(const DynamicTensor &other) const noexcept { return !(*this == other); }
         };
 
         // =============================================================================
         // TYPE TRAITS
         // =============================================================================
 
-        // is_dynamic_tensor: for dynamic_tensor<T> (runtime-rank)
+        // is_dynamic_tensor: for DynamicTensor<T> (runtime-rank)
         template <typename T> struct is_dynamic_tensor : std::false_type {};
-        template <typename T> struct is_dynamic_tensor<dynamic_tensor<T>> : std::true_type {};
+        template <typename T> struct is_dynamic_tensor<DynamicTensor<T>> : std::true_type {};
         template <typename T> inline constexpr bool is_dynamic_tensor_v = is_dynamic_tensor<T>::value;
 
         // Check if any type is dynamic (vector, matrix, or tensor)
         // Includes: vector<T, Dynamic>, matrix<T, Dynamic, Dynamic>,
-        //           tensor<T, Dynamic, ...>, and dynamic_tensor<T>
+        //           tensor<T, Dynamic, ...>, and DynamicTensor<T>
         template <typename T>
         inline constexpr bool is_dynamic_v = is_dynamic_vector_v<T> || is_dynamic_matrix_v<T> ||
                                              is_dynamic_tensor_v<T> || is_partially_dynamic_tensor_v<T>;
@@ -362,9 +362,9 @@ namespace datapod {
         // =============================================================================
 
         // Dynamic tensors (no Eigen equivalent for runtime-rank, but useful)
-        using TensorXf = dynamic_tensor<float>;
-        using TensorXd = dynamic_tensor<double>;
-        using TensorXi = dynamic_tensor<int>;
+        using TensorXf = DynamicTensor<float>;
+        using TensorXd = DynamicTensor<double>;
+        using TensorXi = DynamicTensor<int>;
 
     } // namespace mat
 } // namespace datapod

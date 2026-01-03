@@ -62,9 +62,9 @@ namespace datapod {
             return corners;
         }
 
-        // SIMD conversion: Rectangle → mat::vector<double, 12> (4 points × 3 components each)
-        inline mat::vector<double, 12> to_mat() const noexcept {
-            mat::vector<double, 12> v;
+        // SIMD conversion: Rectangle → mat::Vector<double, 12> (4 points × 3 components each)
+        inline mat::Vector<double, 12> to_mat() const noexcept {
+            mat::Vector<double, 12> v;
             v[0] = top_left.x;
             v[1] = top_left.y;
             v[2] = top_left.z;
@@ -80,8 +80,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 12> → Rectangle
-        static inline Rectangle from_mat(const mat::vector<double, 12> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 12> → Rectangle
+        static inline Rectangle from_mat(const mat::Vector<double, 12> &v) noexcept {
             return Rectangle{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}, Point{v[6], v[7], v[8]},
                              Point{v[9], v[10], v[11]}};
         }

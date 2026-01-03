@@ -20,7 +20,7 @@ namespace datapod {
         // DYNAMIC SIZE SENTINEL (Eigen-style)
         // =============================================================================
         // Use this as a template parameter to indicate runtime-sized dimensions.
-        // Example: vector<double, Dynamic> is a runtime-sized vector
+        // Example: Vector<double, Dynamic> is a runtime-sized Vector
         inline constexpr size_t Dynamic = static_cast<size_t>(-1);
 
         // =============================================================================
@@ -33,16 +33,16 @@ namespace datapod {
         inline constexpr size_t HEAP_THRESHOLD = 1024;
 
         /**
-         * @brief Vector (rank-1, 1-D only) - fixed-size numeric vector
+         * @brief Vector (rank-1, 1-D only) - fixed-size numeric Vector
          *
-         * Mathematical tensor of order 1 - represents a vector space element.
+         * Mathematical tensor of order 1 - represents a Vector space element.
          * NOT a container - purely for numeric/mathematical operations.
          *
          * Examples:
-         *   vector<double, 3> position{1.0, 2.0, 3.0};     // ℝ³ vector (stack)
-         *   vector<float, 6> state;                         // 6-DOF state (stack)
-         *   vector<float, 100000> embeddings;               // ML embeddings (heap)
-         *   vector<scalar<double>, 10> features;            // Feature vector with scalars
+         *   Vector<double, 3> position{1.0, 2.0, 3.0};     // ℝ³ Vector (stack)
+         *   Vector<float, 6> state;                         // 6-DOF state (stack)
+         *   Vector<float, 100000> embeddings;               // ML embeddings (heap)
+         *   Vector<scalar<double>, 10> features;            // Feature Vector with scalars
          *
          * Design:
          * - Fixed size N (no resizing)
@@ -61,10 +61,10 @@ namespace datapod {
         // =============================================================================
         // Note: When N == Dynamic, we want to use the dynamic specialization (false flag)
         // otherwise use heap allocation for large vectors (N > HEAP_THRESHOLD)
-        template <typename T, size_t N, bool UseHeap = (N != Dynamic && N > HEAP_THRESHOLD)> struct vector {
+        template <typename T, size_t N, bool UseHeap = (N != Dynamic && N > HEAP_THRESHOLD)> struct Vector {
             // Accept arithmetic types (and scalar<T>, but we can't check that here due to forward declaration)
             // The scalar<T> case will work because it's a POD type
-            static_assert(N > 0, "vector size must be > 0");
+            static_assert(N > 0, "Vector size must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -93,14 +93,14 @@ namespace datapod {
 
             constexpr reference at(size_type i) {
                 if (i >= N) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
 
             constexpr const_reference at(size_type i) const {
                 if (i >= N) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
@@ -136,7 +136,7 @@ namespace datapod {
                 }
             }
 
-            constexpr void swap(vector &other) noexcept {
+            constexpr void swap(Vector &other) noexcept {
                 for (size_type i = 0; i < N; ++i) {
                     T tmp = data_[i];
                     data_[i] = other.data_[i];
@@ -145,7 +145,7 @@ namespace datapod {
             }
 
             // Comparison
-            constexpr bool operator==(const vector &other) const noexcept {
+            constexpr bool operator==(const Vector &other) const noexcept {
                 for (size_type i = 0; i < N; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -154,14 +154,14 @@ namespace datapod {
                 return true;
             }
 
-            constexpr bool operator!=(const vector &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Vector &other) const noexcept { return !(*this == other); }
         };
 
         // =============================================================================
         // SPECIALIZATION: Large vectors (heap-allocated, NOT POD, SIMD-aligned)
         // =============================================================================
-        template <typename T, size_t N> struct vector<T, N, true> {
-            static_assert(N > 0, "vector size must be > 0");
+        template <typename T, size_t N> struct Vector<T, N, true> {
+            static_assert(N > 0, "Vector size must be > 0");
 
             using value_type = T;
             using size_type = size_t;
@@ -180,14 +180,14 @@ namespace datapod {
             T *data_; // Heap-allocated, SIMD-aligned
 
             // Default constructor - allocate aligned heap memory
-            vector() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * N))) {
+            Vector() : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * N))) {
                 for (size_t i = 0; i < N; ++i) {
                     new (&data_[i]) T{};
                 }
             }
 
             // Destructor - free heap memory
-            ~vector() {
+            ~Vector() {
                 if (data_) {
                     for (size_t i = 0; i < N; ++i) {
                         data_[i].~T();
@@ -197,14 +197,14 @@ namespace datapod {
             }
 
             // Copy constructor
-            vector(const vector &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * N))) {
+            Vector(const Vector &other) : data_(static_cast<T *>(aligned_alloc(32, sizeof(T) * N))) {
                 for (size_t i = 0; i < N; ++i) {
                     new (&data_[i]) T(other.data_[i]);
                 }
             }
 
             // Copy assignment
-            vector &operator=(const vector &other) {
+            Vector &operator=(const Vector &other) {
                 if (this != &other) {
                     for (size_t i = 0; i < N; ++i) {
                         data_[i] = other.data_[i];
@@ -214,10 +214,10 @@ namespace datapod {
             }
 
             // Move constructor
-            vector(vector &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
+            Vector(Vector &&other) noexcept : data_(other.data_) { other.data_ = nullptr; }
 
             // Move assignment
-            vector &operator=(vector &&other) noexcept {
+            Vector &operator=(Vector &&other) noexcept {
                 if (this != &other) {
                     if (data_) {
                         for (size_t i = 0; i < N; ++i) {
@@ -242,14 +242,14 @@ namespace datapod {
 
             reference at(size_type i) {
                 if (i >= N) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
 
             const_reference at(size_type i) const {
                 if (i >= N) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
@@ -285,10 +285,10 @@ namespace datapod {
                 }
             }
 
-            void swap(vector &other) noexcept { std::swap(data_, other.data_); }
+            void swap(Vector &other) noexcept { std::swap(data_, other.data_); }
 
             // Comparison
-            bool operator==(const vector &other) const noexcept {
+            bool operator==(const Vector &other) const noexcept {
                 for (size_type i = 0; i < N; ++i) {
                     if (!(data_[i] == other.data_[i])) {
                         return false;
@@ -297,52 +297,52 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const vector &other) const noexcept { return !(*this == other); }
+            bool operator!=(const Vector &other) const noexcept { return !(*this == other); }
         };
 
         // Deduction guide for aggregate initialization
-        template <typename T, typename... U> vector(T, U...) -> vector<T, 1 + sizeof...(U)>;
+        template <typename T, typename... U> Vector(T, U...) -> Vector<T, 1 + sizeof...(U)>;
 
         // Type traits
         template <typename T> struct is_vector : std::false_type {};
-        template <typename T, size_t N, bool UseHeap> struct is_vector<vector<T, N, UseHeap>> : std::true_type {};
+        template <typename T, size_t N, bool UseHeap> struct is_vector<Vector<T, N, UseHeap>> : std::true_type {};
         template <typename T> inline constexpr bool is_vector_v = is_vector<T>::value;
 
-        // Type trait to check if vector uses heap
+        // Type trait to check if Vector uses heap
         template <typename T> struct is_heap_vector : std::false_type {};
-        template <typename T, size_t N> struct is_heap_vector<vector<T, N, true>> : std::true_type {};
+        template <typename T, size_t N> struct is_heap_vector<Vector<T, N, true>> : std::true_type {};
         template <typename T> inline constexpr bool is_heap_vector_v = is_heap_vector<T>::value;
 
-        // Common vector type aliases
-        template <typename T> using vector1 = vector<T, 1>;
-        template <typename T> using vector2 = vector<T, 2>;
-        template <typename T> using vector3 = vector<T, 3>;
-        template <typename T> using vector4 = vector<T, 4>;
-        template <typename T> using vector6 = vector<T, 6>; // 6-DOF state
+        // Common Vector type aliases
+        template <typename T> using Vector1 = Vector<T, 1>;
+        template <typename T> using Vector2 = Vector<T, 2>;
+        template <typename T> using Vector3 = Vector<T, 3>;
+        template <typename T> using Vector4 = Vector<T, 4>;
+        template <typename T> using Vector6 = Vector<T, 6>; // 6-DOF state
 
         // Common numeric types
-        using vector3f = vector<float, 3>;
-        using vector3d = vector<double, 3>;
-        using vector4f = vector<float, 4>;
-        using vector4d = vector<double, 4>;
-        using vector6f = vector<float, 6>;
-        using vector6d = vector<double, 6>;
+        using Vector3f = Vector<float, 3>;
+        using Vector3d = Vector<double, 3>;
+        using Vector4f = Vector<float, 4>;
+        using Vector4d = Vector<double, 4>;
+        using Vector6f = Vector<float, 6>;
+        using Vector6d = Vector<double, 6>;
 
         // =============================================================================
         // SPECIALIZATION: Dynamic vectors (runtime-sized, heap-allocated)
         // =============================================================================
         /**
-         * @brief Runtime-sized numeric vector
+         * @brief Runtime-sized numeric Vector
          *
-         * Specialization for vector<T, Dynamic> - size determined at runtime.
+         * Specialization for Vector<T, Dynamic> - size determined at runtime.
          * Always heap-allocated with SIMD alignment.
          *
          * Examples:
-         *   vector<double, Dynamic> v(100);           // 100-element vector
-         *   vector<float, Dynamic> w = {1, 2, 3, 4};  // From initializer list
+         *   Vector<double, Dynamic> v(100);           // 100-element Vector
+         *   Vector<float, Dynamic> w = {1, 2, 3, 4};  // From initializer list
          *   v.resize(200);                            // Resize to 200 elements
          */
-        template <typename T> struct vector<T, Dynamic, false> {
+        template <typename T> struct Vector<T, Dynamic, false> {
             using value_type = T;
             using size_type = size_t;
             using reference = T &;
@@ -383,11 +383,11 @@ namespace datapod {
             }
 
           public:
-            // Default constructor - empty vector
-            vector() noexcept : size_(0), capacity_(0), data_(nullptr) {}
+            // Default constructor - empty Vector
+            Vector() noexcept : size_(0), capacity_(0), data_(nullptr) {}
 
             // Size constructor - allocate with given size, zero-initialized
-            explicit vector(size_t size) : size_(size), capacity_(0), data_(nullptr) {
+            explicit Vector(size_t size) : size_(size), capacity_(0), data_(nullptr) {
                 allocate(size);
                 for (size_t i = 0; i < size_; ++i) {
                     new (&data_[i]) T{};
@@ -395,7 +395,7 @@ namespace datapod {
             }
 
             // Size + value constructor
-            vector(size_t size, const T &value) : size_(size), capacity_(0), data_(nullptr) {
+            Vector(size_t size, const T &value) : size_(size), capacity_(0), data_(nullptr) {
                 allocate(size);
                 for (size_t i = 0; i < size_; ++i) {
                     new (&data_[i]) T(value);
@@ -403,7 +403,7 @@ namespace datapod {
             }
 
             // Initializer list constructor
-            vector(std::initializer_list<T> init) : size_(init.size()), capacity_(0), data_(nullptr) {
+            Vector(std::initializer_list<T> init) : size_(init.size()), capacity_(0), data_(nullptr) {
                 allocate(size_);
                 size_t i = 0;
                 for (const auto &val : init) {
@@ -412,7 +412,7 @@ namespace datapod {
             }
 
             // Copy constructor
-            vector(const vector &other) : size_(other.size_), capacity_(0), data_(nullptr) {
+            Vector(const Vector &other) : size_(other.size_), capacity_(0), data_(nullptr) {
                 allocate(size_);
                 for (size_t i = 0; i < size_; ++i) {
                     new (&data_[i]) T(other.data_[i]);
@@ -420,17 +420,17 @@ namespace datapod {
             }
 
             // Move constructor
-            vector(vector &&other) noexcept : size_(other.size_), capacity_(other.capacity_), data_(other.data_) {
+            Vector(Vector &&other) noexcept : size_(other.size_), capacity_(other.capacity_), data_(other.data_) {
                 other.size_ = 0;
                 other.capacity_ = 0;
                 other.data_ = nullptr;
             }
 
             // Destructor
-            ~vector() { deallocate(); }
+            ~Vector() { deallocate(); }
 
             // Copy assignment
-            vector &operator=(const vector &other) {
+            Vector &operator=(const Vector &other) {
                 if (this != &other) {
                     deallocate();
                     size_ = other.size_;
@@ -443,7 +443,7 @@ namespace datapod {
             }
 
             // Move assignment
-            vector &operator=(vector &&other) noexcept {
+            Vector &operator=(Vector &&other) noexcept {
                 if (this != &other) {
                     deallocate();
                     size_ = other.size_;
@@ -457,7 +457,7 @@ namespace datapod {
             }
 
             // Initializer list assignment
-            vector &operator=(std::initializer_list<T> init) {
+            Vector &operator=(std::initializer_list<T> init) {
                 deallocate();
                 size_ = init.size();
                 allocate(size_);
@@ -474,14 +474,14 @@ namespace datapod {
 
             reference at(size_type i) {
                 if (i >= size_) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
 
             const_reference at(size_type i) const {
                 if (i >= size_) {
-                    throw std::out_of_range("vector::at");
+                    throw std::out_of_range("Vector::at");
                 }
                 return data_[i];
             }
@@ -603,14 +603,14 @@ namespace datapod {
                 }
             }
 
-            void swap(vector &other) noexcept {
+            void swap(Vector &other) noexcept {
                 std::swap(size_, other.size_);
                 std::swap(capacity_, other.capacity_);
                 std::swap(data_, other.data_);
             }
 
             // Comparison
-            bool operator==(const vector &other) const noexcept {
+            bool operator==(const Vector &other) const noexcept {
                 if (size_ != other.size_)
                     return false;
                 for (size_t i = 0; i < size_; ++i) {
@@ -620,18 +620,18 @@ namespace datapod {
                 return true;
             }
 
-            bool operator!=(const vector &other) const noexcept { return !(*this == other); }
+            bool operator!=(const Vector &other) const noexcept { return !(*this == other); }
         };
 
-        // Type trait for dynamic vector
+        // Type trait for dynamic Vector
         template <typename T> struct is_dynamic_vector : std::false_type {};
-        template <typename T> struct is_dynamic_vector<vector<T, Dynamic, false>> : std::true_type {};
+        template <typename T> struct is_dynamic_vector<Vector<T, Dynamic, false>> : std::true_type {};
         template <typename T> inline constexpr bool is_dynamic_vector_v = is_dynamic_vector<T>::value;
 
         // Eigen-style aliases for dynamic vectors
-        using VectorXf = vector<float, Dynamic>;
-        using VectorXd = vector<double, Dynamic>;
-        using VectorXi = vector<int, Dynamic>;
+        using VectorXf = Vector<float, Dynamic>;
+        using VectorXd = Vector<double, Dynamic>;
+        using VectorXi = Vector<int, Dynamic>;
 
     } // namespace mat
 } // namespace datapod
