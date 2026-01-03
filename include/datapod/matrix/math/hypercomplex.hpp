@@ -21,12 +21,12 @@ namespace datapod {
          * Fully serializable via members().
          *
          * Examples:
-         *   octonion<double> o{1, 2, 3, 4, 5, 6, 7, 8};
+         *   Octonion<double> o{1, 2, 3, 4, 5, 6, 7, 8};
          *   auto norm = o.magnitude();
          *   auto conj = o.conjugate();
          */
-        template <typename T> struct octonion {
-            static_assert(std::is_floating_point_v<T>, "octonion<T> requires floating-point type");
+        template <typename T> struct Octonion {
+            static_assert(std::is_floating_point_v<T>, "Octonion<T> requires floating-point type");
 
             using value_type = T;
             static constexpr size_t rank = 0;
@@ -46,22 +46,22 @@ namespace datapod {
             auto members() const noexcept { return std::tie(e0, e1, e2, e3, e4, e5, e6, e7); }
 
             // Construction
-            constexpr octonion() noexcept = default;
+            constexpr Octonion() noexcept = default;
 
-            constexpr octonion(T s) noexcept : e0(s) {}
+            constexpr Octonion(T s) noexcept : e0(s) {}
 
-            constexpr octonion(T a, T b, T c, T d, T e, T f, T g, T h) noexcept
+            constexpr Octonion(T a, T b, T c, T d, T e, T f, T g, T h) noexcept
                 : e0(a), e1(b), e2(c), e3(d), e4(e), e5(f), e6(g), e7(h) {}
 
             // From two quaternions: o = q1 + q2 * E
-            static constexpr octonion from_quaternions(T q1w, T q1x, T q1y, T q1z, T q2w, T q2x, T q2y,
+            static constexpr Octonion from_quaternions(T q1w, T q1x, T q1y, T q1z, T q2w, T q2x, T q2y,
                                                        T q2z) noexcept {
-                return octonion{q1w, q1x, q1y, q1z, q2w, q2x, q2y, q2z};
+                return Octonion{q1w, q1x, q1y, q1z, q2w, q2x, q2y, q2z};
             }
 
-            // Unit octonion
-            static constexpr octonion unit(size_t idx) noexcept {
-                octonion o;
+            // Unit Octonion
+            static constexpr Octonion unit(size_t idx) noexcept {
+                Octonion o;
                 switch (idx) {
                 case 0:
                     o.e0 = T{1};
@@ -112,22 +112,22 @@ namespace datapod {
             }
 
             // Conjugate: negate all imaginary parts
-            constexpr octonion conjugate() const noexcept { return octonion{e0, -e1, -e2, -e3, -e4, -e5, -e6, -e7}; }
+            constexpr Octonion conjugate() const noexcept { return Octonion{e0, -e1, -e2, -e3, -e4, -e5, -e6, -e7}; }
 
             // Inverse: conj / |o|²
-            inline octonion inverse() const noexcept {
+            inline Octonion inverse() const noexcept {
                 T n2 = norm_squared();
-                return octonion{e0 / n2, -e1 / n2, -e2 / n2, -e3 / n2, -e4 / n2, -e5 / n2, -e6 / n2, -e7 / n2};
+                return Octonion{e0 / n2, -e1 / n2, -e2 / n2, -e3 / n2, -e4 / n2, -e5 / n2, -e6 / n2, -e7 / n2};
             }
 
-            // Normalized (unit octonion)
-            inline octonion normalized() const noexcept {
+            // Normalized (unit Octonion)
+            inline Octonion normalized() const noexcept {
                 T n = norm();
-                return octonion{e0 / n, e1 / n, e2 / n, e3 / n, e4 / n, e5 / n, e6 / n, e7 / n};
+                return Octonion{e0 / n, e1 / n, e2 / n, e3 / n, e4 / n, e5 / n, e6 / n, e7 / n};
             }
 
             // Addition
-            constexpr octonion &operator+=(const octonion &other) noexcept {
+            constexpr Octonion &operator+=(const Octonion &other) noexcept {
                 e0 += other.e0;
                 e1 += other.e1;
                 e2 += other.e2;
@@ -139,7 +139,7 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr octonion &operator-=(const octonion &other) noexcept {
+            constexpr Octonion &operator-=(const Octonion &other) noexcept {
                 e0 -= other.e0;
                 e1 -= other.e1;
                 e2 -= other.e2;
@@ -153,13 +153,13 @@ namespace datapod {
 
             // Octonion multiplication (Cayley-Dickson construction)
             // Non-associative! (a*b)*c ≠ a*(b*c) in general
-            constexpr octonion &operator*=(const octonion &other) noexcept {
+            constexpr Octonion &operator*=(const Octonion &other) noexcept {
                 *this = *this * other;
                 return *this;
             }
 
             // Scalar multiplication
-            constexpr octonion &operator*=(T s) noexcept {
+            constexpr Octonion &operator*=(T s) noexcept {
                 e0 *= s;
                 e1 *= s;
                 e2 *= s;
@@ -171,7 +171,7 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr octonion &operator/=(T s) noexcept {
+            constexpr Octonion &operator/=(T s) noexcept {
                 e0 /= s;
                 e1 /= s;
                 e2 /= s;
@@ -184,31 +184,31 @@ namespace datapod {
             }
 
             // Unary operators
-            constexpr octonion operator-() const noexcept { return octonion{-e0, -e1, -e2, -e3, -e4, -e5, -e6, -e7}; }
-            constexpr octonion operator+() const noexcept { return *this; }
+            constexpr Octonion operator-() const noexcept { return Octonion{-e0, -e1, -e2, -e3, -e4, -e5, -e6, -e7}; }
+            constexpr Octonion operator+() const noexcept { return *this; }
 
             // Comparison
-            constexpr bool operator==(const octonion &other) const noexcept {
+            constexpr bool operator==(const Octonion &other) const noexcept {
                 return e0 == other.e0 && e1 == other.e1 && e2 == other.e2 && e3 == other.e3 && e4 == other.e4 &&
                        e5 == other.e5 && e6 == other.e6 && e7 == other.e7;
             }
-            constexpr bool operator!=(const octonion &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Octonion &other) const noexcept { return !(*this == other); }
         };
 
         // Binary addition/subtraction
-        template <typename T> constexpr octonion<T> operator+(const octonion<T> &a, const octonion<T> &b) noexcept {
-            return octonion<T>{a.e0 + b.e0, a.e1 + b.e1, a.e2 + b.e2, a.e3 + b.e3,
+        template <typename T> constexpr Octonion<T> operator+(const Octonion<T> &a, const Octonion<T> &b) noexcept {
+            return Octonion<T>{a.e0 + b.e0, a.e1 + b.e1, a.e2 + b.e2, a.e3 + b.e3,
                                a.e4 + b.e4, a.e5 + b.e5, a.e6 + b.e6, a.e7 + b.e7};
         }
 
-        template <typename T> constexpr octonion<T> operator-(const octonion<T> &a, const octonion<T> &b) noexcept {
-            return octonion<T>{a.e0 - b.e0, a.e1 - b.e1, a.e2 - b.e2, a.e3 - b.e3,
+        template <typename T> constexpr Octonion<T> operator-(const Octonion<T> &a, const Octonion<T> &b) noexcept {
+            return Octonion<T>{a.e0 - b.e0, a.e1 - b.e1, a.e2 - b.e2, a.e3 - b.e3,
                                a.e4 - b.e4, a.e5 - b.e5, a.e6 - b.e6, a.e7 - b.e7};
         }
 
         // Octonion multiplication using Cayley-Dickson construction
         // Treating as (q1, q2) * (r1, r2) = (q1*r1 - r2_conj*q2, r2*q1 + q2*r1_conj)
-        template <typename T> constexpr octonion<T> operator*(const octonion<T> &a, const octonion<T> &b) noexcept {
+        template <typename T> constexpr Octonion<T> operator*(const Octonion<T> &a, const Octonion<T> &b) noexcept {
             // Full multiplication table for octonions
             // Using the standard Cayley multiplication table
             T n0 = a.e0 * b.e0 - a.e1 * b.e1 - a.e2 * b.e2 - a.e3 * b.e3 - a.e4 * b.e4 - a.e5 * b.e5 - a.e6 * b.e6 -
@@ -235,63 +235,63 @@ namespace datapod {
             T n7 = a.e0 * b.e7 - a.e1 * b.e6 + a.e2 * b.e5 + a.e3 * b.e4 - a.e4 * b.e3 - a.e5 * b.e2 + a.e6 * b.e1 +
                    a.e7 * b.e0;
 
-            return octonion<T>{n0, n1, n2, n3, n4, n5, n6, n7};
+            return Octonion<T>{n0, n1, n2, n3, n4, n5, n6, n7};
         }
 
         // Division: a / b = a * b^(-1)
-        template <typename T> inline octonion<T> operator/(const octonion<T> &a, const octonion<T> &b) noexcept {
+        template <typename T> inline Octonion<T> operator/(const Octonion<T> &a, const Octonion<T> &b) noexcept {
             return a * b.inverse();
         }
 
         // Scalar operations
-        template <typename T> constexpr octonion<T> operator*(const octonion<T> &o, T s) noexcept {
-            return octonion<T>{o.e0 * s, o.e1 * s, o.e2 * s, o.e3 * s, o.e4 * s, o.e5 * s, o.e6 * s, o.e7 * s};
+        template <typename T> constexpr Octonion<T> operator*(const Octonion<T> &o, T s) noexcept {
+            return Octonion<T>{o.e0 * s, o.e1 * s, o.e2 * s, o.e3 * s, o.e4 * s, o.e5 * s, o.e6 * s, o.e7 * s};
         }
 
-        template <typename T> constexpr octonion<T> operator*(T s, const octonion<T> &o) noexcept { return o * s; }
+        template <typename T> constexpr Octonion<T> operator*(T s, const Octonion<T> &o) noexcept { return o * s; }
 
-        template <typename T> constexpr octonion<T> operator/(const octonion<T> &o, T s) noexcept {
-            return octonion<T>{o.e0 / s, o.e1 / s, o.e2 / s, o.e3 / s, o.e4 / s, o.e5 / s, o.e6 / s, o.e7 / s};
+        template <typename T> constexpr Octonion<T> operator/(const Octonion<T> &o, T s) noexcept {
+            return Octonion<T>{o.e0 / s, o.e1 / s, o.e2 / s, o.e3 / s, o.e4 / s, o.e5 / s, o.e6 / s, o.e7 / s};
         }
 
         // Exponential and logarithm
-        template <typename T> inline octonion<T> exp(const octonion<T> &o) noexcept {
+        template <typename T> inline Octonion<T> exp(const Octonion<T> &o) noexcept {
             T vnorm = std::sqrt(o.e1 * o.e1 + o.e2 * o.e2 + o.e3 * o.e3 + o.e4 * o.e4 + o.e5 * o.e5 + o.e6 * o.e6 +
                                 o.e7 * o.e7);
             T ea = std::exp(o.e0);
 
             if (vnorm < T{1e-10}) {
-                return octonion<T>{ea, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}};
+                return Octonion<T>{ea, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}};
             }
 
             T s = ea * std::sin(vnorm) / vnorm;
             T c = ea * std::cos(vnorm);
 
-            return octonion<T>{c, s * o.e1, s * o.e2, s * o.e3, s * o.e4, s * o.e5, s * o.e6, s * o.e7};
+            return Octonion<T>{c, s * o.e1, s * o.e2, s * o.e3, s * o.e4, s * o.e5, s * o.e6, s * o.e7};
         }
 
-        template <typename T> inline octonion<T> log(const octonion<T> &o) noexcept {
+        template <typename T> inline Octonion<T> log(const Octonion<T> &o) noexcept {
             T n = o.norm();
             T vnorm = std::sqrt(o.e1 * o.e1 + o.e2 * o.e2 + o.e3 * o.e3 + o.e4 * o.e4 + o.e5 * o.e5 + o.e6 * o.e6 +
                                 o.e7 * o.e7);
 
             if (vnorm < T{1e-10}) {
-                return octonion<T>{std::log(n), T{0}, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}};
+                return Octonion<T>{std::log(n), T{0}, T{0}, T{0}, T{0}, T{0}, T{0}, T{0}};
             }
 
             T s = std::acos(o.e0 / n) / vnorm;
 
-            return octonion<T>{std::log(n), s * o.e1, s * o.e2, s * o.e3, s * o.e4, s * o.e5, s * o.e6, s * o.e7};
+            return Octonion<T>{std::log(n), s * o.e1, s * o.e2, s * o.e3, s * o.e4, s * o.e5, s * o.e6, s * o.e7};
         }
 
         // Type traits
         template <typename T> struct is_octonion : std::false_type {};
-        template <typename T> struct is_octonion<octonion<T>> : std::true_type {};
+        template <typename T> struct is_octonion<Octonion<T>> : std::true_type {};
         template <typename T> inline constexpr bool is_octonion_v = is_octonion<T>::value;
 
         // Type aliases
-        using octonionf = octonion<float>;
-        using octoniond = octonion<double>;
+        using octonionf = Octonion<float>;
+        using octoniond = Octonion<double>;
 
     } // namespace mat
 } // namespace datapod

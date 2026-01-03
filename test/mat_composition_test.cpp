@@ -6,19 +6,20 @@
 #include <cassert>
 #include <iostream>
 
-using namespace datapod::mat;
+// Not using datapod::mat to avoid Vector conflict
+using namespace datapod;
 
 // Test 1: Matrix composed from vectors (as columns)
 void test_matrix_from_vectors() {
     std::cout << "Test 1: Matrix composition from vectors (columns)..." << std::endl;
 
     // Create column vectors
-    vector<double, 3> col0{1.0, 2.0, 3.0};
-    vector<double, 3> col1{4.0, 5.0, 6.0};
-    vector<double, 3> col2{7.0, 8.0, 9.0};
+    mat::Vector<double, 3> col0{1.0, 2.0, 3.0};
+    mat::Vector<double, 3> col1{4.0, 5.0, 6.0};
+    mat::Vector<double, 3> col2{7.0, 8.0, 9.0};
 
     // Compose matrix from vectors (each vector becomes a column)
-    matrix<double, 3, 3> m(col0, col1, col2);
+    mat::Matrix<double, 3, 3> m(col0, col1, col2);
 
     // Verify column-major layout
     assert(m(0, 0) == 1.0);
@@ -38,26 +39,26 @@ void test_matrix_from_vectors() {
     std::cout << "    [" << m(2, 0) << " " << m(2, 1) << " " << m(2, 2) << "]" << std::endl;
 }
 
-// Test 2: Matrix from vectors with scalar<T>
+// Test 2: Matrix from vectors with mat::Scalar<T>
 void test_matrix_from_scalar_vectors() {
-    std::cout << "\nTest 2: Matrix from vectors of scalar<T>..." << std::endl;
+    std::cout << "\nTest 2: Matrix from vectors of mat::Scalar<T>..." << std::endl;
 
-    vector<scalar<float>, 2> v0;
-    v0[0] = scalar<float>{1.0f};
-    v0[1] = scalar<float>{2.0f};
+    mat::Vector<mat::Scalar<float>, 2> v0;
+    v0[0] = mat::Scalar<float>{1.0f};
+    v0[1] = mat::Scalar<float>{2.0f};
 
-    vector<scalar<float>, 2> v1;
-    v1[0] = scalar<float>{3.0f};
-    v1[1] = scalar<float>{4.0f};
+    mat::Vector<mat::Scalar<float>, 2> v1;
+    v1[0] = mat::Scalar<float>{3.0f};
+    v1[1] = mat::Scalar<float>{4.0f};
 
-    matrix<scalar<float>, 2, 2> m(v0, v1);
+    mat::Matrix<mat::Scalar<float>, 2, 2> m(v0, v1);
 
     assert(m(0, 0).value == 1.0f);
     assert(m(1, 0).value == 2.0f);
     assert(m(0, 1).value == 3.0f);
     assert(m(1, 1).value == 4.0f);
 
-    std::cout << "  ✓ Matrix from scalar<T> vectors works!" << std::endl;
+    std::cout << "  ✓ Matrix from mat::Scalar<T> vectors works!" << std::endl;
 }
 
 // Test 3: Tensor composed from matrices (as slices)
@@ -65,20 +66,20 @@ void test_tensor_from_matrices() {
     std::cout << "\nTest 3: Tensor composition from matrices (slices)..." << std::endl;
 
     // Create two 2x2 matrices
-    matrix<double, 2, 2> mat0;
+    mat::Matrix<double, 2, 2> mat0;
     mat0(0, 0) = 1.0;
     mat0(0, 1) = 2.0;
     mat0(1, 0) = 3.0;
     mat0(1, 1) = 4.0;
 
-    matrix<double, 2, 2> mat1;
+    mat::Matrix<double, 2, 2> mat1;
     mat1(0, 0) = 5.0;
     mat1(0, 1) = 6.0;
     mat1(1, 0) = 7.0;
     mat1(1, 1) = 8.0;
 
     // Compose tensor from matrices (each matrix becomes a slice)
-    tensor<double, 2, 2, 2> t(mat0, mat1);
+    mat::Tensor<double, 2, 2, 2> t(mat0, mat1);
 
     // Verify first slice (mat0)
     assert(t(0, 0, 0) == 1.0);
@@ -105,7 +106,7 @@ void test_tensor_from_matrices() {
 void test_tensor_from_three_matrices() {
     std::cout << "\nTest 4: 3D Tensor from three 2x2 matrices..." << std::endl;
 
-    matrix<int, 2, 2> m0, m1, m2;
+    mat::Matrix<int, 2, 2> m0, m1, m2;
     m0(0, 0) = 1;
     m0(1, 0) = 2;
     m0(0, 1) = 3;
@@ -119,7 +120,7 @@ void test_tensor_from_three_matrices() {
     m2(0, 1) = 11;
     m2(1, 1) = 12;
 
-    tensor<int, 2, 2, 3> t(m0, m1, m2);
+    mat::Tensor<int, 2, 2, 3> t(m0, m1, m2);
 
     // Verify all slices
     assert(t(0, 0, 0) == 1);
@@ -146,17 +147,17 @@ void test_layered_composition() {
 
     // Build from the ground up
     // Step 1: Create vectors
-    vector<double, 2> v0{1.0, 2.0};
-    vector<double, 2> v1{3.0, 4.0};
-    vector<double, 2> v2{5.0, 6.0};
-    vector<double, 2> v3{7.0, 8.0};
+    mat::Vector<double, 2> v0{1.0, 2.0};
+    mat::Vector<double, 2> v1{3.0, 4.0};
+    mat::Vector<double, 2> v2{5.0, 6.0};
+    mat::Vector<double, 2> v3{7.0, 8.0};
 
     // Step 2: Compose matrices from vectors
-    matrix<double, 2, 2> mat0(v0, v1);
-    matrix<double, 2, 2> mat1(v2, v3);
+    mat::Matrix<double, 2, 2> mat0(v0, v1);
+    mat::Matrix<double, 2, 2> mat1(v2, v3);
 
     // Step 3: Compose tensor from matrices
-    tensor<double, 2, 2, 2> t(mat0, mat1);
+    mat::Tensor<double, 2, 2, 2> t(mat0, mat1);
 
     // Verify the entire structure
     assert(t(0, 0, 0) == 1.0);
@@ -177,9 +178,9 @@ void test_column_major_consistency() {
     std::cout << "\nTest 6: Column-major memory layout verification..." << std::endl;
 
     // Matrix from vectors
-    vector<int, 3> c0{1, 2, 3};
-    vector<int, 3> c1{4, 5, 6};
-    matrix<int, 3, 2> m(c0, c1);
+    mat::Vector<int, 3> c0{1, 2, 3};
+    mat::Vector<int, 3> c1{4, 5, 6};
+    mat::Matrix<int, 3, 2> m(c0, c1);
 
     // In column-major: [1, 2, 3, 4, 5, 6] (col0 then col1)
     const int *data = m.data();
@@ -187,17 +188,17 @@ void test_column_major_consistency() {
     assert(data[3] == 4 && data[4] == 5 && data[5] == 6);
 
     // Tensor from matrices
-    matrix<int, 2, 2> m0;
+    mat::Matrix<int, 2, 2> m0;
     m0(0, 0) = 1;
     m0(1, 0) = 2;
     m0(0, 1) = 3;
     m0(1, 1) = 4;
-    matrix<int, 2, 2> m1;
+    mat::Matrix<int, 2, 2> m1;
     m1(0, 0) = 5;
     m1(1, 0) = 6;
     m1(0, 1) = 7;
     m1(1, 1) = 8;
-    tensor<int, 2, 2, 2> t(m0, m1);
+    mat::Tensor<int, 2, 2, 2> t(m0, m1);
 
     // Verify tensor memory layout (column-major: first dim varies fastest)
     const int *tdata = t.data();
@@ -218,24 +219,24 @@ void test_different_types() {
     std::cout << "\nTest 7: Composition with different numeric types..." << std::endl;
 
     // Float vectors -> float matrix
-    vector<float, 2> vf0{1.5f, 2.5f};
-    vector<float, 2> vf1{3.5f, 4.5f};
-    matrix<float, 2, 2> mf(vf0, vf1);
+    mat::Vector<float, 2> vf0{1.5f, 2.5f};
+    mat::Vector<float, 2> vf1{3.5f, 4.5f};
+    mat::Matrix<float, 2, 2> mf(vf0, vf1);
     assert(mf(0, 0) == 1.5f);
     assert(mf(1, 1) == 4.5f);
 
     // Int matrices -> int tensor
-    matrix<int, 2, 2> mi0;
+    mat::Matrix<int, 2, 2> mi0;
     mi0(0, 0) = 10;
     mi0(1, 0) = 20;
     mi0(0, 1) = 30;
     mi0(1, 1) = 40;
-    matrix<int, 2, 2> mi1;
+    mat::Matrix<int, 2, 2> mi1;
     mi1(0, 0) = 50;
     mi1(1, 0) = 60;
     mi1(0, 1) = 70;
     mi1(1, 1) = 80;
-    tensor<int, 2, 2, 2> ti(mi0, mi1);
+    mat::Tensor<int, 2, 2, 2> ti(mi0, mi1);
     assert(ti(0, 0, 0) == 10);
     assert(ti(1, 1, 1) == 80);
 

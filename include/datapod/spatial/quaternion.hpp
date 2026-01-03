@@ -4,7 +4,7 @@
  * @file quaternion.hpp
  * @brief Spatial quaternion for 3D rotations
  *
- * This file provides the Quaternion struct which extends mat::quaternion<double>
+ * This file provides the Quaternion struct which extends mat::Quaternion<double>
  * with spatial/robotics-specific functionality like Euler angle conversion.
  *
  * For pure mathematical quaternion operations, see: datapod/matrix/math/quaternion.hpp
@@ -16,9 +16,9 @@
 namespace datapod {
 
     /**
-     * @brief Unit quaternion for 3D rotation - extends mat::quaternion<double>
+     * @brief Unit quaternion for 3D rotation - extends mat::Quaternion<double>
      *
-     * Inherits all mathematical operations from mat::quaternion<double> and adds
+     * Inherits all mathematical operations from mat::Quaternion<double> and adds
      * spatial-specific functionality like Euler angle conversion.
      *
      * Convention: (w, x, y, z) where w is the scalar (real) part.
@@ -30,8 +30,8 @@ namespace datapod {
      *   Euler e = q2.to_euler();           // Convert to Euler angles
      *   auto rotated = q * q2;             // Compose rotations (Hamilton product)
      */
-    struct Quaternion : public mat::quaternion<double> {
-        using Base = mat::quaternion<double>;
+    struct Quaternion : public mat::Quaternion<double> {
+        using Base = mat::Quaternion<double>;
 
         // Inherit constructors
         using Base::Base;
@@ -94,49 +94,49 @@ namespace datapod {
 
     // Binary operators returning Quaternion
     inline Quaternion operator+(const Quaternion &a, const Quaternion &b) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(a) +
-                          static_cast<const mat::quaternion<double> &>(b)};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(a) +
+                          static_cast<const mat::Quaternion<double> &>(b)};
     }
 
     inline Quaternion operator-(const Quaternion &a, const Quaternion &b) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(a) -
-                          static_cast<const mat::quaternion<double> &>(b)};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(a) -
+                          static_cast<const mat::Quaternion<double> &>(b)};
     }
 
     inline Quaternion operator*(const Quaternion &a, const Quaternion &b) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(a) *
-                          static_cast<const mat::quaternion<double> &>(b)};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(a) *
+                          static_cast<const mat::Quaternion<double> &>(b)};
     }
 
     inline Quaternion operator/(const Quaternion &a, const Quaternion &b) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(a) /
-                          static_cast<const mat::quaternion<double> &>(b)};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(a) /
+                          static_cast<const mat::Quaternion<double> &>(b)};
     }
 
     inline Quaternion operator*(const Quaternion &q, double s) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(q) * s};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(q) * s};
     }
 
     inline Quaternion operator*(double s, const Quaternion &q) noexcept { return q * s; }
 
     inline Quaternion operator/(const Quaternion &q, double s) noexcept {
-        return Quaternion{static_cast<const mat::quaternion<double> &>(q) / s};
+        return Quaternion{static_cast<const mat::Quaternion<double> &>(q) / s};
     }
 
     // Interpolation returning Quaternion
     inline Quaternion lerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
-        return Quaternion{mat::lerp(static_cast<const mat::quaternion<double> &>(a),
-                                    static_cast<const mat::quaternion<double> &>(b), t)};
+        return Quaternion{mat::lerp(static_cast<const mat::Quaternion<double> &>(a),
+                                    static_cast<const mat::Quaternion<double> &>(b), t)};
     }
 
     inline Quaternion nlerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
-        return Quaternion{mat::nlerp(static_cast<const mat::quaternion<double> &>(a),
-                                     static_cast<const mat::quaternion<double> &>(b), t)};
+        return Quaternion{mat::nlerp(static_cast<const mat::Quaternion<double> &>(a),
+                                     static_cast<const mat::Quaternion<double> &>(b), t)};
     }
 
     inline Quaternion slerp(const Quaternion &a, const Quaternion &b, double t) noexcept {
-        return Quaternion{mat::slerp(static_cast<const mat::quaternion<double> &>(a),
-                                     static_cast<const mat::quaternion<double> &>(b), t)};
+        return Quaternion{mat::slerp(static_cast<const mat::Quaternion<double> &>(a),
+                                     static_cast<const mat::Quaternion<double> &>(b), t)};
     }
 
     // ===== EULER IMPLEMENTATION =====
@@ -148,8 +148,8 @@ namespace datapod {
     /**
      * @brief Single-precision quaternion for 3D rotation
      */
-    struct Quaternionf : public mat::quaternion<float> {
-        using Base = mat::quaternion<float>;
+    struct Quaternionf : public mat::Quaternion<float> {
+        using Base = mat::Quaternion<float>;
         using Base::Base;
 
         constexpr Quaternionf() noexcept : Base(1.0f, 0.0f, 0.0f, 0.0f) {}

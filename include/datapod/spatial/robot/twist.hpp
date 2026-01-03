@@ -44,11 +44,11 @@ namespace datapod {
         inline bool operator!=(const Twist &other) const noexcept { return !(*this == other); }
 
         // Conversion to/from mat::vector for SIMD operations (6-DOF)
-        inline mat::vector<double, 6> to_mat() const noexcept {
-            return mat::vector<double, 6>{linear.vx, linear.vy, linear.vz, angular.vx, angular.vy, angular.vz};
+        inline mat::Vector<double, 6> to_mat() const noexcept {
+            return mat::Vector<double, 6>{linear.vx, linear.vy, linear.vz, angular.vx, angular.vy, angular.vz};
         }
 
-        static inline Twist from_mat(const mat::vector<double, 6> &v) noexcept {
+        static inline Twist from_mat(const mat::Vector<double, 6> &v) noexcept {
             return Twist{Velocity{v[0], v[1], v[2]}, Velocity{v[3], v[4], v[5]}};
         }
     };

@@ -70,11 +70,11 @@ namespace datapod {
         inline bool operator!=(const Pose &other) const noexcept { return !(*this == other); }
 
         // Conversion to/from mat::vector for SIMD operations (7-DOF: position + quaternion)
-        inline mat::vector<double, 7> to_mat() const noexcept {
-            return mat::vector<double, 7>{point.x, point.y, point.z, rotation.w, rotation.x, rotation.y, rotation.z};
+        inline mat::Vector<double, 7> to_mat() const noexcept {
+            return mat::Vector<double, 7>{point.x, point.y, point.z, rotation.w, rotation.x, rotation.y, rotation.z};
         }
 
-        static inline Pose from_mat(const mat::vector<double, 7> &v) noexcept {
+        static inline Pose from_mat(const mat::Vector<double, 7> &v) noexcept {
             return Pose{Point{v[0], v[1], v[2]}, Quaternion{v[3], v[4], v[5], v[6]}};
         }
     };

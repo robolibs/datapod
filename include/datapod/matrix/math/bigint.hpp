@@ -19,13 +19,13 @@ namespace datapod {
          * Fully serializable via members().
          *
          * Examples:
-         *   bigint<4> x;                      // 256-bit integer
-         *   bigint<4> y = bigint<4>::from_u64(12345);
+         *   Bigint<4> x;                      // 256-bit integer
+         *   Bigint<4> y = Bigint<4>::from_u64(12345);
          *   auto z = x + y;
          *   auto product = x * y;
          */
-        template <size_t N> struct bigint {
-            static_assert(N > 0, "bigint requires at least one limb");
+        template <size_t N> struct Bigint {
+            static_assert(N > 0, "Bigint requires at least one limb");
 
             using limb_type = uint64_t;
             static constexpr size_t num_limbs = N;
@@ -39,15 +39,15 @@ namespace datapod {
             auto members() const noexcept { return std::tie(limbs); }
 
             // Construction
-            constexpr bigint() noexcept = default;
+            constexpr Bigint() noexcept = default;
 
-            constexpr bigint(uint64_t value) noexcept : limbs{} { limbs[0] = value; }
+            constexpr Bigint(uint64_t value) noexcept : limbs{} { limbs[0] = value; }
 
-            constexpr bigint(const std::array<uint64_t, N> &l) noexcept : limbs(l) {}
+            constexpr Bigint(const std::array<uint64_t, N> &l) noexcept : limbs(l) {}
 
             // Factory from uint64
-            static constexpr bigint from_u64(uint64_t value) noexcept {
-                bigint result;
+            static constexpr Bigint from_u64(uint64_t value) noexcept {
+                Bigint result;
                 result.limbs[0] = value;
                 return result;
             }
@@ -127,7 +127,7 @@ namespace datapod {
             constexpr size_t bit_width() const noexcept { return total_bits - leading_zeros(); }
 
             // Addition with carry
-            constexpr bigint &operator+=(const bigint &other) noexcept {
+            constexpr Bigint &operator+=(const Bigint &other) noexcept {
                 uint64_t carry = 0;
                 for (size_t i = 0; i < N; ++i) {
                     uint64_t sum = limbs[i] + other.limbs[i] + carry;
@@ -138,7 +138,7 @@ namespace datapod {
             }
 
             // Subtraction with borrow
-            constexpr bigint &operator-=(const bigint &other) noexcept {
+            constexpr Bigint &operator-=(const Bigint &other) noexcept {
                 uint64_t borrow = 0;
                 for (size_t i = 0; i < N; ++i) {
                     uint64_t prev = limbs[i];
@@ -149,32 +149,32 @@ namespace datapod {
             }
 
             // Multiplication (full result needs 2N limbs, we truncate)
-            constexpr bigint &operator*=(const bigint &other) noexcept {
+            constexpr Bigint &operator*=(const Bigint &other) noexcept {
                 *this = *this * other;
                 return *this;
             }
 
             // Bitwise operations
-            constexpr bigint &operator&=(const bigint &other) noexcept {
+            constexpr Bigint &operator&=(const Bigint &other) noexcept {
                 for (size_t i = 0; i < N; ++i)
                     limbs[i] &= other.limbs[i];
                 return *this;
             }
 
-            constexpr bigint &operator|=(const bigint &other) noexcept {
+            constexpr Bigint &operator|=(const Bigint &other) noexcept {
                 for (size_t i = 0; i < N; ++i)
                     limbs[i] |= other.limbs[i];
                 return *this;
             }
 
-            constexpr bigint &operator^=(const bigint &other) noexcept {
+            constexpr Bigint &operator^=(const Bigint &other) noexcept {
                 for (size_t i = 0; i < N; ++i)
                     limbs[i] ^= other.limbs[i];
                 return *this;
             }
 
             // Left shift
-            constexpr bigint &operator<<=(size_t shift) noexcept {
+            constexpr Bigint &operator<<=(size_t shift) noexcept {
                 if (shift >= total_bits) {
                     for (size_t i = 0; i < N; ++i)
                         limbs[i] = 0;
@@ -204,7 +204,7 @@ namespace datapod {
             }
 
             // Right shift
-            constexpr bigint &operator>>=(size_t shift) noexcept {
+            constexpr Bigint &operator>>=(size_t shift) noexcept {
                 if (shift >= total_bits) {
                     for (size_t i = 0; i < N; ++i)
                         limbs[i] = 0;
@@ -234,15 +234,15 @@ namespace datapod {
             }
 
             // Unary operators
-            constexpr bigint operator~() const noexcept {
-                bigint result;
+            constexpr Bigint operator~() const noexcept {
+                Bigint result;
                 for (size_t i = 0; i < N; ++i)
                     result.limbs[i] = ~limbs[i];
                 return result;
             }
 
             // Comparison
-            constexpr bool operator==(const bigint &other) const noexcept {
+            constexpr bool operator==(const Bigint &other) const noexcept {
                 for (size_t i = 0; i < N; ++i) {
                     if (limbs[i] != other.limbs[i])
                         return false;
@@ -250,9 +250,9 @@ namespace datapod {
                 return true;
             }
 
-            constexpr bool operator!=(const bigint &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Bigint &other) const noexcept { return !(*this == other); }
 
-            constexpr bool operator<(const bigint &other) const noexcept {
+            constexpr bool operator<(const Bigint &other) const noexcept {
                 for (size_t i = N; i > 0; --i) {
                     if (limbs[i - 1] < other.limbs[i - 1])
                         return true;
@@ -262,14 +262,14 @@ namespace datapod {
                 return false;
             }
 
-            constexpr bool operator<=(const bigint &other) const noexcept { return !(other < *this); }
+            constexpr bool operator<=(const Bigint &other) const noexcept { return !(other < *this); }
 
-            constexpr bool operator>(const bigint &other) const noexcept { return other < *this; }
+            constexpr bool operator>(const Bigint &other) const noexcept { return other < *this; }
 
-            constexpr bool operator>=(const bigint &other) const noexcept { return !(*this < other); }
+            constexpr bool operator>=(const Bigint &other) const noexcept { return !(*this < other); }
 
             // Increment/decrement
-            constexpr bigint &operator++() noexcept {
+            constexpr Bigint &operator++() noexcept {
                 for (size_t i = 0; i < N; ++i) {
                     if (++limbs[i] != 0)
                         break;
@@ -277,13 +277,13 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr bigint operator++(int) noexcept {
-                bigint tmp = *this;
+            constexpr Bigint operator++(int) noexcept {
+                Bigint tmp = *this;
                 ++(*this);
                 return tmp;
             }
 
-            constexpr bigint &operator--() noexcept {
+            constexpr Bigint &operator--() noexcept {
                 for (size_t i = 0; i < N; ++i) {
                     if (limbs[i]-- != 0)
                         break;
@@ -291,29 +291,29 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr bigint operator--(int) noexcept {
-                bigint tmp = *this;
+            constexpr Bigint operator--(int) noexcept {
+                Bigint tmp = *this;
                 --(*this);
                 return tmp;
             }
         };
 
         // Binary operators
-        template <size_t N> constexpr bigint<N> operator+(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator+(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result = a;
             result += b;
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator-(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator-(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result = a;
             result -= b;
             return result;
         }
 
         // Multiplication (schoolbook algorithm, truncated to N limbs)
-        template <size_t N> constexpr bigint<N> operator*(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result;
+        template <size_t N> constexpr Bigint<N> operator*(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result;
 
             for (size_t i = 0; i < N; ++i) {
                 uint64_t carry = 0;
@@ -354,46 +354,46 @@ namespace datapod {
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator&(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator&(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result = a;
             result &= b;
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator|(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator|(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result = a;
             result |= b;
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator^(const bigint<N> &a, const bigint<N> &b) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator^(const Bigint<N> &a, const Bigint<N> &b) noexcept {
+            Bigint<N> result = a;
             result ^= b;
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator<<(const bigint<N> &a, size_t shift) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator<<(const Bigint<N> &a, size_t shift) noexcept {
+            Bigint<N> result = a;
             result <<= shift;
             return result;
         }
 
-        template <size_t N> constexpr bigint<N> operator>>(const bigint<N> &a, size_t shift) noexcept {
-            bigint<N> result = a;
+        template <size_t N> constexpr Bigint<N> operator>>(const Bigint<N> &a, size_t shift) noexcept {
+            Bigint<N> result = a;
             result >>= shift;
             return result;
         }
 
         // Type traits
         template <typename T> struct is_bigint : std::false_type {};
-        template <size_t N> struct is_bigint<bigint<N>> : std::true_type {};
+        template <size_t N> struct is_bigint<Bigint<N>> : std::true_type {};
         template <typename T> inline constexpr bool is_bigint_v = is_bigint<T>::value;
 
         // Common sizes
-        using uint128 = bigint<2>;   // 128-bit
-        using uint256 = bigint<4>;   // 256-bit
-        using uint512 = bigint<8>;   // 512-bit
-        using uint1024 = bigint<16>; // 1024-bit
+        using uint128 = Bigint<2>;   // 128-bit
+        using uint256 = Bigint<4>;   // 256-bit
+        using uint512 = Bigint<8>;   // 512-bit
+        using uint1024 = Bigint<16>; // 1024-bit
 
     } // namespace mat
 } // namespace datapod

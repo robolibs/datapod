@@ -6,18 +6,18 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
-using namespace datapod::mat;
+// Not using datapod::mat to avoid Vector conflict
 
 TEST_SUITE("mat::tensor") {
     TEST_CASE("construction 3D") {
-        tensor<double, 2, 3, 4> t;
+        mat::Tensor<double, 2, 3, 4> t;
         t.fill(0.0);
         CHECK(t.size() == 24);
-        CHECK(tensor<double, 2, 3, 4>::rank == 3);
+        CHECK(mat::Tensor<double, 2, 3, 4>::rank == 3);
     }
 
     TEST_CASE("multi-dimensional indexing") {
-        tensor<int, 2, 3, 4> t;
+        mat::Tensor<int, 2, 3, 4> t;
         t.fill(0);
 
         // Set specific element
@@ -31,7 +31,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("checked access") {
-        tensor<double, 2, 2, 2> t;
+        mat::Tensor<double, 2, 2, 2> t;
         t.fill(1.0);
 
         CHECK(t.at(0, 0, 0) == 1.0);
@@ -43,7 +43,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("linear indexing") {
-        tensor<int, 2, 2, 2> t;
+        mat::Tensor<int, 2, 2, 2> t;
         for (size_t i = 0; i < 8; ++i) {
             t[i] = static_cast<int>(i);
         }
@@ -53,7 +53,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("shape and dimensions") {
-        tensor<double, 3, 4, 5> t;
+        mat::Tensor<double, 3, 4, 5> t;
 
         auto shape = t.shape();
         CHECK(shape[0] == 3);
@@ -69,7 +69,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("iterators") {
-        tensor<int, 2, 2, 2> t;
+        mat::Tensor<int, 2, 2, 2> t;
         t.fill(5);
 
         int sum = 0;
@@ -80,14 +80,14 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("operations") {
-        tensor<double, 2, 2, 2> t;
+        mat::Tensor<double, 2, 2, 2> t;
         t.fill(3.14);
 
         CHECK(t(0, 0, 0) == doctest::Approx(3.14));
         CHECK(t(1, 1, 1) == doctest::Approx(3.14));
 
-        tensor<int, 2, 2, 2> a;
-        tensor<int, 2, 2, 2> b;
+        mat::Tensor<int, 2, 2, 2> a;
+        mat::Tensor<int, 2, 2, 2> b;
         a.fill(1);
         b.fill(2);
         a.swap(b);
@@ -97,9 +97,9 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("comparison") {
-        tensor<int, 2, 2, 2> a;
-        tensor<int, 2, 2, 2> b;
-        tensor<int, 2, 2, 2> c;
+        mat::Tensor<int, 2, 2, 2> a;
+        mat::Tensor<int, 2, 2, 2> b;
+        mat::Tensor<int, 2, 2, 2> c;
 
         a.fill(1);
         b.fill(1);
@@ -110,7 +110,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("reflection") {
-        tensor<double, 2, 2, 2> t;
+        mat::Tensor<double, 2, 2, 2> t;
         t.fill(1.5);
 
         auto tuple = t.members();
@@ -123,31 +123,31 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("type traits") {
-        CHECK(is_tensor_v<tensor<double, 2, 2, 2>>);
-        CHECK(is_tensor_v<tensor<float, 3, 3, 3>>);
-        CHECK_FALSE(is_tensor_v<double>);
+        CHECK(mat::is_tensor_v<mat::Tensor<double, 2, 2, 2>>);
+        CHECK(mat::is_tensor_v<mat::Tensor<float, 3, 3, 3>>);
+        CHECK_FALSE(mat::is_tensor_v<double>);
     }
 
     TEST_CASE("POD compatibility") {
-        CHECK(std::is_trivially_copyable_v<tensor<double, 2, 2, 2>>);
-        CHECK(std::is_trivially_copyable_v<tensor<int, 3, 3, 3>>);
+        CHECK(std::is_trivially_copyable_v<mat::Tensor<double, 2, 2, 2>>);
+        CHECK(std::is_trivially_copyable_v<mat::Tensor<int, 3, 3, 3>>);
     }
 
     TEST_CASE("type aliases") {
-        static_assert(std::is_same_v<tensor3d_2x2x2d, tensor<double, 2, 2, 2>>);
-        static_assert(std::is_same_v<tensor3d_3x3x3f, tensor<float, 3, 3, 3>>);
+        static_assert(std::is_same_v<mat::tensor3d_2x2x2d, mat::Tensor<double, 2, 2, 2>>);
+        static_assert(std::is_same_v<mat::tensor3d_3x3x3f, mat::Tensor<float, 3, 3, 3>>);
     }
 
     TEST_CASE("alignment") {
-        tensor<double, 2, 2, 2> t;
+        mat::Tensor<double, 2, 2, 2> t;
         CHECK(reinterpret_cast<uintptr_t>(t.data()) % 32 == 0);
     }
 
     TEST_CASE("4D tensor") {
-        tensor<double, 2, 2, 2, 2> t;
+        mat::Tensor<double, 2, 2, 2, 2> t;
         t.fill(0.0);
 
-        CHECK(tensor<double, 2, 2, 2, 2>::rank == 4);
+        CHECK(mat::Tensor<double, 2, 2, 2, 2>::rank == 4);
         CHECK(t.size() == 16);
 
         t(0, 0, 0, 0) = 1.0;
@@ -158,7 +158,7 @@ TEST_SUITE("mat::tensor") {
     }
 
     TEST_CASE("column-major layout") {
-        tensor<int, 2, 2, 2> t;
+        mat::Tensor<int, 2, 2, 2> t;
         // In column-major order, first index changes fastest
         int val = 0;
         for (size_t k = 0; k < 2; ++k) {
@@ -177,17 +177,17 @@ TEST_SUITE("mat::tensor") {
 
     TEST_CASE("common use cases") {
         // 3D voxel grid
-        tensor<float, 16, 16, 16> voxels;
+        mat::Tensor<float, 16, 16, 16> voxels;
         voxels.fill(0.0f);
         CHECK(voxels.size() == 4096);
 
         // RGB image (small)
-        tensor<uint8_t, 4, 4, 3> image;
+        mat::Tensor<uint8_t, 4, 4, 3> image;
         image.fill(255);
         CHECK(image.size() == 48);
 
         // 4D batch of images
-        tensor<float, 2, 3, 4, 4> batch; // batch x channels x height x width
+        mat::Tensor<float, 2, 3, 4, 4> batch; // batch x channels x height x width
         batch.fill(1.0f);
         CHECK(batch.size() == 96);
     }

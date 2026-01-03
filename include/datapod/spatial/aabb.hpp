@@ -98,9 +98,9 @@ namespace datapod {
 
         inline bool operator!=(const AABB &other) const noexcept { return !(*this == other); }
 
-        // SIMD conversion: AABB → mat::vector<double, 6> (min_x, min_y, min_z, max_x, max_y, max_z)
-        inline mat::vector<double, 6> to_mat() const noexcept {
-            mat::vector<double, 6> v;
+        // SIMD conversion: AABB → mat::Vector<double, 6> (min_x, min_y, min_z, max_x, max_y, max_z)
+        inline mat::Vector<double, 6> to_mat() const noexcept {
+            mat::Vector<double, 6> v;
             v[0] = min_point.x;
             v[1] = min_point.y;
             v[2] = min_point.z;
@@ -110,8 +110,8 @@ namespace datapod {
             return v;
         }
 
-        // SIMD conversion: mat::vector<double, 6> → AABB
-        static inline AABB from_mat(const mat::vector<double, 6> &v) noexcept {
+        // SIMD conversion: mat::Vector<double, 6> → AABB
+        static inline AABB from_mat(const mat::Vector<double, 6> &v) noexcept {
             return AABB{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}};
         }
     };

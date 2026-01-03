@@ -141,10 +141,10 @@ namespace datapod {
         // Conversion to mat::matrix for compile-time known dimensions
         // Example: auto m = grid.to_mat<10, 10>(); // for a 10x10 grid
         template <std::size_t R, std::size_t C>
-        inline mat::matrix<T, R, C> to_mat() const noexcept
+        inline mat::Matrix<T, R, C> to_mat() const noexcept
         requires(std::is_arithmetic_v<T>)
         {
-            mat::matrix<T, R, C> result;
+            mat::Matrix<T, R, C> result;
             // Runtime check: only convert if sizes match
             if (rows == R && cols == C) {
                 for (std::size_t r = 0; r < R; ++r) {
@@ -161,7 +161,7 @@ namespace datapod {
 
         // Create Grid from mat::matrix
         template <std::size_t R, std::size_t C>
-        static inline Grid<T> from_mat(const mat::matrix<T, R, C> &m, double res = 1.0, bool cent = false,
+        static inline Grid<T> from_mat(const mat::Matrix<T, R, C> &m, double res = 1.0, bool cent = false,
                                        const Pose &p = Pose{})
         requires(std::is_arithmetic_v<T>)
         {

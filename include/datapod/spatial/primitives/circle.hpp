@@ -24,11 +24,11 @@ namespace datapod {
         inline bool contains(const Point &p) const noexcept { return center.distance_to(p) <= radius; }
 
         // Conversion to/from mat::vector for SIMD operations (4 values: center + radius)
-        inline mat::vector<double, 4> to_mat() const noexcept {
-            return mat::vector<double, 4>{center.x, center.y, center.z, radius};
+        inline mat::Vector<double, 4> to_mat() const noexcept {
+            return mat::Vector<double, 4>{center.x, center.y, center.z, radius};
         }
 
-        static inline Circle from_mat(const mat::vector<double, 4> &v) noexcept {
+        static inline Circle from_mat(const mat::Vector<double, 4> &v) noexcept {
             return Circle{Point{v[0], v[1], v[2]}, v[3]};
         }
     };

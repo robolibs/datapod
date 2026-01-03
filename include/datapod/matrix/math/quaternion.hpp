@@ -27,13 +27,13 @@ namespace datapod {
          * Fully serializable via members().
          *
          * Examples:
-         *   quaternion<double> q{1, 0, 0, 0};     // Identity quaternion
-         *   quaternion<float> q2{0.707, 0, 0.707, 0}; // 90° rotation about Y
+         *   Quaternion<double> q{1, 0, 0, 0};     // Identity Quaternion
+         *   Quaternion<float> q2{0.707, 0, 0.707, 0}; // 90° rotation about Y
          *   auto conj = q.conjugate();
          *   auto prod = q * q2;                   // Hamilton product
          */
-        template <typename T> struct quaternion {
-            static_assert(std::is_floating_point_v<T>, "quaternion<T> requires floating-point type");
+        template <typename T> struct Quaternion {
+            static_assert(std::is_floating_point_v<T>, "Quaternion<T> requires floating-point type");
 
             using value_type = T;
             static constexpr size_t rank = 0;
@@ -48,35 +48,35 @@ namespace datapod {
             auto members() const noexcept { return std::tie(w, x, y, z); }
 
             // ===== CONSTRUCTION =====
-            constexpr quaternion() noexcept = default;
+            constexpr Quaternion() noexcept = default;
 
-            constexpr quaternion(T scalar) noexcept : w(scalar), x{}, y{}, z{} {}
+            constexpr Quaternion(T scalar) noexcept : w(scalar), x{}, y{}, z{} {}
 
-            constexpr quaternion(T w_, T x_, T y_, T z_) noexcept : w(w_), x(x_), y(y_), z(z_) {}
+            constexpr Quaternion(T w_, T x_, T y_, T z_) noexcept : w(w_), x(x_), y(y_), z(z_) {}
 
             // From scalar and vector parts
-            constexpr quaternion(T scalar, T vx, T vy, T vz, bool /*tag*/) noexcept : w(scalar), x(vx), y(vy), z(vz) {}
+            constexpr Quaternion(T scalar, T vx, T vy, T vz, bool /*tag*/) noexcept : w(scalar), x(vx), y(vy), z(vz) {}
 
             // ===== STATIC FACTORIES =====
 
-            // Identity quaternion (represents no rotation)
-            static constexpr quaternion identity() noexcept { return quaternion{T{1}, T{0}, T{0}, T{0}}; }
+            // Identity Quaternion (represents no rotation)
+            static constexpr Quaternion identity() noexcept { return Quaternion{T{1}, T{0}, T{0}, T{0}}; }
 
             // Unit imaginary quaternions
-            static constexpr quaternion i() noexcept { return quaternion{T{0}, T{1}, T{0}, T{0}}; }
-            static constexpr quaternion j() noexcept { return quaternion{T{0}, T{0}, T{1}, T{0}}; }
-            static constexpr quaternion k() noexcept { return quaternion{T{0}, T{0}, T{0}, T{1}}; }
+            static constexpr Quaternion i() noexcept { return Quaternion{T{0}, T{1}, T{0}, T{0}}; }
+            static constexpr Quaternion j() noexcept { return Quaternion{T{0}, T{0}, T{1}, T{0}}; }
+            static constexpr Quaternion k() noexcept { return Quaternion{T{0}, T{0}, T{0}, T{1}}; }
 
             // From axis-angle representation (for 3D rotations)
             // axis should be a unit vector, angle is in radians
-            static inline quaternion from_axis_angle(T ax, T ay, T az, T angle) noexcept {
+            static inline Quaternion from_axis_angle(T ax, T ay, T az, T angle) noexcept {
                 T half = angle / T{2};
                 T s = std::sin(half);
-                return quaternion{std::cos(half), ax * s, ay * s, az * s};
+                return Quaternion{std::cos(half), ax * s, ay * s, az * s};
             }
 
             // From Euler angles (ZYX convention: yaw, pitch, roll)
-            static inline quaternion from_euler(T roll, T pitch, T yaw) noexcept {
+            static inline Quaternion from_euler(T roll, T pitch, T yaw) noexcept {
                 T cr = std::cos(roll * T{0.5});
                 T sr = std::sin(roll * T{0.5});
                 T cp = std::cos(pitch * T{0.5});
@@ -84,7 +84,7 @@ namespace datapod {
                 T cy = std::cos(yaw * T{0.5});
                 T sy = std::sin(yaw * T{0.5});
 
-                return quaternion{cr * cp * cy + sr * sp * sy,  // w
+                return Quaternion{cr * cp * cy + sr * sp * sy,  // w
                                   sr * cp * cy - cr * sp * sy,  // x
                                   cr * sp * cy + sr * cp * sy,  // y
                                   cr * cp * sy - sr * sp * cy}; // z
@@ -105,7 +105,7 @@ namespace datapod {
 
             constexpr bool is_real() const noexcept { return x == T{0} && y == T{0} && z == T{0}; }
 
-            constexpr bool is_pure() const noexcept { return w == T{0}; } // Pure imaginary quaternion
+            constexpr bool is_pure() const noexcept { return w == T{0}; } // Pure imaginary Quaternion
 
             constexpr bool is_set() const noexcept { return w != T{1} || x != T{0} || y != T{0} || z != T{0}; }
 
@@ -116,29 +116,29 @@ namespace datapod {
             // ===== QUATERNION OPERATIONS =====
 
             // Conjugate: negate imaginary parts
-            constexpr quaternion conjugate() const noexcept { return quaternion{w, -x, -y, -z}; }
+            constexpr Quaternion conjugate() const noexcept { return Quaternion{w, -x, -y, -z}; }
 
             // Inverse: conj / |q|²
-            inline quaternion inverse() const noexcept {
+            inline Quaternion inverse() const noexcept {
                 T n2 = norm_squared();
-                return quaternion{w / n2, -x / n2, -y / n2, -z / n2};
+                return Quaternion{w / n2, -x / n2, -y / n2, -z / n2};
             }
 
             // For unit quaternions, inverse == conjugate (faster)
-            constexpr quaternion unit_inverse() const noexcept { return conjugate(); }
+            constexpr Quaternion unit_inverse() const noexcept { return conjugate(); }
 
-            // Normalized (unit quaternion)
-            inline quaternion normalized() const noexcept {
+            // Normalized (unit Quaternion)
+            inline Quaternion normalized() const noexcept {
                 T n = norm();
                 if (n < T{1e-10}) {
                     return identity();
                 }
-                return quaternion{w / n, x / n, y / n, z / n};
+                return Quaternion{w / n, x / n, y / n, z / n};
             }
 
             // ===== ROTATION OPERATIONS (for unit quaternions) =====
 
-            // Rotate a vector (vx, vy, vz) by this quaternion
+            // Rotate a vector (vx, vy, vz) by this Quaternion
             // q * v * q^-1 where v = (0, vx, vy, vz)
             inline void rotate_vector(T &vx, T &vy, T &vz) const noexcept {
                 // Optimized Rodrigues rotation formula
@@ -194,7 +194,7 @@ namespace datapod {
 
             // ===== COMPOUND ASSIGNMENT - QUATERNION =====
 
-            constexpr quaternion &operator+=(const quaternion &other) noexcept {
+            constexpr Quaternion &operator+=(const Quaternion &other) noexcept {
                 w += other.w;
                 x += other.x;
                 y += other.y;
@@ -202,7 +202,7 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr quaternion &operator-=(const quaternion &other) noexcept {
+            constexpr Quaternion &operator-=(const Quaternion &other) noexcept {
                 w -= other.w;
                 x -= other.x;
                 y -= other.y;
@@ -211,7 +211,7 @@ namespace datapod {
             }
 
             // Hamilton product (non-commutative!)
-            constexpr quaternion &operator*=(const quaternion &other) noexcept {
+            constexpr Quaternion &operator*=(const Quaternion &other) noexcept {
                 T nw = w * other.w - x * other.x - y * other.y - z * other.z;
                 T nx = w * other.x + x * other.w + y * other.z - z * other.y;
                 T ny = w * other.y - x * other.z + y * other.w + z * other.x;
@@ -223,14 +223,14 @@ namespace datapod {
                 return *this;
             }
 
-            inline quaternion &operator/=(const quaternion &other) noexcept {
+            inline Quaternion &operator/=(const Quaternion &other) noexcept {
                 *this *= other.inverse();
                 return *this;
             }
 
             // ===== COMPOUND ASSIGNMENT - SCALAR =====
 
-            constexpr quaternion &operator*=(T s) noexcept {
+            constexpr Quaternion &operator*=(T s) noexcept {
                 w *= s;
                 x *= s;
                 y *= s;
@@ -238,7 +238,7 @@ namespace datapod {
                 return *this;
             }
 
-            constexpr quaternion &operator/=(T s) noexcept {
+            constexpr Quaternion &operator/=(T s) noexcept {
                 w /= s;
                 x /= s;
                 y /= s;
@@ -248,57 +248,57 @@ namespace datapod {
 
             // ===== UNARY OPERATORS =====
 
-            constexpr quaternion operator-() const noexcept { return quaternion{-w, -x, -y, -z}; }
-            constexpr quaternion operator+() const noexcept { return *this; }
+            constexpr Quaternion operator-() const noexcept { return Quaternion{-w, -x, -y, -z}; }
+            constexpr Quaternion operator+() const noexcept { return *this; }
 
             // ===== COMPARISON =====
 
-            constexpr bool operator==(const quaternion &other) const noexcept {
+            constexpr bool operator==(const Quaternion &other) const noexcept {
                 return w == other.w && x == other.x && y == other.y && z == other.z;
             }
 
-            constexpr bool operator!=(const quaternion &other) const noexcept { return !(*this == other); }
+            constexpr bool operator!=(const Quaternion &other) const noexcept { return !(*this == other); }
         };
 
         // ===== BINARY OPERATORS - QUATERNION-QUATERNION =====
 
         template <typename T>
-        constexpr quaternion<T> operator+(const quaternion<T> &a, const quaternion<T> &b) noexcept {
-            return quaternion<T>{a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z};
+        constexpr Quaternion<T> operator+(const Quaternion<T> &a, const Quaternion<T> &b) noexcept {
+            return Quaternion<T>{a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z};
         }
 
         template <typename T>
-        constexpr quaternion<T> operator-(const quaternion<T> &a, const quaternion<T> &b) noexcept {
-            return quaternion<T>{a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z};
+        constexpr Quaternion<T> operator-(const Quaternion<T> &a, const Quaternion<T> &b) noexcept {
+            return Quaternion<T>{a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z};
         }
 
         // Hamilton product
         template <typename T>
-        constexpr quaternion<T> operator*(const quaternion<T> &a, const quaternion<T> &b) noexcept {
-            return quaternion<T>{
+        constexpr Quaternion<T> operator*(const Quaternion<T> &a, const Quaternion<T> &b) noexcept {
+            return Quaternion<T>{
                 a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z, a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
                 a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x, a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w};
         }
 
-        template <typename T> inline quaternion<T> operator/(const quaternion<T> &a, const quaternion<T> &b) noexcept {
+        template <typename T> inline Quaternion<T> operator/(const Quaternion<T> &a, const Quaternion<T> &b) noexcept {
             return a * b.inverse();
         }
 
         // ===== BINARY OPERATORS - QUATERNION-SCALAR =====
 
-        template <typename T> constexpr quaternion<T> operator*(const quaternion<T> &q, T s) noexcept {
-            return quaternion<T>{q.w * s, q.x * s, q.y * s, q.z * s};
+        template <typename T> constexpr Quaternion<T> operator*(const Quaternion<T> &q, T s) noexcept {
+            return Quaternion<T>{q.w * s, q.x * s, q.y * s, q.z * s};
         }
 
-        template <typename T> constexpr quaternion<T> operator*(T s, const quaternion<T> &q) noexcept { return q * s; }
+        template <typename T> constexpr Quaternion<T> operator*(T s, const Quaternion<T> &q) noexcept { return q * s; }
 
-        template <typename T> constexpr quaternion<T> operator/(const quaternion<T> &q, T s) noexcept {
-            return quaternion<T>{q.w / s, q.x / s, q.y / s, q.z / s};
+        template <typename T> constexpr Quaternion<T> operator/(const Quaternion<T> &q, T s) noexcept {
+            return Quaternion<T>{q.w / s, q.x / s, q.y / s, q.z / s};
         }
 
         // ===== DOT PRODUCT =====
 
-        template <typename T> constexpr T dot(const quaternion<T> &a, const quaternion<T> &b) noexcept {
+        template <typename T> constexpr T dot(const Quaternion<T> &a, const Quaternion<T> &b) noexcept {
             return a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
         }
 
@@ -306,23 +306,23 @@ namespace datapod {
 
         // Linear interpolation (not normalized - use for blending, then normalize)
         template <typename T>
-        constexpr quaternion<T> lerp(const quaternion<T> &a, const quaternion<T> &b, T t) noexcept {
-            return quaternion<T>{a.w + t * (b.w - a.w), a.x + t * (b.x - a.x), a.y + t * (b.y - a.y),
+        constexpr Quaternion<T> lerp(const Quaternion<T> &a, const Quaternion<T> &b, T t) noexcept {
+            return Quaternion<T>{a.w + t * (b.w - a.w), a.x + t * (b.x - a.x), a.y + t * (b.y - a.y),
                                  a.z + t * (b.z - a.z)};
         }
 
         // Normalized linear interpolation (fast approximation to slerp)
-        template <typename T> inline quaternion<T> nlerp(const quaternion<T> &a, const quaternion<T> &b, T t) noexcept {
-            // Handle quaternion double-cover (q and -q represent same rotation)
-            quaternion<T> b2 = dot(a, b) < T{0} ? -b : b;
+        template <typename T> inline Quaternion<T> nlerp(const Quaternion<T> &a, const Quaternion<T> &b, T t) noexcept {
+            // Handle Quaternion double-cover (q and -q represent same rotation)
+            Quaternion<T> b2 = dot(a, b) < T{0} ? -b : b;
             return lerp(a, b2, t).normalized();
         }
 
         // Spherical linear interpolation (constant angular velocity)
-        template <typename T> inline quaternion<T> slerp(const quaternion<T> &a, const quaternion<T> &b, T t) noexcept {
-            // Handle quaternion double-cover
+        template <typename T> inline Quaternion<T> slerp(const Quaternion<T> &a, const Quaternion<T> &b, T t) noexcept {
+            // Handle Quaternion double-cover
             T d = dot(a, b);
-            quaternion<T> b2 = d < T{0} ? -b : b;
+            Quaternion<T> b2 = d < T{0} ? -b : b;
             d = std::abs(d);
 
             // If quaternions are very close, use nlerp
@@ -335,52 +335,52 @@ namespace datapod {
             T wa = std::sin((T{1} - t) * theta) / sin_theta;
             T wb = std::sin(t * theta) / sin_theta;
 
-            return quaternion<T>{wa * a.w + wb * b2.w, wa * a.x + wb * b2.x, wa * a.y + wb * b2.y,
+            return Quaternion<T>{wa * a.w + wb * b2.w, wa * a.x + wb * b2.x, wa * a.y + wb * b2.y,
                                  wa * a.z + wb * b2.z};
         }
 
         // ===== EXPONENTIAL AND LOGARITHM =====
 
-        // Exponential: exp(q) where q = (0, v) is a pure quaternion
-        // Result is a unit quaternion representing rotation
-        template <typename T> inline quaternion<T> exp(const quaternion<T> &q) noexcept {
+        // Exponential: exp(q) where q = (0, v) is a pure Quaternion
+        // Result is a unit Quaternion representing rotation
+        template <typename T> inline Quaternion<T> exp(const Quaternion<T> &q) noexcept {
             T vnorm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
             T ew = std::exp(q.w);
 
             if (vnorm < T{1e-10}) {
-                return quaternion<T>{ew, T{0}, T{0}, T{0}};
+                return Quaternion<T>{ew, T{0}, T{0}, T{0}};
             }
 
             T s = ew * std::sin(vnorm) / vnorm;
-            return quaternion<T>{ew * std::cos(vnorm), s * q.x, s * q.y, s * q.z};
+            return Quaternion<T>{ew * std::cos(vnorm), s * q.x, s * q.y, s * q.z};
         }
 
-        // Logarithm: log(q) - result is a pure quaternion (w ≈ 0) for unit quaternions
-        template <typename T> inline quaternion<T> log(const quaternion<T> &q) noexcept {
+        // Logarithm: log(q) - result is a pure Quaternion (w ≈ 0) for unit quaternions
+        template <typename T> inline Quaternion<T> log(const Quaternion<T> &q) noexcept {
             T n = q.norm();
             T vnorm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 
             if (vnorm < T{1e-10}) {
-                return quaternion<T>{std::log(n), T{0}, T{0}, T{0}};
+                return Quaternion<T>{std::log(n), T{0}, T{0}, T{0}};
             }
 
             T s = std::acos(q.w / n) / vnorm;
-            return quaternion<T>{std::log(n), s * q.x, s * q.y, s * q.z};
+            return Quaternion<T>{std::log(n), s * q.x, s * q.y, s * q.z};
         }
 
         // Power: q^t (useful for interpolation)
-        template <typename T> inline quaternion<T> pow(const quaternion<T> &q, T t) noexcept { return exp(log(q) * t); }
+        template <typename T> inline Quaternion<T> pow(const Quaternion<T> &q, T t) noexcept { return exp(log(q) * t); }
 
         // ===== TYPE TRAITS =====
 
         template <typename T> struct is_quaternion : std::false_type {};
-        template <typename T> struct is_quaternion<quaternion<T>> : std::true_type {};
+        template <typename T> struct is_quaternion<Quaternion<T>> : std::true_type {};
         template <typename T> inline constexpr bool is_quaternion_v = is_quaternion<T>::value;
 
         // ===== TYPE ALIASES =====
 
-        using quaternionf = quaternion<float>;
-        using quaterniond = quaternion<double>;
+        using quaternionf = Quaternion<float>;
+        using quaterniond = Quaternion<double>;
 
     } // namespace mat
 } // namespace datapod

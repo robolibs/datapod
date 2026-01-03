@@ -70,11 +70,11 @@ namespace datapod {
         inline bool operator!=(const Inertia &other) const noexcept { return !(*this == other); }
 
         // Conversion to/from mat::vector for SIMD operations (10 values: mass + com + inertia tensor)
-        inline mat::vector<double, 10> to_mat() const noexcept {
-            return mat::vector<double, 10>{m, com.x, com.y, com.z, ixx, ixy, ixz, iyy, iyz, izz};
+        inline mat::Vector<double, 10> to_mat() const noexcept {
+            return mat::Vector<double, 10>{m, com.x, com.y, com.z, ixx, ixy, ixz, iyy, iyz, izz};
         }
 
-        static inline Inertia from_mat(const mat::vector<double, 10> &v) noexcept {
+        static inline Inertia from_mat(const mat::Vector<double, 10> &v) noexcept {
             return Inertia{v[0], Point{v[1], v[2], v[3]}, v[4], v[5], v[6], v[7], v[8], v[9]};
         }
     };

@@ -67,9 +67,9 @@ namespace datapod {
         inline Quaternion to_quaternion() const noexcept;
 
         // Conversion to/from mat::vector for SIMD operations
-        inline mat::vector<double, 3> to_mat() const noexcept { return mat::vector<double, 3>{roll, pitch, yaw}; }
+        inline mat::Vector<double, 3> to_mat() const noexcept { return mat::Vector<double, 3>{roll, pitch, yaw}; }
 
-        static inline Euler from_mat(const mat::vector<double, 3> &v) noexcept { return Euler{v[0], v[1], v[2]}; }
+        static inline Euler from_mat(const mat::Vector<double, 3> &v) noexcept { return Euler{v[0], v[1], v[2]}; }
     };
 
 } // namespace datapod

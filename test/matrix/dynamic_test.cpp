@@ -3,21 +3,21 @@
 #include <doctest/doctest.h>
 
 using namespace datapod;
-using namespace datapod::mat;
+// Not using datapod::mat to avoid Vector conflict
 
 // =============================================================================
 // DYNAMIC VECTOR TESTS
 // =============================================================================
 
-TEST_CASE("vector<T, Dynamic>: construction") {
+TEST_CASE("mat::Vector<T, mat::Dynamic>: construction") {
     SUBCASE("default constructor") {
-        vector<double, Dynamic> v;
+        mat::Vector<double, mat::Dynamic> v;
         CHECK(v.size() == 0);
         CHECK(v.empty());
     }
 
     SUBCASE("size constructor") {
-        vector<double, Dynamic> v(100);
+        mat::Vector<double, mat::Dynamic> v(100);
         CHECK(v.size() == 100);
         CHECK(!v.empty());
         // Check zero-initialized
@@ -27,7 +27,7 @@ TEST_CASE("vector<T, Dynamic>: construction") {
     }
 
     SUBCASE("size + value constructor") {
-        vector<int, Dynamic> v(50, 42);
+        mat::Vector<int, mat::Dynamic> v(50, 42);
         CHECK(v.size() == 50);
         for (size_t i = 0; i < v.size(); ++i) {
             CHECK(v[i] == 42);
@@ -35,7 +35,7 @@ TEST_CASE("vector<T, Dynamic>: construction") {
     }
 
     SUBCASE("initializer list constructor") {
-        vector<double, Dynamic> v = {1.0, 2.0, 3.0, 4.0, 5.0};
+        mat::Vector<double, mat::Dynamic> v = {1.0, 2.0, 3.0, 4.0, 5.0};
         CHECK(v.size() == 5);
         CHECK(v[0] == 1.0);
         CHECK(v[1] == 2.0);
@@ -43,8 +43,8 @@ TEST_CASE("vector<T, Dynamic>: construction") {
     }
 }
 
-TEST_CASE("vector<T, Dynamic>: element access") {
-    vector<double, Dynamic> v = {10.0, 20.0, 30.0};
+TEST_CASE("mat::Vector<T, mat::Dynamic>: element access") {
+    mat::Vector<double, mat::Dynamic> v = {10.0, 20.0, 30.0};
 
     SUBCASE("operator[]") {
         CHECK(v[0] == 10.0);
@@ -64,8 +64,8 @@ TEST_CASE("vector<T, Dynamic>: element access") {
     }
 }
 
-TEST_CASE("vector<T, Dynamic>: resize and capacity") {
-    vector<double, Dynamic> v(10);
+TEST_CASE("mat::Vector<T, mat::Dynamic>: resize and capacity") {
+    mat::Vector<double, mat::Dynamic> v(10);
 
     SUBCASE("resize smaller") {
         v.resize(5);
@@ -103,11 +103,11 @@ TEST_CASE("vector<T, Dynamic>: resize and capacity") {
     }
 }
 
-TEST_CASE("vector<T, Dynamic>: copy and move") {
-    vector<double, Dynamic> v1 = {1.0, 2.0, 3.0};
+TEST_CASE("mat::Vector<T, mat::Dynamic>: copy and move") {
+    mat::Vector<double, mat::Dynamic> v1 = {1.0, 2.0, 3.0};
 
     SUBCASE("copy constructor") {
-        vector<double, Dynamic> v2(v1);
+        mat::Vector<double, mat::Dynamic> v2(v1);
         CHECK(v2.size() == 3);
         CHECK(v2[0] == 1.0);
         CHECK(v2[2] == 3.0);
@@ -117,41 +117,41 @@ TEST_CASE("vector<T, Dynamic>: copy and move") {
     }
 
     SUBCASE("move constructor") {
-        vector<double, Dynamic> v2(std::move(v1));
+        mat::Vector<double, mat::Dynamic> v2(std::move(v1));
         CHECK(v2.size() == 3);
         CHECK(v2[0] == 1.0);
         CHECK(v1.size() == 0); // Moved-from state
     }
 
     SUBCASE("copy assignment") {
-        vector<double, Dynamic> v2;
+        mat::Vector<double, mat::Dynamic> v2;
         v2 = v1;
         CHECK(v2.size() == 3);
     }
 
     SUBCASE("move assignment") {
-        vector<double, Dynamic> v2;
+        mat::Vector<double, mat::Dynamic> v2;
         v2 = std::move(v1);
         CHECK(v2.size() == 3);
         CHECK(v1.size() == 0);
     }
 }
 
-TEST_CASE("vector<T, Dynamic>: comparison") {
-    vector<double, Dynamic> v1 = {1.0, 2.0, 3.0};
-    vector<double, Dynamic> v2 = {1.0, 2.0, 3.0};
-    vector<double, Dynamic> v3 = {1.0, 2.0, 4.0};
-    vector<double, Dynamic> v4 = {1.0, 2.0};
+TEST_CASE("mat::Vector<T, mat::Dynamic>: comparison") {
+    mat::Vector<double, mat::Dynamic> v1 = {1.0, 2.0, 3.0};
+    mat::Vector<double, mat::Dynamic> v2 = {1.0, 2.0, 3.0};
+    mat::Vector<double, mat::Dynamic> v3 = {1.0, 2.0, 4.0};
+    mat::Vector<double, mat::Dynamic> v4 = {1.0, 2.0};
 
     CHECK(v1 == v2);
     CHECK(v1 != v3);
     CHECK(v1 != v4);
 }
 
-TEST_CASE("vector<T, Dynamic>: Eigen-style aliases") {
-    VectorXd vd(10);
-    VectorXf vf(10);
-    VectorXi vi(10);
+TEST_CASE("mat::Vector<T, mat::Dynamic>: Eigen-style aliases") {
+    mat::VectorXd vd(10);
+    mat::VectorXf vf(10);
+    mat::VectorXi vi(10);
 
     CHECK(vd.size() == 10);
     CHECK(vf.size() == 10);
@@ -162,16 +162,16 @@ TEST_CASE("vector<T, Dynamic>: Eigen-style aliases") {
 // DYNAMIC MATRIX TESTS
 // =============================================================================
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: construction") {
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: construction") {
     SUBCASE("default constructor") {
-        matrix<double, Dynamic, Dynamic> m;
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m;
         CHECK(m.rows() == 0);
         CHECK(m.cols() == 0);
         CHECK(m.empty());
     }
 
     SUBCASE("size constructor") {
-        matrix<double, Dynamic, Dynamic> m(100, 50);
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(100, 50);
         CHECK(m.rows() == 100);
         CHECK(m.cols() == 50);
         CHECK(m.size() == 5000);
@@ -184,7 +184,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: construction") {
     }
 
     SUBCASE("size + value constructor") {
-        matrix<int, Dynamic, Dynamic> m(10, 10, 7);
+        mat::Matrix<int, mat::Dynamic, mat::Dynamic> m(10, 10, 7);
         CHECK(m.rows() == 10);
         CHECK(m.cols() == 10);
         for (size_t i = 0; i < m.rows(); ++i) {
@@ -196,7 +196,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: construction") {
 
     SUBCASE("initializer list constructor") {
         // 2x3 matrix, column-major
-        matrix<double, Dynamic, Dynamic> m(2, 3, {1, 2, 3, 4, 5, 6});
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(2, 3, {1, 2, 3, 4, 5, 6});
         CHECK(m.rows() == 2);
         CHECK(m.cols() == 3);
         // Column-major: first column is {1,2}, second is {3,4}, third is {5,6}
@@ -207,8 +207,8 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: construction") {
     }
 }
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: element access") {
-    matrix<double, Dynamic, Dynamic> m(3, 3);
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: element access") {
+    mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(3, 3);
     m(0, 0) = 1.0;
     m(1, 1) = 2.0;
     m(2, 2) = 3.0;
@@ -233,8 +233,8 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: element access") {
     }
 }
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: resize") {
-    matrix<double, Dynamic, Dynamic> m(10, 10);
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: resize") {
+    mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(10, 10);
     m(5, 5) = 42.0;
 
     SUBCASE("resize (destructive)") {
@@ -252,9 +252,9 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: resize") {
     }
 }
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: operations") {
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: operations") {
     SUBCASE("setIdentity") {
-        matrix<double, Dynamic, Dynamic> m(4, 4);
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(4, 4);
         m.setIdentity();
         for (size_t i = 0; i < 4; ++i) {
             for (size_t j = 0; j < 4; ++j) {
@@ -268,7 +268,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: operations") {
     }
 
     SUBCASE("setZero") {
-        matrix<double, Dynamic, Dynamic> m(3, 3, 5.0);
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(3, 3, 5.0);
         m.setZero();
         for (size_t i = 0; i < 9; ++i) {
             CHECK(m[i] == 0.0);
@@ -276,7 +276,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: operations") {
     }
 
     SUBCASE("fill") {
-        matrix<double, Dynamic, Dynamic> m(3, 3);
+        mat::Matrix<double, mat::Dynamic, mat::Dynamic> m(3, 3);
         m.fill(7.5);
         for (size_t i = 0; i < 9; ++i) {
             CHECK(m[i] == 7.5);
@@ -284,10 +284,10 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: operations") {
     }
 }
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: Eigen-style aliases") {
-    MatrixXd md(10, 20);
-    MatrixXf mf(10, 20);
-    MatrixXi mi(10, 20);
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: Eigen-style aliases") {
+    mat::MatrixXd md(10, 20);
+    mat::MatrixXf mf(10, 20);
+    mat::MatrixXi mi(10, 20);
 
     CHECK(md.rows() == 10);
     CHECK(md.cols() == 20);
@@ -301,14 +301,14 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: Eigen-style aliases") {
 
 TEST_CASE("dynamic_tensor: construction") {
     SUBCASE("default constructor") {
-        dynamic_tensor<double> t;
+        mat::DynamicTensor<double> t;
         CHECK(t.rank() == 0);
         CHECK(t.size() == 0);
         CHECK(t.empty());
     }
 
     SUBCASE("shape constructor (initializer_list)") {
-        dynamic_tensor<double> t({10, 20, 30});
+        mat::DynamicTensor<double> t({10, 20, 30});
         CHECK(t.rank() == 3);
         CHECK(t.dim(0) == 10);
         CHECK(t.dim(1) == 20);
@@ -317,20 +317,20 @@ TEST_CASE("dynamic_tensor: construction") {
     }
 
     SUBCASE("shape constructor (vector)") {
-        Vector<size_t> shape;
+        datapod::Vector<size_t> shape;
         shape.push_back(5);
         shape.push_back(6);
         shape.push_back(7);
         shape.push_back(8);
 
-        dynamic_tensor<double> t(shape);
+        mat::DynamicTensor<double> t(shape);
         CHECK(t.rank() == 4);
         CHECK(t.size() == 5 * 6 * 7 * 8);
     }
 }
 
 TEST_CASE("dynamic_tensor: element access") {
-    dynamic_tensor<double> t({4, 5, 6});
+    mat::DynamicTensor<double> t({4, 5, 6});
 
     SUBCASE("3D accessor") {
         t(1, 2, 3) = 42.0;
@@ -356,7 +356,7 @@ TEST_CASE("dynamic_tensor: element access") {
 }
 
 TEST_CASE("dynamic_tensor: 4D tensor") {
-    dynamic_tensor<double> t({2, 3, 4, 5});
+    mat::DynamicTensor<double> t({2, 3, 4, 5});
     CHECK(t.rank() == 4);
     CHECK(t.size() == 2 * 3 * 4 * 5);
 
@@ -365,7 +365,7 @@ TEST_CASE("dynamic_tensor: 4D tensor") {
 }
 
 TEST_CASE("dynamic_tensor: resize") {
-    dynamic_tensor<double> t({10, 10, 10});
+    mat::DynamicTensor<double> t({10, 10, 10});
     CHECK(t.size() == 1000);
 
     t.resize({5, 5, 5, 5});
@@ -374,7 +374,7 @@ TEST_CASE("dynamic_tensor: resize") {
 }
 
 TEST_CASE("dynamic_tensor: operations") {
-    dynamic_tensor<double> t({3, 4, 5});
+    mat::DynamicTensor<double> t({3, 4, 5});
 
     SUBCASE("fill") {
         t.fill(3.14);
@@ -393,9 +393,9 @@ TEST_CASE("dynamic_tensor: operations") {
 }
 
 TEST_CASE("dynamic_tensor: Eigen-style aliases") {
-    TensorXd td({10, 20, 30});
-    TensorXf tf({10, 20, 30});
-    TensorXi ti({10, 20, 30});
+    mat::TensorXd td({10, 20, 30});
+    mat::TensorXf tf({10, 20, 30});
+    mat::TensorXi ti({10, 20, 30});
 
     CHECK(td.rank() == 3);
     CHECK(tf.rank() == 3);
@@ -403,12 +403,12 @@ TEST_CASE("dynamic_tensor: Eigen-style aliases") {
 }
 
 // =============================================================================
-// PARTIALLY DYNAMIC TENSOR TESTS (tensor<T, Dynamic, 4, 5>, etc.)
+// PARTIALLY DYNAMIC TENSOR TESTS (mat::Tensor<T, mat::Dynamic, 4, 5>, etc.)
 // =============================================================================
 
-TEST_CASE("tensor<T, Dynamic, ...>: fully dynamic construction") {
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: fully dynamic construction") {
     SUBCASE("all dims dynamic - 3D") {
-        tensor<double, Dynamic, Dynamic, Dynamic> t(2, 3, 4);
+        mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic> t(2, 3, 4);
         CHECK(t.dim(0) == 2);
         CHECK(t.dim(1) == 3);
         CHECK(t.dim(2) == 4);
@@ -416,7 +416,7 @@ TEST_CASE("tensor<T, Dynamic, ...>: fully dynamic construction") {
     }
 
     SUBCASE("all dims dynamic - 4D") {
-        tensor<float, Dynamic, Dynamic, Dynamic, Dynamic> t(2, 3, 4, 5);
+        mat::Tensor<float, mat::Dynamic, mat::Dynamic, mat::Dynamic, mat::Dynamic> t(2, 3, 4, 5);
         CHECK(t.dim(0) == 2);
         CHECK(t.dim(1) == 3);
         CHECK(t.dim(2) == 4);
@@ -425,10 +425,10 @@ TEST_CASE("tensor<T, Dynamic, ...>: fully dynamic construction") {
     }
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: mixed dynamic/fixed construction") {
     SUBCASE("first dim dynamic, others fixed") {
         // Batch of 4x5 matrices
-        tensor<double, Dynamic, 4, 5> batch(10);
+        mat::Tensor<double, mat::Dynamic, 4, 5> batch(10);
         CHECK(batch.dim(0) == 10);
         CHECK(batch.dim(1) == 4);
         CHECK(batch.dim(2) == 5);
@@ -436,7 +436,7 @@ TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
     }
 
     SUBCASE("middle dim dynamic") {
-        tensor<double, 3, Dynamic, 5> t(10);
+        mat::Tensor<double, 3, mat::Dynamic, 5> t(10);
         CHECK(t.dim(0) == 3);
         CHECK(t.dim(1) == 10);
         CHECK(t.dim(2) == 5);
@@ -444,7 +444,7 @@ TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
     }
 
     SUBCASE("last dim dynamic") {
-        tensor<double, 3, 4, Dynamic> t(10);
+        mat::Tensor<double, 3, 4, mat::Dynamic> t(10);
         CHECK(t.dim(0) == 3);
         CHECK(t.dim(1) == 4);
         CHECK(t.dim(2) == 10);
@@ -452,7 +452,7 @@ TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
     }
 
     SUBCASE("two dims dynamic") {
-        tensor<double, Dynamic, 4, Dynamic> t(3, 5);
+        mat::Tensor<double, mat::Dynamic, 4, mat::Dynamic> t(3, 5);
         CHECK(t.dim(0) == 3);
         CHECK(t.dim(1) == 4);
         CHECK(t.dim(2) == 5);
@@ -460,8 +460,8 @@ TEST_CASE("tensor<T, Dynamic, ...>: mixed dynamic/fixed construction") {
     }
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: element access") {
-    tensor<double, Dynamic, 4, 5> t(3);
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: element access") {
+    mat::Tensor<double, mat::Dynamic, 4, 5> t(3);
 
     SUBCASE("write and read") {
         t(1, 2, 3) = 42.0;
@@ -481,8 +481,8 @@ TEST_CASE("tensor<T, Dynamic, ...>: element access") {
     }
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: resize") {
-    tensor<double, Dynamic, 4, 5> t(3);
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: resize") {
+    mat::Tensor<double, mat::Dynamic, 4, 5> t(3);
     CHECK(t.size() == 60);
 
     t.resize(10);
@@ -492,13 +492,13 @@ TEST_CASE("tensor<T, Dynamic, ...>: resize") {
     CHECK(t.size() == 200);
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: copy and move") {
-    tensor<double, Dynamic, Dynamic, Dynamic> t1(2, 3, 4);
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: copy and move") {
+    mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic> t1(2, 3, 4);
     t1(0, 0, 0) = 1.0;
     t1(1, 2, 3) = 42.0;
 
     SUBCASE("copy constructor") {
-        tensor<double, Dynamic, Dynamic, Dynamic> t2(t1);
+        mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic> t2(t1);
         CHECK(t2.dim(0) == 2);
         CHECK(t2.dim(1) == 3);
         CHECK(t2.dim(2) == 4);
@@ -507,15 +507,15 @@ TEST_CASE("tensor<T, Dynamic, ...>: copy and move") {
     }
 
     SUBCASE("move constructor") {
-        tensor<double, Dynamic, Dynamic, Dynamic> t2(std::move(t1));
+        mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic> t2(std::move(t1));
         CHECK(t2.dim(0) == 2);
         CHECK(t2(1, 2, 3) == 42.0);
         CHECK(t1.size() == 0); // Moved-from state
     }
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: operations") {
-    tensor<double, Dynamic, 4, 5> t(3);
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: operations") {
+    mat::Tensor<double, mat::Dynamic, 4, 5> t(3);
 
     SUBCASE("fill") {
         t.fill(3.14);
@@ -533,24 +533,24 @@ TEST_CASE("tensor<T, Dynamic, ...>: operations") {
     }
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: type traits") {
-    CHECK(is_partially_dynamic_tensor_v<tensor<double, Dynamic, 4, 5>>);
-    CHECK(is_partially_dynamic_tensor_v<tensor<double, Dynamic, Dynamic, Dynamic>>);
-    CHECK(!is_partially_dynamic_tensor_v<tensor<double, 3, 4, 5>>);
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: type traits") {
+    CHECK(mat::is_partially_dynamic_tensor_v<mat::Tensor<double, mat::Dynamic, 4, 5>>);
+    CHECK(mat::is_partially_dynamic_tensor_v<mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic>>);
+    CHECK(!mat::is_partially_dynamic_tensor_v<mat::Tensor<double, 3, 4, 5>>);
 
     // is_dynamic_v should include partially dynamic tensors
-    CHECK(is_dynamic_v<tensor<double, Dynamic, 4, 5>>);
+    CHECK(mat::is_dynamic_v<mat::Tensor<double, mat::Dynamic, 4, 5>>);
 }
 
-TEST_CASE("tensor<T, Dynamic, ...>: serialization") {
+TEST_CASE("mat::Tensor<T, mat::Dynamic, ...>: serialization") {
     SUBCASE("fully dynamic 3D tensor") {
-        tensor<double, Dynamic, Dynamic, Dynamic> t1(2, 3, 4);
+        mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic> t1(2, 3, 4);
         for (size_t i = 0; i < t1.size(); ++i) {
             t1[i] = static_cast<double>(i);
         }
 
         auto buf = serialize(t1);
-        auto t2 = deserialize<Mode::NONE, tensor<double, Dynamic, Dynamic, Dynamic>>(buf);
+        auto t2 = deserialize<Mode::NONE, mat::Tensor<double, mat::Dynamic, mat::Dynamic, mat::Dynamic>>(buf);
 
         CHECK(t2.dim(0) == 2);
         CHECK(t2.dim(1) == 3);
@@ -559,13 +559,13 @@ TEST_CASE("tensor<T, Dynamic, ...>: serialization") {
     }
 
     SUBCASE("partially dynamic tensor") {
-        tensor<double, Dynamic, 4, 5> t1(3);
+        mat::Tensor<double, mat::Dynamic, 4, 5> t1(3);
         for (size_t i = 0; i < t1.size(); ++i) {
             t1[i] = static_cast<double>(i * 2);
         }
 
         auto buf = serialize(t1);
-        auto t2 = deserialize<Mode::NONE, tensor<double, Dynamic, 4, 5>>(buf);
+        auto t2 = deserialize<Mode::NONE, mat::Tensor<double, mat::Dynamic, 4, 5>>(buf);
 
         CHECK(t2.dim(0) == 3);
         CHECK(t2.dim(1) == 4);
@@ -578,14 +578,14 @@ TEST_CASE("tensor<T, Dynamic, ...>: serialization") {
 // SERIALIZATION TESTS
 // =============================================================================
 
-TEST_CASE("vector<T, Dynamic>: serialization") {
-    vector<double, Dynamic> v1 = {1.0, 2.0, 3.0, 4.0, 5.0};
+TEST_CASE("mat::Vector<T, mat::Dynamic>: serialization") {
+    mat::Vector<double, mat::Dynamic> v1 = {1.0, 2.0, 3.0, 4.0, 5.0};
 
     // Serialize
     auto buf = serialize(v1);
 
     // Deserialize
-    auto v2 = deserialize<Mode::NONE, vector<double, Dynamic>>(buf);
+    auto v2 = deserialize<Mode::NONE, mat::Vector<double, mat::Dynamic>>(buf);
 
     CHECK(v2.size() == 5);
     CHECK(v2[0] == 1.0);
@@ -594,8 +594,8 @@ TEST_CASE("vector<T, Dynamic>: serialization") {
     CHECK(v1 == v2);
 }
 
-TEST_CASE("matrix<T, Dynamic, Dynamic>: serialization") {
-    matrix<double, Dynamic, Dynamic> m1(3, 4);
+TEST_CASE("mat::Matrix<T, mat::Dynamic, mat::Dynamic>: serialization") {
+    mat::Matrix<double, mat::Dynamic, mat::Dynamic> m1(3, 4);
     for (size_t i = 0; i < 3; ++i) {
         for (size_t j = 0; j < 4; ++j) {
             m1(i, j) = static_cast<double>(i * 10 + j);
@@ -606,7 +606,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: serialization") {
     auto buf = serialize(m1);
 
     // Deserialize
-    auto m2 = deserialize<Mode::NONE, matrix<double, Dynamic, Dynamic>>(buf);
+    auto m2 = deserialize<Mode::NONE, mat::Matrix<double, mat::Dynamic, mat::Dynamic>>(buf);
 
     CHECK(m2.rows() == 3);
     CHECK(m2.cols() == 4);
@@ -614,7 +614,7 @@ TEST_CASE("matrix<T, Dynamic, Dynamic>: serialization") {
 }
 
 TEST_CASE("dynamic_tensor: serialization") {
-    dynamic_tensor<double> t1({2, 3, 4});
+    mat::DynamicTensor<double> t1({2, 3, 4});
     for (size_t i = 0; i < t1.size(); ++i) {
         t1[i] = static_cast<double>(i);
     }
@@ -623,7 +623,7 @@ TEST_CASE("dynamic_tensor: serialization") {
     auto buf = serialize(t1);
 
     // Deserialize
-    auto t2 = deserialize<Mode::NONE, dynamic_tensor<double>>(buf);
+    auto t2 = deserialize<Mode::NONE, mat::DynamicTensor<double>>(buf);
 
     CHECK(t2.rank() == 3);
     CHECK(t2.dim(0) == 2);
@@ -633,10 +633,10 @@ TEST_CASE("dynamic_tensor: serialization") {
 }
 
 TEST_CASE("dynamic types: serialization with integrity check") {
-    vector<double, Dynamic> v = {1.0, 2.0, 3.0};
+    mat::Vector<double, mat::Dynamic> v = {1.0, 2.0, 3.0};
 
     auto buf = serialize<Mode::WITH_INTEGRITY>(v);
-    auto v2 = deserialize<Mode::WITH_INTEGRITY, vector<double, Dynamic>>(buf);
+    auto v2 = deserialize<Mode::WITH_INTEGRITY, mat::Vector<double, mat::Dynamic>>(buf);
 
     CHECK(v == v2);
 }
@@ -646,26 +646,26 @@ TEST_CASE("dynamic types: serialization with integrity check") {
 // =============================================================================
 
 TEST_CASE("type traits") {
-    CHECK(is_dynamic_vector_v<vector<double, Dynamic>>);
-    CHECK(!is_dynamic_vector_v<vector<double, 3>>);
+    CHECK(mat::is_dynamic_vector_v<mat::Vector<double, mat::Dynamic>>);
+    CHECK(!mat::is_dynamic_vector_v<mat::Vector<double, 3>>);
 
-    CHECK(is_dynamic_matrix_v<matrix<double, Dynamic, Dynamic>>);
-    CHECK(!is_dynamic_matrix_v<matrix<double, 3, 3>>);
+    CHECK(mat::is_dynamic_matrix_v<mat::Matrix<double, mat::Dynamic, mat::Dynamic>>);
+    CHECK(!mat::is_dynamic_matrix_v<mat::Matrix<double, 3, 3>>);
 
-    CHECK(is_dynamic_tensor_v<dynamic_tensor<double>>);
-    CHECK(!is_dynamic_tensor_v<tensor<double, 2, 2, 2>>);
+    CHECK(mat::is_dynamic_tensor_v<mat::DynamicTensor<double>>);
+    CHECK(!mat::is_dynamic_tensor_v<mat::Tensor<double, 2, 2, 2>>);
 
-    CHECK(is_dynamic_v<vector<double, Dynamic>>);
-    CHECK(is_dynamic_v<matrix<double, Dynamic, Dynamic>>);
-    CHECK(is_dynamic_v<dynamic_tensor<double>>);
-    CHECK(!is_dynamic_v<vector<double, 3>>);
+    CHECK(mat::is_dynamic_v<mat::Vector<double, mat::Dynamic>>);
+    CHECK(mat::is_dynamic_v<mat::Matrix<double, mat::Dynamic, mat::Dynamic>>);
+    CHECK(mat::is_dynamic_v<mat::DynamicTensor<double>>);
+    CHECK(!mat::is_dynamic_v<mat::Vector<double, 3>>);
 }
 
 // =============================================================================
 // DYNAMIC SENTINEL VALUE TEST
 // =============================================================================
 
-TEST_CASE("Dynamic sentinel value") {
-    CHECK(Dynamic == static_cast<size_t>(-1));
-    CHECK(Dynamic > 1000000000); // Very large value
+TEST_CASE("mat::Dynamic sentinel value") {
+    CHECK(mat::Dynamic == static_cast<size_t>(-1));
+    CHECK(mat::Dynamic > 1000000000); // Very large value
 }

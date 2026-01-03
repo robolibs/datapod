@@ -44,11 +44,11 @@ namespace datapod {
         inline bool operator!=(const Accel &other) const noexcept { return !(*this == other); }
 
         // Conversion to/from mat::vector for SIMD operations (6-DOF)
-        inline mat::vector<double, 6> to_mat() const noexcept {
-            return mat::vector<double, 6>{linear.ax, linear.ay, linear.az, angular.ax, angular.ay, angular.az};
+        inline mat::Vector<double, 6> to_mat() const noexcept {
+            return mat::Vector<double, 6>{linear.ax, linear.ay, linear.az, angular.ax, angular.ay, angular.az};
         }
 
-        static inline Accel from_mat(const mat::vector<double, 6> &v) noexcept {
+        static inline Accel from_mat(const mat::Vector<double, 6> &v) noexcept {
             return Accel{Acceleration{v[0], v[1], v[2]}, Acceleration{v[3], v[4], v[5]}};
         }
     };

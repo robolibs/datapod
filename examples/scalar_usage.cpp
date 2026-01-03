@@ -4,13 +4,13 @@
 using namespace datapod::mat;
 
 int main() {
-    std::cout << "=== scalar Usage Examples ===" << std::endl << std::endl;
+    std::cout << "=== Scalar Usage Examples ===" << std::endl << std::endl;
 
     // 1. Construction
     std::cout << "1. Construction:" << std::endl;
-    scalar<double> temperature{23.5};
-    scalar<float> mass{10.5f};
-    scalar<int> count{42};
+    Scalar<double> temperature{23.5};
+    Scalar<float> mass{10.5f};
+    Scalar<int> count{42};
 
     std::cout << "   temperature = " << temperature.value << std::endl;
     std::cout << "   mass = " << mass.value << std::endl;
@@ -18,14 +18,14 @@ int main() {
 
     // 2. Implicit conversion
     std::cout << "2. Implicit Conversion:" << std::endl;
-    scalar<double> s{100.0};
+    Scalar<double> s{100.0};
     double raw_value = s; // Implicit conversion to underlying type
-    std::cout << "   scalar<double> → double: " << raw_value << std::endl << std::endl;
+    std::cout << "   Scalar<double> → double: " << raw_value << std::endl << std::endl;
 
     // 3. Arithmetic operations
     std::cout << "3. Arithmetic Operations:" << std::endl;
-    scalar<double> a{10.0};
-    scalar<double> b{3.0};
+    Scalar<double> a{10.0};
+    Scalar<double> b{3.0};
 
     auto sum = a + b;
     auto diff = a - b;
@@ -39,7 +39,7 @@ int main() {
 
     // 4. Compound assignment
     std::cout << "4. Compound Assignment:" << std::endl;
-    scalar<double> x{50.0};
+    Scalar<double> x{50.0};
     x += 10.0; // Works with raw values too
     std::cout << "   x after += 10.0: " << x.value << std::endl;
     x -= 5.0;
@@ -47,15 +47,15 @@ int main() {
 
     // 5. Comparison
     std::cout << "5. Comparison:" << std::endl;
-    scalar<int> p{10};
-    scalar<int> q{20};
-    std::cout << "   scalar(10) < scalar(20): " << (p < q ? "true" : "false") << std::endl;
-    std::cout << "   scalar(10) == 10: " << (p == 10 ? "true" : "false") << std::endl << std::endl;
+    Scalar<int> p{10};
+    Scalar<int> q{20};
+    std::cout << "   Scalar(10) < Scalar(20): " << (p < q ? "true" : "false") << std::endl;
+    std::cout << "   Scalar(10) == 10: " << (p == 10 ? "true" : "false") << std::endl << std::endl;
 
     // 6. Type traits
     std::cout << "6. Type Traits:" << std::endl;
-    std::cout << "   is_scalar_v<scalar<double>>: " << is_scalar_v<scalar<double>> << std::endl;
-    std::cout << "   rank: " << scalar<double>::rank << " (rank-0 tensor)" << std::endl;
+    std::cout << "   is_scalar_v<Scalar<double>>: " << is_scalar_v<Scalar<double>> << std::endl;
+    std::cout << "   rank: " << Scalar<double>::rank << " (rank-0 tensor)" << std::endl;
 
     return 0;
 }

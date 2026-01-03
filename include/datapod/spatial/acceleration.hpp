@@ -58,9 +58,9 @@ namespace datapod {
         inline bool operator!=(const Acceleration &other) const noexcept { return !(*this == other); }
 
         // Conversion to/from mat::vector for SIMD operations
-        inline mat::vector<double, 3> to_mat() const noexcept { return mat::vector<double, 3>{ax, ay, az}; }
+        inline mat::Vector<double, 3> to_mat() const noexcept { return mat::Vector<double, 3>{ax, ay, az}; }
 
-        static inline Acceleration from_mat(const mat::vector<double, 3> &v) noexcept {
+        static inline Acceleration from_mat(const mat::Vector<double, 3> &v) noexcept {
             return Acceleration{v[0], v[1], v[2]};
         }
     };

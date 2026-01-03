@@ -5,11 +5,11 @@
 #include "datapod/reflection/to_tuple.hpp"
 
 using namespace datapod;
-using namespace datapod::mat;
+// Not using datapod::mat to avoid Vector conflict
 
 TEST_SUITE("mat::scalar") {
     TEST_CASE("construction and access") {
-        scalar<double> s{42.5};
+        mat::Scalar<double> s{42.5};
         CHECK(s.value == 42.5);
         CHECK(s.get() == 42.5);
 
@@ -18,8 +18,8 @@ TEST_SUITE("mat::scalar") {
     }
 
     TEST_CASE("arithmetic operations") {
-        scalar<double> a{10.0};
-        scalar<double> b{3.0};
+        mat::Scalar<double> a{10.0};
+        mat::Scalar<double> b{3.0};
 
         auto c = a + b;
         CHECK(c.value == 13.0);
@@ -35,8 +35,8 @@ TEST_SUITE("mat::scalar") {
     }
 
     TEST_CASE("compound assignment") {
-        scalar<double> s{10.0};
-        s += scalar<double>{5.0};
+        mat::Scalar<double> s{10.0};
+        s += mat::Scalar<double>{5.0};
         CHECK(s.value == 15.0);
 
         s -= 3.0; // works with raw values too
@@ -44,9 +44,9 @@ TEST_SUITE("mat::scalar") {
     }
 
     TEST_CASE("comparison") {
-        scalar<int> a{10};
-        scalar<int> b{20};
-        scalar<int> c{10};
+        mat::Scalar<int> a{10};
+        mat::Scalar<int> b{20};
+        mat::Scalar<int> c{10};
 
         CHECK(a == c);
         CHECK(a != b);
@@ -55,7 +55,7 @@ TEST_SUITE("mat::scalar") {
     }
 
     TEST_CASE("reflection") {
-        scalar<double> s{42.5};
+        mat::Scalar<double> s{42.5};
         auto tuple = s.members();
         CHECK(std::get<0>(tuple) == 42.5);
 
@@ -64,13 +64,13 @@ TEST_SUITE("mat::scalar") {
     }
 
     TEST_CASE("type traits") {
-        CHECK(is_scalar_v<scalar<double>>);
-        CHECK_FALSE(is_scalar_v<double>);
-        CHECK(scalar<double>::rank == 0);
+        CHECK(mat::is_scalar_v<mat::Scalar<double>>);
+        CHECK_FALSE(mat::is_scalar_v<double>);
+        CHECK(mat::Scalar<double>::rank == 0);
     }
 
     TEST_CASE("POD compatibility") {
-        CHECK(std::is_trivially_copyable_v<scalar<double>>);
-        CHECK(std::is_trivially_copyable_v<scalar<int>>);
+        CHECK(std::is_trivially_copyable_v<mat::Scalar<double>>);
+        CHECK(std::is_trivially_copyable_v<mat::Scalar<int>>);
     }
 }
