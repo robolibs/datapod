@@ -1,5 +1,69 @@
 # Changelog
 
+## [0.0.19] - 2026-01-02
+
+### <!-- 0 -->⛰️  Features
+
+- Implement Vectra for small object optimization
+- Implement Pool segregated free-list allocator
+- Implement Arena linear allocator with bump-pointer semantics
+
+## [0.0.18] - 2026-01-01
+
+### <!-- 0 -->⛰️  Features
+
+- Add serialization for C-style arrays
+
+## [0.0.17] - 2026-01-01
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Properly handle SIMD and stack-allocated vectors
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Add architecture-specific SIMD flags
+- Add support for pkg-config dependencies
+
+## [0.0.16] - 2025-12-31
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Improve compiler selection and warning handling
+- Add Zig as a supported build system
+- Streamline build system and project configuration
+
+### Build
+
+- Update .envrc for build environment
+- Refactor release command in Makefile
+- Simplify release process and version management
+
+## [0.0.15] - 2025-12-29
+
+### <!-- 0 -->⛰️  Features
+
+- Implement Trie (prefix tree) data structure
+- Implement N-ary tree data structure
+- Implement index-based BinaryTree
+- Add IndexedHeap for priority queues with key updates
+- Add OrderedSet container based on Red-Black Tree
+- Add `OrderedMap` data structure
+- Introduce Deque data structure
+- Add heap/priority queue data structure
+- Add `List` data structure
+- Add ForwardList sequential container
+
+## [0.0.14] - 2025-12-28
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Remove rerun_sdk support from build systems
+
+### Build
+
+- Optimize xmake compilation speed
+
 ## [0.0.13] - 2025-12-28
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks

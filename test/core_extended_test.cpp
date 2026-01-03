@@ -326,7 +326,7 @@ void test_chunk() {
 void test_mmap() {
     std::cout << "Testing mmap... ";
 
-    const char *temp_file = "/tmp/datagram_mmap_test.bin";
+    const char *temp_file = "/tmp/datagram_core_extended_mmap_test.bin";
 
     // Test WRITE mode (creates new file)
     {

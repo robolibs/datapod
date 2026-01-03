@@ -14,6 +14,7 @@
  * - #include <datapod/spatial.hpp>     - Point, Pose, geometry types
  * - #include <datapod/temporal.hpp>    - TimeSeries, Stamp, Event, etc.
  * - #include <datapod/matrix.hpp>      - Matrix, Tensor, Scalar
+ * - #include <datapod/trees.hpp>       - OrderedMap, OrderedSet, BinaryTree, NaryTree, Trie
  */
 
 // Core utilities (always needed)
@@ -67,6 +68,7 @@
 #include "sequential.hpp"
 #include "spatial.hpp"
 #include "temporal.hpp"
+#include "trees.hpp"
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)
