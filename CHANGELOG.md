@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.21] - 2026-01-03
+
+### <!-- 3 -->📚 Documentation
+
+- Update Datapod architecture diagram
+
 ## [0.0.19] - 2026-01-02
 
 ### <!-- 0 -->⛰️  Features
