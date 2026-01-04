@@ -19,6 +19,7 @@
 #include "adapters/once_cell.hpp"
 #include "adapters/optional.hpp"
 #include "adapters/pair.hpp"
+#include "adapters/pin.hpp"
 #include "adapters/ref_cell.hpp"
 #include "adapters/result.hpp"
 #include "adapters/shared_ptr.hpp"
