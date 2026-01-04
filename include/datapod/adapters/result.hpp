@@ -212,6 +212,141 @@ namespace datapod {
             return Result<T, F_type>::ok(std::move(*this).value());
         }
 
+        // Query operations with predicates
+        template <typename F> inline bool is_ok_and(F &&predicate) const { return is_ok() && predicate(value()); }
+
+        template <typename F> inline bool is_err_and(F &&predicate) const { return is_err() && predicate(error()); }
+
+        // Inspect operations (for debugging/side effects)
+        template <typename F> inline const Result &inspect(F &&f) const & {
+            if (is_ok()) {
+                f(value());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &inspect(F &&f) & {
+            if (is_ok()) {
+                f(value());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&inspect(F &&f) && {
+            if (is_ok()) {
+                f(value());
+            }
+            return std::move(*this);
+        }
+
+        template <typename F> inline const Result &inspect_err(F &&f) const & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &inspect_err(F &&f) & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&inspect_err(F &&f) && {
+            if (is_err()) {
+                f(error());
+            }
+            return std::move(*this);
+        }
+
+        // Expect with custom messages
+        inline T &expect(const char *msg) & {
+            if (is_err()) {
+                throw std::runtime_error(msg);
+            }
+            return value();
+        }
+
+        inline const T &expect(const char *msg) const & {
+            if (is_err()) {
+                throw std::runtime_error(msg);
+            }
+            return value();
+        }
+
+        inline T &&expect(const char *msg) && {
+            if (is_err()) {
+                throw std::runtime_error(msg);
+            }
+            return std::move(*this).value();
+        }
+
+        inline E &expect_err(const char *msg) & {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return error();
+        }
+
+        inline const E &expect_err(const char *msg) const & {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return error();
+        }
+
+        inline E &&expect_err(const char *msg) && {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return std::move(*this).error();
+        }
+
+        // Unwrap operations with defaults
+        inline T unwrap_or(const T &default_value) const & noexcept { return is_ok() ? value() : default_value; }
+
+        inline T unwrap_or(T &&default_value) && noexcept {
+            return is_ok() ? std::move(*this).value() : std::move(default_value);
+        }
+
+        template <typename F> inline T unwrap_or_else(F &&f) const & { return is_ok() ? value() : f(error()); }
+
+        template <typename F> inline T unwrap_or_else(F &&f) && {
+            return is_ok() ? std::move(*this).value() : f(std::move(*this).error());
+        }
+
+        template <typename U = T>
+        inline auto unwrap_or_default() const & ->
+            typename std::enable_if<std::is_default_constructible<U>::value, U>::type {
+            return is_ok() ? value() : U{};
+        }
+
+        template <typename U = T>
+        inline auto unwrap_or_default() && ->
+            typename std::enable_if<std::is_default_constructible<U>::value, U>::type {
+            return is_ok() ? std::move(*this).value() : U{};
+        }
+
+        // Flatten Result<Result<T, E>, E> to Result<T, E>
+        template <typename U, typename F,
+                  typename = typename std::enable_if<std::is_same<T, Result<U, F>>::value>::type>
+        inline Result<U, E> flatten() && {
+            if (is_ok()) {
+                return std::move(*this).value();
+            }
+            return Result<U, E>::err(std::move(*this).error());
+        }
+
+        template <typename U, typename F,
+                  typename = typename std::enable_if<std::is_same<T, Result<U, F>>::value>::type>
+        inline Result<U, E> flatten() const & {
+            if (is_ok()) {
+                return value();
+            }
+            return Result<U, E>::err(error());
+        }
+
         // Comparison
         inline bool operator==(const Result &other) const noexcept { return data == other.data; }
 
@@ -220,5 +355,24 @@ namespace datapod {
 
     // Convenience type alias
     template <typename T> using Res = Result<T, Error>;
+
+    // Helper functions for copied/cloned (for Result<T*, E>)
+    template <typename T, typename E>
+    inline auto copied(const Result<T *, E> &result) ->
+        typename std::enable_if<std::is_copy_constructible<T>::value, Result<T, E>>::type {
+        if (result.is_ok()) {
+            return Result<T, E>::ok(*result.value());
+        }
+        return Result<T, E>::err(result.error());
+    }
+
+    template <typename T, typename E>
+    inline auto cloned(const Result<T *, E> &result) ->
+        typename std::enable_if<std::is_copy_constructible<T>::value, Result<T, E>>::type {
+        if (result.is_ok()) {
+            return Result<T, E>::ok(*result.value());
+        }
+        return Result<T, E>::err(result.error());
+    }
 
 } // namespace datapod
