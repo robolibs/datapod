@@ -253,6 +253,8 @@ namespace datapod {
         other.header_ = nullptr;
         other.buffer_ = nullptr;
         other.shm_fd_ = -1;
+        other.owns_memory_ = false; // Transfer ownership to new object
+        other.is_shm_ = false;      // Clear SHM flag on moved-from object
     }
 
     template <typename T> RingBuffer<SPSC, T> &RingBuffer<SPSC, T>::operator=(RingBuffer &&other) noexcept {
@@ -268,6 +270,8 @@ namespace datapod {
             other.header_ = nullptr;
             other.buffer_ = nullptr;
             other.shm_fd_ = -1;
+            other.owns_memory_ = false; // Transfer ownership to new object
+            other.is_shm_ = false;      // Clear SHM flag on moved-from object
         }
         return *this;
     }
