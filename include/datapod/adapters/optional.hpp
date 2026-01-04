@@ -441,6 +441,27 @@ namespace datapod {
             return **this;
         }
 
+        // Iterator support
+        using iterator = T *;
+        using const_iterator = T const *;
+
+        constexpr iterator begin() noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr const_iterator begin() const noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr const_iterator cbegin() const noexcept { return begin(); }
+
+        constexpr iterator end() noexcept { return has_value_ ? &**this + 1 : nullptr; }
+
+        constexpr const_iterator end() const noexcept { return has_value_ ? &**this + 1 : nullptr; }
+
+        constexpr const_iterator cend() const noexcept { return end(); }
+
+        // Slice access (returns pointer to single element or nullptr)
+        constexpr T *data() noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr T const *data() const noexcept { return has_value_ ? &**this : nullptr; }
+
         // Conversion methods - forward declaration of Result needed
         template <typename E> constexpr auto ok_or(E &&err) const & -> Result<T, E>;
         template <typename E> constexpr auto ok_or(E &&err) && -> Result<T, E>;

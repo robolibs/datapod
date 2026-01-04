@@ -404,6 +404,22 @@ namespace datapod {
             return nullopt;
         }
 
+        // Iterator support (iterates over Ok value, empty for Err)
+        using iterator = T *;
+        using const_iterator = T const *;
+
+        inline iterator begin() noexcept { return is_ok() ? &value() : nullptr; }
+
+        inline const_iterator begin() const noexcept { return is_ok() ? &value() : nullptr; }
+
+        inline const_iterator cbegin() const noexcept { return begin(); }
+
+        inline iterator end() noexcept { return is_ok() ? &value() + 1 : nullptr; }
+
+        inline const_iterator end() const noexcept { return is_ok() ? &value() + 1 : nullptr; }
+
+        inline const_iterator cend() const noexcept { return end(); }
+
         // Comparison
         inline bool operator==(const Result &other) const noexcept { return data == other.data; }
 
