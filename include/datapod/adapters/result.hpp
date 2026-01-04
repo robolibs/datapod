@@ -8,6 +8,9 @@
 
 namespace datapod {
 
+    // Forward declaration
+    template <typename T> class Optional;
+
     /**
      * @brief Result<T, E> - Type-safe error handling (POD when T and E are POD)
      *
@@ -345,6 +348,60 @@ namespace datapod {
                 return value();
             }
             return Result<U, E>::err(error());
+        }
+
+        // Conversion to Optional
+        inline Optional<T> ok() const & {
+            if (is_ok()) {
+                return Optional<T>{value()};
+            }
+            return nullopt;
+        }
+
+        inline Optional<T> ok() && {
+            if (is_ok()) {
+                return Optional<T>{std::move(*this).value()};
+            }
+            return nullopt;
+        }
+
+        inline Optional<E> err() const & {
+            if (is_err()) {
+                return Optional<E>{error()};
+            }
+            return nullopt;
+        }
+
+        inline Optional<E> err() && {
+            if (is_err()) {
+                return Optional<E>{std::move(*this).error()};
+            }
+            return nullopt;
+        }
+
+        // Transpose Result<Optional<T>, E> to Optional<Result<T, E>>
+        template <typename U, typename = typename std::enable_if<std::is_same<T, Optional<U>>::value>::type>
+        inline Optional<Result<U, E>> transpose() const & {
+            if (is_err()) {
+                return Optional<Result<U, E>>{Result<U, E>::err(error())};
+            }
+            const Optional<U> &opt = value();
+            if (opt.has_value()) {
+                return Optional<Result<U, E>>{Result<U, E>::ok(*opt)};
+            }
+            return nullopt;
+        }
+
+        template <typename U, typename = typename std::enable_if<std::is_same<T, Optional<U>>::value>::type>
+        inline Optional<Result<U, E>> transpose() && {
+            if (is_err()) {
+                return Optional<Result<U, E>>{Result<U, E>::err(std::move(*this).error())};
+            }
+            Optional<U> opt = std::move(*this).value();
+            if (opt.has_value()) {
+                return Optional<Result<U, E>>{Result<U, E>::ok(std::move(*opt))};
+            }
+            return nullopt;
         }
 
         // Comparison

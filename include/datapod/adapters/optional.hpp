@@ -7,6 +7,9 @@
 
 namespace datapod {
 
+    // Forward declarations
+    template <typename T, typename E> struct Result;
+
     struct nullopt_t {
         explicit constexpr nullopt_t(int) {}
     };
@@ -437,6 +440,14 @@ namespace datapod {
             }
             return **this;
         }
+
+        // Conversion methods - forward declaration of Result needed
+        template <typename E> constexpr auto ok_or(E &&err) const & -> Result<T, E>;
+        template <typename E> constexpr auto ok_or(E &&err) && -> Result<T, E>;
+        template <typename F>
+        constexpr auto ok_or_else(F &&f) const & -> Result<T, decltype(std::invoke(std::forward<F>(f)))>;
+        template <typename F>
+        constexpr auto ok_or_else(F &&f) && -> Result<T, decltype(std::invoke(std::forward<F>(f)))>;
 
         // Serialization support
         auto members() noexcept { return std::tie(has_value_, storage_); }
