@@ -66,17 +66,17 @@ namespace datapod {
   - Namespace: `box` - Functions: `make(min, max)`
 
 ### Geometric Primitives (include/datapod/pods/spatial/primitives/)
-- [ ] **Circle** - `include/datapod/pods/spatial/primitives/circle.hpp`
-  - Namespace: `circle` - Functions: `make(center, radius)`
-- [ ] **Line** - `include/datapod/pods/spatial/primitives/line.hpp`
-  - Namespace: `line` - Functions: `make(point, direction)`
-- [ ] **Segment** - `include/datapod/pods/spatial/primitives/segment.hpp`
+- [x] **Circle** - `include/datapod/pods/spatial/primitives/circle.hpp`
+  - Namespace: `circle` - Functions: `make(center, radius)`, `unit()`
+- [x] **Line** - `include/datapod/pods/spatial/primitives/line.hpp`
+  - Namespace: `line` - Functions: `make(origin, direction)`, `from_points(p1, p2)`
+- [x] **Segment** - `include/datapod/pods/spatial/primitives/segment.hpp`
   - Namespace: `segment` - Functions: `make(start, end)`
-- [ ] **Rectangle** - `include/datapod/pods/spatial/primitives/rectangle.hpp`
-  - Namespace: `rectangle` - Functions: `make(min, max)`
-- [ ] **Square** - `include/datapod/pods/spatial/primitives/square.hpp`
-  - Namespace: `square` - Functions: `make(center, side_length)`
-- [ ] **Triangle** - `include/datapod/pods/spatial/primitives/triangle.hpp`
+- [x] **Rectangle** - `include/datapod/pods/spatial/primitives/rectangle.hpp`
+  - Namespace: `rectangle` - Functions: `make(corners)`, `make(min, max)`, `make(center, width, height)`
+- [x] **Square** - `include/datapod/pods/spatial/primitives/square.hpp`
+  - Namespace: `square` - Functions: `make(center, side)`, `unit()`
+- [x] **Triangle** - `include/datapod/pods/spatial/primitives/triangle.hpp`
   - Namespace: `triangle` - Functions: `make(p1, p2, p3)`
 
 ### Complex Spatial (include/datapod/pods/spatial/complex/)

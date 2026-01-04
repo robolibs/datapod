@@ -87,4 +87,28 @@ namespace datapod {
         }
     };
 
+    namespace rectangle {
+        /// Create a rectangle from four corner points
+        inline Rectangle make(const Point &top_left, const Point &top_right, const Point &bottom_left,
+                              const Point &bottom_right) noexcept {
+            return Rectangle{top_left, top_right, bottom_left, bottom_right};
+        }
+
+        /// Create an axis-aligned rectangle from min and max points (2D)
+        inline Rectangle make(const Point &min, const Point &max) noexcept {
+            return Rectangle{Point{min.x, max.y, min.z}, Point{max.x, max.y, min.z}, Point{min.x, min.y, min.z},
+                             Point{max.x, min.y, min.z}};
+        }
+
+        /// Create a rectangle from center, width, and height (2D, axis-aligned)
+        inline Rectangle make(const Point &center, double width, double height) noexcept {
+            double half_w = width / 2.0;
+            double half_h = height / 2.0;
+            return Rectangle{Point{center.x - half_w, center.y + half_h, center.z},
+                             Point{center.x + half_w, center.y + half_h, center.z},
+                             Point{center.x - half_w, center.y - half_h, center.z},
+                             Point{center.x + half_w, center.y - half_h, center.z}};
+        }
+    } // namespace rectangle
+
 } // namespace datapod

@@ -77,4 +77,19 @@ namespace datapod {
         }
     };
 
+    namespace segment {
+        /// Create a segment from start and end points
+        inline Segment make(const Point &start, const Point &end) noexcept { return Segment{start, end}; }
+
+        /// Create a segment from start and end coordinates
+        inline Segment make(double x1, double y1, double z1, double x2, double y2, double z2) noexcept {
+            return Segment{Point{x1, y1, z1}, Point{x2, y2, z2}};
+        }
+
+        /// Create a 2D segment (z = 0)
+        inline Segment make(double x1, double y1, double x2, double y2) noexcept {
+            return Segment{Point{x1, y1, 0.0}, Point{x2, y2, 0.0}};
+        }
+    } // namespace segment
+
 } // namespace datapod

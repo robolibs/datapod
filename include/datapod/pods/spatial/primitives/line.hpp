@@ -63,4 +63,17 @@ namespace datapod {
         }
     };
 
+    namespace line {
+        /// Create a line from origin point and direction vector
+        inline Line make(const Point &origin, const Point &direction) noexcept { return Line{origin, direction}; }
+
+        /// Create a line from origin coordinates and direction coordinates
+        inline Line make(double ox, double oy, double oz, double dx, double dy, double dz) noexcept {
+            return Line{Point{ox, oy, oz}, Point{dx, dy, dz}};
+        }
+
+        /// Create a line passing through two points (direction = p2 - p1)
+        inline Line from_points(const Point &p1, const Point &p2) noexcept { return Line{p1, p2 - p1}; }
+    } // namespace line
+
 } // namespace datapod

@@ -61,4 +61,18 @@ namespace datapod {
         }
     };
 
+    namespace square {
+        /// Create a square from center point and side length
+        inline Square make(const Point &center, double side) noexcept { return Square{center, side}; }
+
+        /// Create a 2D square from center coordinates and side length
+        inline Square make(double x, double y, double side) noexcept { return Square{Point{x, y, 0.0}, side}; }
+
+        /// Create a 3D square from center coordinates and side length
+        inline Square make(double x, double y, double z, double side) noexcept { return Square{Point{x, y, z}, side}; }
+
+        /// Create a unit square at origin
+        inline Square unit() noexcept { return Square{Point{0.0, 0.0, 0.0}, 1.0}; }
+    } // namespace square
+
 } // namespace datapod

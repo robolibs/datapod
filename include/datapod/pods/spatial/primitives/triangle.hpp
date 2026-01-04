@@ -82,4 +82,20 @@ namespace datapod {
         }
     };
 
+    namespace triangle {
+        /// Create a triangle from three points
+        inline Triangle make(const Point &a, const Point &b, const Point &c) noexcept { return Triangle{a, b, c}; }
+
+        /// Create a triangle from three point coordinates (3D)
+        inline Triangle make(double ax, double ay, double az, double bx, double by, double bz, double cx, double cy,
+                             double cz) noexcept {
+            return Triangle{Point{ax, ay, az}, Point{bx, by, bz}, Point{cx, cy, cz}};
+        }
+
+        /// Create a 2D triangle (z = 0)
+        inline Triangle make(double ax, double ay, double bx, double by, double cx, double cy) noexcept {
+            return Triangle{Point{ax, ay, 0.0}, Point{bx, by, 0.0}, Point{cx, cy, 0.0}};
+        }
+    } // namespace triangle
+
 } // namespace datapod

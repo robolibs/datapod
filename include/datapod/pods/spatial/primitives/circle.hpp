@@ -33,4 +33,20 @@ namespace datapod {
         }
     };
 
+    namespace circle {
+        /// Create a 2D circle (z = 0)
+        inline Circle make(double x, double y, double radius) noexcept { return Circle{Point{x, y, 0.0}, radius}; }
+
+        /// Create a 3D circle
+        inline Circle make(double x, double y, double z, double radius) noexcept {
+            return Circle{Point{x, y, z}, radius};
+        }
+
+        /// Create a circle from center point and radius
+        inline Circle make(const Point &center, double radius) noexcept { return Circle{center, radius}; }
+
+        /// Create a unit circle at origin
+        inline Circle unit() noexcept { return Circle{Point{0.0, 0.0, 0.0}, 1.0}; }
+    } // namespace circle
+
 } // namespace datapod
