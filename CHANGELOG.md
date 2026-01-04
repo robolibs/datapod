@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.0.27] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Replace 591 std:: type uses with datapod:: types
+- Add Rust-inspired type system with zero std:: dependencies
+- Add namespace utilities for Phase 8 - ALL remaining types
+- Add namespace utilities for Phase 6-7 complex spatial and gaussian types
+- Add namespace utilities for Phase 5 geospatial types
+- Add namespace utilities for Phase 3 robotics types
+- Add namespace utilities for Phase 4 bounding volumes
+- Add namespace utilities for Phase 2 geometric primitives
+- Add namespace utilities for Phase 1 core spatial types
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Remove duplicate DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN defines
+
+### <!-- 2 -->🚜 Refactor
+
+- Reorganize include directory to separate PODs from tools
+
 ## [0.0.26] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
