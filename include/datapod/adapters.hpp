@@ -13,6 +13,7 @@
 #include "adapters/either.hpp"
 #include "adapters/error.hpp"
 #include "adapters/lazy.hpp"
+#include "adapters/non_null.hpp"
 #include "adapters/once_cell.hpp"
 #include "adapters/optional.hpp"
 #include "adapters/pair.hpp"
