@@ -34,4 +34,9 @@ namespace datapod {
         inline bool empty() const noexcept { return polygons.empty(); }
     };
 
+    namespace multi_polygon {
+        /// Placeholder for container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace multi_polygon
+
 } // namespace datapod

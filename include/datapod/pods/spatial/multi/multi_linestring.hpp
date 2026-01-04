@@ -34,4 +34,9 @@ namespace datapod {
         inline bool empty() const noexcept { return linestrings.empty(); }
     };
 
+    namespace multi_linestring {
+        /// Placeholder for container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace multi_linestring
+
 } // namespace datapod

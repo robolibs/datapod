@@ -31,4 +31,9 @@ namespace datapod {
         inline bool empty() const noexcept { return points.empty(); }
     };
 
+    namespace multi_point {
+        /// Placeholder for container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace multi_point
+
 } // namespace datapod

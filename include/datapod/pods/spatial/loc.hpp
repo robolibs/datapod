@@ -82,4 +82,17 @@ namespace datapod {
         inline Loc operator-(const Point &offset) const noexcept { return Loc{local - offset, origin}; }
     };
 
+    namespace loc {
+        /// Create a local coordinate from local point and origin
+        inline Loc make(const Point &local, const Geo &origin) noexcept { return Loc{local, origin}; }
+
+        /// Create a local coordinate from local coordinates and origin coordinates
+        inline Loc make(double x, double y, double z, double lat, double lon, double alt) noexcept {
+            return Loc{Point{x, y, z}, Geo{lat, lon, alt}};
+        }
+
+        /// Create a local coordinate at the origin
+        inline Loc at_origin(const Geo &origin) noexcept { return Loc{Point{0.0, 0.0, 0.0}, origin}; }
+    } // namespace loc
+
 } // namespace datapod

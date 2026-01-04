@@ -95,4 +95,22 @@ namespace datapod {
         inline bool operator!=(const Geo &other) const noexcept { return !(*this == other); }
     };
 
+    namespace geo {
+        /// Create a 2D geographic coordinate (latitude, longitude)
+        inline Geo make(double latitude, double longitude) noexcept { return Geo{latitude, longitude, 0.0}; }
+
+        /// Create a 3D geographic coordinate (latitude, longitude, altitude)
+        inline Geo make(double latitude, double longitude, double altitude) noexcept {
+            return Geo{latitude, longitude, altitude};
+        }
+
+        /// Create a geographic coordinate at the equator and prime meridian
+        inline Geo origin() noexcept { return Geo{0.0, 0.0, 0.0}; }
+
+        /// Create a geographic coordinate with NaN altitude (altitude unavailable)
+        inline Geo without_altitude(double latitude, double longitude) noexcept {
+            return Geo{latitude, longitude, std::nan("")};
+        }
+    } // namespace geo
+
 } // namespace datapod

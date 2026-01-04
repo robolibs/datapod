@@ -92,23 +92,23 @@ namespace datapod {
   - Namespace: `layer` - Functions: `unimplemented()` (template)
 
 ### Geospatial
-- [ ] **Geo** - `include/datapod/pods/spatial/geo.hpp`
-  - Namespace: `geo` - Functions: `make(lat, lon)`, `make(lat, lon, alt)`
-- [ ] **Loc** - `include/datapod/pods/spatial/loc.hpp`
-  - Namespace: `loc` - Functions: `make(lat, lon)`
-- [ ] **UTM** - `include/datapod/pods/spatial/utm.hpp`
-  - Namespace: `utm` - Functions: `make(...)`
-- [ ] **Linestring** - `include/datapod/pods/spatial/linestring.hpp`
+- [x] **Geo** - `include/datapod/pods/spatial/geo.hpp`
+  - Namespace: `geo` - Functions: `make(lat, lon)`, `make(lat, lon, alt)`, `origin()`, `without_altitude()`
+- [x] **Loc** - `include/datapod/pods/spatial/loc.hpp`
+  - Namespace: `loc` - Functions: `make(local, origin)`, `at_origin()`
+- [x] **UTM** - `include/datapod/pods/spatial/utm.hpp`
+  - Namespace: `utm` - Functions: `make(zone, band, easting, northing, altitude)`, `without_altitude()`
+- [x] **Linestring** - `include/datapod/pods/spatial/linestring.hpp`
   - Namespace: `linestring` - Functions: `unimplemented()` (container-like)
-- [ ] **Ring** - `include/datapod/pods/spatial/ring.hpp`
+- [x] **Ring** - `include/datapod/pods/spatial/ring.hpp`
   - Namespace: `ring` - Functions: `unimplemented()` (container-like)
 
 ### Multi Geometries (include/datapod/pods/spatial/multi/)
-- [ ] **MultiPoint** - `include/datapod/pods/spatial/multi/multi_point.hpp`
+- [x] **MultiPoint** - `include/datapod/pods/spatial/multi/multi_point.hpp`
   - Namespace: `multi_point` - Functions: `unimplemented()` (container)
-- [ ] **MultiLinestring** - `include/datapod/pods/spatial/multi/multi_linestring.hpp`
+- [x] **MultiLinestring** - `include/datapod/pods/spatial/multi/multi_linestring.hpp`
   - Namespace: `multi_linestring` - Functions: `unimplemented()` (container)
-- [ ] **MultiPolygon** - `include/datapod/pods/spatial/multi/multi_polygon.hpp`
+- [x] **MultiPolygon** - `include/datapod/pods/spatial/multi/multi_polygon.hpp`
   - Namespace: `multi_polygon` - Functions: `unimplemented()` (container)
 
 ### Gaussian Types (include/datapod/pods/spatial/gaussian/)

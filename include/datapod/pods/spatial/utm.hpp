@@ -102,4 +102,21 @@ namespace datapod {
         inline bool operator!=(const Utm &other) const noexcept { return !(*this == other); }
     };
 
+    namespace utm {
+        /// Create a UTM coordinate from all components
+        inline Utm make(int zone, char band, double easting, double northing, double altitude) noexcept {
+            return Utm{zone, band, easting, northing, altitude};
+        }
+
+        /// Create a 2D UTM coordinate (altitude = 0)
+        inline Utm make(int zone, char band, double easting, double northing) noexcept {
+            return Utm{zone, band, easting, northing, 0.0};
+        }
+
+        /// Create a UTM coordinate with NaN altitude
+        inline Utm without_altitude(int zone, char band, double easting, double northing) noexcept {
+            return Utm{zone, band, easting, northing, std::nan("")};
+        }
+    } // namespace utm
+
 } // namespace datapod

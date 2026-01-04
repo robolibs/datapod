@@ -61,4 +61,9 @@ namespace datapod {
         inline bool is_closed() const noexcept { return points.size() >= 3 && points.front() == points.back(); }
     };
 
+    namespace ring {
+        /// Placeholder for container-like type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ring
+
 } // namespace datapod
