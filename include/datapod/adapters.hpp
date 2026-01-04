@@ -19,6 +19,7 @@
 #include "adapters/optional.hpp"
 #include "adapters/pair.hpp"
 #include "adapters/result.hpp"
+#include "adapters/shared_ptr.hpp"
 #include "adapters/tuple.hpp"
 #include "adapters/unique_ptr.hpp"
 #include "adapters/variant.hpp"
