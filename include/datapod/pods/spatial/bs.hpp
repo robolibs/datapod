@@ -89,4 +89,15 @@ namespace datapod {
         }
     };
 
+    namespace bs {
+        /// Create a bounding sphere from center and radius
+        inline BS make(const Point &center, double radius) noexcept { return BS{center, radius}; }
+
+        /// Create a bounding sphere from center coordinates and radius
+        inline BS make(double x, double y, double z, double radius) noexcept { return BS{Point{x, y, z}, radius}; }
+
+        /// Create a unit sphere at origin
+        inline BS unit() noexcept { return BS{Point{0.0, 0.0, 0.0}, 1.0}; }
+    } // namespace bs
+
 } // namespace datapod

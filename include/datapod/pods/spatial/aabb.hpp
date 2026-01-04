@@ -6,6 +6,7 @@
 
 #include "../matrix/vector.hpp"
 #include "point.hpp"
+#include "size.hpp"
 
 namespace datapod {
 
@@ -115,5 +116,24 @@ namespace datapod {
             return AABB{Point{v[0], v[1], v[2]}, Point{v[3], v[4], v[5]}};
         }
     };
+
+    namespace aabb {
+        /// Create an AABB from min and max points
+        inline AABB make(const Point &min_point, const Point &max_point) noexcept { return AABB{min_point, max_point}; }
+
+        /// Create an AABB from min and max coordinates
+        inline AABB make(double min_x, double min_y, double min_z, double max_x, double max_y, double max_z) noexcept {
+            return AABB{Point{min_x, min_y, min_z}, Point{max_x, max_y, max_z}};
+        }
+
+        /// Create an AABB from center and half-extents
+        inline AABB from_center(const Point &center, const Size &half_extents) noexcept {
+            return AABB{Point{center.x - half_extents.x, center.y - half_extents.y, center.z - half_extents.z},
+                        Point{center.x + half_extents.x, center.y + half_extents.y, center.z + half_extents.z}};
+        }
+
+        /// Create a unit AABB centered at origin
+        inline AABB unit() noexcept { return AABB{Point{-0.5, -0.5, -0.5}, Point{0.5, 0.5, 0.5}}; }
+    } // namespace aabb
 
 } // namespace datapod

@@ -112,4 +112,19 @@ namespace datapod {
         }
     };
 
+    namespace obb {
+        /// Create an OBB from center, half-extents, and orientation
+        inline OBB make(const Point &center, const Size &half_extents, const Euler &orientation) noexcept {
+            return OBB{center, half_extents, orientation};
+        }
+
+        /// Create an axis-aligned OBB (zero rotation)
+        inline OBB make(const Point &center, const Size &half_extents) noexcept {
+            return OBB{center, half_extents, Euler{0.0, 0.0, 0.0}};
+        }
+
+        /// Create a unit OBB centered at origin
+        inline OBB unit() noexcept { return OBB{Point{0.0, 0.0, 0.0}, Size{0.5, 0.5, 0.5}, Euler{0.0, 0.0, 0.0}}; }
+    } // namespace obb
+
 } // namespace datapod

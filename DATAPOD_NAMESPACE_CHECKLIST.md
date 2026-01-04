@@ -54,16 +54,16 @@ namespace datapod {
   - Namespace: `size` - Functions: `make(width, height)`, `make(width, height, depth)`, `uniform()`, `zero()`
 
 ### Bounding Volumes
-- [ ] **AABB** - `include/datapod/pods/spatial/aabb.hpp`
-  - Namespace: `aabb` - Functions: `make(min, max)`
-- [ ] **OBB** - `include/datapod/pods/spatial/obb.hpp`
-  - Namespace: `obb` - Functions: `make(center, half_extents, rotation)`
-- [ ] **BS** (Bounding Sphere) - `include/datapod/pods/spatial/bs.hpp`
-  - Namespace: `bs` - Functions: `make(center, radius)`
-- [ ] **BoundingSphere** - `include/datapod/pods/spatial/bounding_sphere.hpp`
-  - Namespace: `bounding_sphere` - Functions: `make(center, radius)`
-- [ ] **Box** - `include/datapod/pods/spatial/box.hpp`
-  - Namespace: `box` - Functions: `make(min, max)`
+- [x] **AABB** - `include/datapod/pods/spatial/aabb.hpp`
+  - Namespace: `aabb` - Functions: `make(min, max)`, `from_center()`, `unit()`
+- [x] **OBB** - `include/datapod/pods/spatial/obb.hpp`
+  - Namespace: `obb` - Functions: `make(center, half_extents, rotation)`, `unit()`
+- [x] **BS** (Bounding Sphere) - `include/datapod/pods/spatial/bs.hpp`
+  - Namespace: `bs` - Functions: `make(center, radius)`, `unit()`
+- [x] **BoundingSphere** - `include/datapod/pods/spatial/bounding_sphere.hpp`
+  - Namespace: `bounding_sphere` - Functions: `make(center, radius)`, `unit()`
+- [x] **Box** - `include/datapod/pods/spatial/box.hpp`
+  - Namespace: `box` - Functions: `make(pose, size)`, `unit()`
 
 ### Geometric Primitives (include/datapod/pods/spatial/primitives/)
 - [x] **Circle** - `include/datapod/pods/spatial/primitives/circle.hpp`

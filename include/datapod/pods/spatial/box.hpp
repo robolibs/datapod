@@ -108,4 +108,19 @@ namespace datapod {
         }
     };
 
+    namespace box {
+        /// Create a box from pose and size
+        inline Box make(const Pose &pose, const Size &size) noexcept { return Box{pose, size}; }
+
+        /// Create an axis-aligned box from center and size
+        inline Box make(const Point &center, const Size &size) noexcept {
+            return Box{Pose{center, Quaternion{1.0, 0.0, 0.0, 0.0}}, size};
+        }
+
+        /// Create a unit box centered at origin
+        inline Box unit() noexcept {
+            return Box{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Size{1.0, 1.0, 1.0}};
+        }
+    } // namespace box
+
 } // namespace datapod
