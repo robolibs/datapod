@@ -163,4 +163,12 @@ namespace datapod {
         inline Quaternionf normalized() const noexcept { return Quaternionf{Base::normalized()}; }
     };
 
+    // ===== NAMESPACE UTILITIES =====
+
+    namespace quaternion {
+        inline Quaternion make(double w, double x, double y, double z) noexcept { return Quaternion{w, x, y, z}; }
+
+        inline Quaternionf make(float w, float x, float y, float z) noexcept { return Quaternionf{w, x, y, z}; }
+    } // namespace quaternion
+
 } // namespace datapod

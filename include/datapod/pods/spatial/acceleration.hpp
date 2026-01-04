@@ -65,4 +65,10 @@ namespace datapod {
         }
     };
 
+    // ===== NAMESPACE UTILITIES =====
+
+    namespace acceleration {
+        inline Acceleration make(double ax, double ay, double az) noexcept { return Acceleration{ax, ay, az}; }
+    } // namespace acceleration
+
 } // namespace datapod

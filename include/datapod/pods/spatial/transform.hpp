@@ -193,4 +193,24 @@ namespace datapod {
         return result.normalized();
     }
 
+    namespace transform {
+        /// Create an identity transform
+        inline Transform identity() noexcept { return Transform::identity(); }
+
+        /// Create a transform from rotation quaternion only
+        inline Transform make(double qw, double qx, double qy, double qz) noexcept {
+            return Transform::from_rotation(qw, qx, qy, qz);
+        }
+
+        /// Create a transform from translation only
+        inline Transform make(double tx, double ty, double tz) noexcept {
+            return Transform::from_translation(tx, ty, tz);
+        }
+
+        /// Create a transform from rotation and translation
+        inline Transform make(double qw, double qx, double qy, double qz, double tx, double ty, double tz) noexcept {
+            return Transform::from_rotation_translation(qw, qx, qy, qz, tx, ty, tz);
+        }
+    } // namespace transform
+
 } // namespace datapod

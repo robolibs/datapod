@@ -59,4 +59,10 @@ namespace datapod {
         static inline Velocity from_mat(const mat::Vector<double, 3> &v) noexcept { return Velocity{v[0], v[1], v[2]}; }
     };
 
+    // ===== NAMESPACE UTILITIES =====
+
+    namespace velocity {
+        inline Velocity make(double vx, double vy, double vz) noexcept { return Velocity{vx, vy, vz}; }
+    } // namespace velocity
+
 } // namespace datapod

@@ -206,3 +206,29 @@ TEST_CASE("Point - operator!= true for different values") {
 TEST_CASE("Point - is standard layout") { CHECK(std::is_standard_layout_v<Point>); }
 
 TEST_CASE("Point - is trivially copyable") { CHECK(std::is_trivially_copyable_v<Point>); }
+
+// ============================================================================
+// TEST: Namespace Utilities
+// ============================================================================
+
+TEST_CASE("point::make - 2D point") {
+    auto p = point::make(1.0, 2.0);
+    CHECK(p.x == 1.0);
+    CHECK(p.y == 2.0);
+    CHECK(p.z == 0.0);
+}
+
+TEST_CASE("point::make - 3D point") {
+    auto p = point::make(1.0, 2.0, 3.0);
+    CHECK(p.x == 1.0);
+    CHECK(p.y == 2.0);
+    CHECK(p.z == 3.0);
+}
+
+TEST_CASE("point::origin - creates point at origin") {
+    auto p = point::origin();
+    CHECK(p.x == 0.0);
+    CHECK(p.y == 0.0);
+    CHECK(p.z == 0.0);
+    CHECK_FALSE(p.is_set());
+}

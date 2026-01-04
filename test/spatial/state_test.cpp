@@ -86,3 +86,36 @@ TEST_CASE("State - is_set returns true with all fields") {
 TEST_CASE("State - is standard layout") { CHECK(std::is_standard_layout_v<State>); }
 
 TEST_CASE("State - is trivially copyable") { CHECK(std::is_trivially_copyable_v<State>); }
+
+// ============================================================================
+// TEST: Namespace Utilities
+// ============================================================================
+
+TEST_CASE("state::make - full state") {
+    Pose pose{Point{1.0, 2.0, 3.0}, Quaternion{1.0, 0.0, 0.0, 0.0}};
+    Velocity linear_vel{5.0, 0.5, 0.1};
+    Velocity angular_vel{0.1, 0.2, 0.3};
+
+    auto s = state::make(pose, linear_vel, angular_vel);
+    CHECK(s.pose.point.x == 1.0);
+    CHECK(s.linear_velocity.vx == 5.0);
+    CHECK(s.angular_velocity.vx == 0.1);
+}
+
+TEST_CASE("state::make - pose only") {
+    Pose pose{Point{1.0, 2.0, 3.0}, Quaternion{1.0, 0.0, 0.0, 0.0}};
+
+    auto s = state::make(pose);
+    CHECK(s.pose.point.x == 1.0);
+    CHECK(s.linear_velocity.vx == 0.0);
+    CHECK(s.angular_velocity.vx == 0.0);
+}
+
+TEST_CASE("state::at_rest - creates state at rest") {
+    auto s = state::at_rest();
+    CHECK(s.pose.point.x == 0.0);
+    CHECK(s.pose.rotation.w == 1.0);
+    CHECK(s.linear_velocity.vx == 0.0);
+    CHECK(s.angular_velocity.vx == 0.0);
+    CHECK_FALSE(s.is_set());
+}

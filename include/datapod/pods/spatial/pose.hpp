@@ -79,4 +79,25 @@ namespace datapod {
         }
     };
 
+    namespace pose {
+        /// Create a pose from position and rotation
+        inline Pose make(const Point &position, const Quaternion &rotation) noexcept {
+            return Pose{position, rotation};
+        }
+
+        /// Create a pose from position coordinates and rotation quaternion
+        inline Pose make(double x, double y, double z, double qw, double qx, double qy, double qz) noexcept {
+            return Pose{Point{x, y, z}, Quaternion{qw, qx, qy, qz}};
+        }
+
+        /// Create a pose with only position (identity rotation)
+        inline Pose make(const Point &position) noexcept { return Pose{position, Quaternion{1.0, 0.0, 0.0, 0.0}}; }
+
+        /// Create a pose with only rotation (zero position)
+        inline Pose make(const Quaternion &rotation) noexcept { return Pose{Point{0.0, 0.0, 0.0}, rotation}; }
+
+        /// Create an identity pose (origin with identity rotation)
+        inline Pose identity() noexcept { return Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}; }
+    } // namespace pose
+
 } // namespace datapod

@@ -213,3 +213,40 @@ TEST_CASE("Quaternion - to_euler and back") {
 TEST_CASE("Quaternion - is standard layout") { CHECK(std::is_standard_layout_v<Quaternion>); }
 
 TEST_CASE("Quaternion - is trivially copyable") { CHECK(std::is_trivially_copyable_v<Quaternion>); }
+
+// ============================================================================
+// TEST: Namespace Utilities
+// ============================================================================
+
+TEST_CASE("quaternion::make - creates Quaternion from double components") {
+    auto q = datapod::quaternion::make(1.0, 0.0, 0.0, 0.0);
+    CHECK(q.w == 1.0);
+    CHECK(q.x == 0.0);
+    CHECK(q.y == 0.0);
+    CHECK(q.z == 0.0);
+}
+
+TEST_CASE("quaternion::make - creates Quaternion with all components") {
+    auto q = datapod::quaternion::make(0.5, 0.5, 0.5, 0.5);
+    CHECK(q.w == 0.5);
+    CHECK(q.x == 0.5);
+    CHECK(q.y == 0.5);
+    CHECK(q.z == 0.5);
+}
+
+TEST_CASE("quaternion::make - creates Quaternionf from float components") {
+    auto q = datapod::quaternion::make(1.0f, 0.0f, 0.0f, 0.0f);
+    CHECK(q.w == 1.0f);
+    CHECK(q.x == 0.0f);
+    CHECK(q.y == 0.0f);
+    CHECK(q.z == 0.0f);
+}
+
+TEST_CASE("quaternion::make - float overload returns Quaternionf type") {
+    auto q = datapod::quaternion::make(0.5f, 0.5f, 0.5f, 0.5f);
+    static_assert(std::is_same_v<decltype(q), Quaternionf>);
+    CHECK(q.w == 0.5f);
+    CHECK(q.x == 0.5f);
+    CHECK(q.y == 0.5f);
+    CHECK(q.z == 0.5f);
+}

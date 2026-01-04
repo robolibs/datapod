@@ -67,4 +67,18 @@ namespace datapod {
         static inline Size from_mat(const mat::Vector<double, 3> &v) noexcept { return Size{v[0], v[1], v[2]}; }
     };
 
+    namespace size {
+        /// Create a 2D size (z = 0)
+        inline Size make(double width, double height) noexcept { return Size{width, height, 0.0}; }
+
+        /// Create a 3D size
+        inline Size make(double width, double height, double depth) noexcept { return Size{width, height, depth}; }
+
+        /// Create a uniform size (cube)
+        inline Size uniform(double dimension) noexcept { return Size{dimension, dimension, dimension}; }
+
+        /// Create a zero size
+        inline Size zero() noexcept { return Size{0.0, 0.0, 0.0}; }
+    } // namespace size
+
 } // namespace datapod

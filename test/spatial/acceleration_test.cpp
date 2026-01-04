@@ -102,4 +102,27 @@ TEST_SUITE("Acceleration") {
         CHECK(std::is_standard_layout_v<Acceleration>);
         CHECK(std::is_trivially_copyable_v<Acceleration>);
     }
+
+    // ===== NAMESPACE UTILITIES =====
+
+    TEST_CASE("acceleration::make - creates Acceleration from components") {
+        auto a = datapod::acceleration::make(1.5, 2.5, -9.81);
+        CHECK(a.ax == 1.5);
+        CHECK(a.ay == 2.5);
+        CHECK(a.az == -9.81);
+    }
+
+    TEST_CASE("acceleration::make - creates zero Acceleration") {
+        auto a = datapod::acceleration::make(0.0, 0.0, 0.0);
+        CHECK(a.ax == 0.0);
+        CHECK(a.ay == 0.0);
+        CHECK(a.az == 0.0);
+    }
+
+    TEST_CASE("acceleration::make - creates Acceleration with negative values") {
+        auto a = datapod::acceleration::make(-1.0, -2.0, -3.0);
+        CHECK(a.ax == -1.0);
+        CHECK(a.ay == -2.0);
+        CHECK(a.az == -3.0);
+    }
 }

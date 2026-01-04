@@ -66,4 +66,15 @@ namespace datapod {
         static inline Point from_mat(const mat::Vector<double, 3> &v) noexcept { return Point{v[0], v[1], v[2]}; }
     };
 
+    namespace point {
+        /// Create a 2D point (z = 0)
+        inline Point make(double x, double y) noexcept { return Point{x, y, 0.0}; }
+
+        /// Create a 3D point
+        inline Point make(double x, double y, double z) noexcept { return Point{x, y, z}; }
+
+        /// Create a point at origin
+        inline Point origin() noexcept { return Point{0.0, 0.0, 0.0}; }
+    } // namespace point
+
 } // namespace datapod

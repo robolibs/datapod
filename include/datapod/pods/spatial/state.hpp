@@ -47,4 +47,22 @@ namespace datapod {
         }
     };
 
+    namespace state {
+        /// Create a state from pose and velocities
+        inline State make(const Pose &pose, const Velocity &linear_vel, const Velocity &angular_vel) noexcept {
+            return State{pose, linear_vel, angular_vel};
+        }
+
+        /// Create a state from pose only (zero velocities)
+        inline State make(const Pose &pose) noexcept {
+            return State{pose, Velocity{0.0, 0.0, 0.0}, Velocity{0.0, 0.0, 0.0}};
+        }
+
+        /// Create a state at rest (identity pose, zero velocities)
+        inline State at_rest() noexcept {
+            return State{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}}, Velocity{0.0, 0.0, 0.0},
+                         Velocity{0.0, 0.0, 0.0}};
+        }
+    } // namespace state
+
 } // namespace datapod

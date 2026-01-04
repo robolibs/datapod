@@ -245,3 +245,36 @@ TEST_CASE("Size - min selects smaller components") {
 TEST_CASE("Size - is standard layout") { CHECK(std::is_standard_layout_v<Size>); }
 
 TEST_CASE("Size - is trivially copyable") { CHECK(std::is_trivially_copyable_v<Size>); }
+
+// ============================================================================
+// TEST: Namespace Utilities
+// ============================================================================
+
+TEST_CASE("size::make - 2D size") {
+    auto s = size::make(10.0, 20.0);
+    CHECK(s.x == 10.0);
+    CHECK(s.y == 20.0);
+    CHECK(s.z == 0.0);
+}
+
+TEST_CASE("size::make - 3D size") {
+    auto s = size::make(10.0, 20.0, 30.0);
+    CHECK(s.x == 10.0);
+    CHECK(s.y == 20.0);
+    CHECK(s.z == 30.0);
+}
+
+TEST_CASE("size::uniform - creates uniform size") {
+    auto s = size::uniform(5.0);
+    CHECK(s.x == 5.0);
+    CHECK(s.y == 5.0);
+    CHECK(s.z == 5.0);
+}
+
+TEST_CASE("size::zero - creates zero size") {
+    auto s = size::zero();
+    CHECK(s.x == 0.0);
+    CHECK(s.y == 0.0);
+    CHECK(s.z == 0.0);
+    CHECK_FALSE(s.is_set());
+}

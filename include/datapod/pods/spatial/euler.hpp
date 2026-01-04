@@ -72,4 +72,10 @@ namespace datapod {
         static inline Euler from_mat(const mat::Vector<double, 3> &v) noexcept { return Euler{v[0], v[1], v[2]}; }
     };
 
+    // ===== NAMESPACE UTILITIES =====
+
+    namespace euler {
+        inline Euler make(double roll, double pitch, double yaw) noexcept { return Euler{roll, pitch, yaw}; }
+    } // namespace euler
+
 } // namespace datapod
