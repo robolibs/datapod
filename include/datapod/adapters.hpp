@@ -11,6 +11,7 @@
 // Core adapters
 #include "adapters/bitset.hpp"
 #include "adapters/error.hpp"
+#include "adapters/lazy.hpp"
 #include "adapters/once_cell.hpp"
 #include "adapters/optional.hpp"
 #include "adapters/pair.hpp"
