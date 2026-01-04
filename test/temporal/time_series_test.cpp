@@ -2,7 +2,7 @@
 
 #include <datapod/reflection/for_each_field.hpp>
 #include <datapod/reflection/to_tuple.hpp>
-#include <datapod/temporal/time_series.hpp>
+#include <datapod/pods/temporal/time_series.hpp>
 
 using namespace datapod;
 

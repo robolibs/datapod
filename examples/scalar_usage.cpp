@@ -1,4 +1,4 @@
-#include <datapod/matrix/scalar.hpp>
+#include <datapod/pods/matrix/scalar.hpp>
 #include <iostream>
 
 using namespace datapod::mat;

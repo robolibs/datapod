@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "datapod/memory/arena.hpp"
-#include "datapod/sequential/vector.hpp"
+#include "datapod/pods/memory/arena.hpp"
+#include "datapod/pods/sequential/vector.hpp"
 
 #include <memory>
 #include <string>

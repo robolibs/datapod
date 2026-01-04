@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/memory/pool.hpp"
+#include "datapod/pods/memory/pool.hpp"
 
 #include <memory>
 #include <string>

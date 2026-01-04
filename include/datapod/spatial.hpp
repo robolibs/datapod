@@ -9,66 +9,65 @@
  */
 
 // Core spatial types
-#include "spatial/acceleration.hpp"
-#include "spatial/euler.hpp"
-#include "spatial/geo.hpp"
-#include "spatial/loc.hpp"
-#include "spatial/point.hpp"
-#include "spatial/pose.hpp"
-#include "spatial/quaternion.hpp"
-#include "spatial/size.hpp"
-#include "spatial/state.hpp"
-#include "spatial/transform.hpp"
-#include "spatial/utm.hpp"
-#include "spatial/velocity.hpp"
+#include "pods/spatial/acceleration.hpp"
+#include "pods/spatial/euler.hpp"
+#include "pods/spatial/geo.hpp"
+#include "pods/spatial/loc.hpp"
+#include "pods/spatial/point.hpp"
+#include "pods/spatial/pose.hpp"
+#include "pods/spatial/quaternion.hpp"
+#include "pods/spatial/size.hpp"
+#include "pods/spatial/state.hpp"
+#include "pods/spatial/transform.hpp"
+#include "pods/spatial/utm.hpp"
+#include "pods/spatial/velocity.hpp"
 
 // Bounding volumes
-#include "spatial/aabb.hpp"
-#include "spatial/bounding_sphere.hpp"
-#include "spatial/box.hpp"
-#include "spatial/bs.hpp"
-#include "spatial/obb.hpp"
+#include "pods/spatial/aabb.hpp"
+#include "pods/spatial/bounding_sphere.hpp"
+#include "pods/spatial/box.hpp"
+#include "pods/spatial/bs.hpp"
+#include "pods/spatial/obb.hpp"
 
 // Primitives
-#include "spatial/primitives/circle.hpp"
-#include "spatial/primitives/line.hpp"
-#include "spatial/primitives/rectangle.hpp"
-#include "spatial/primitives/segment.hpp"
-#include "spatial/primitives/square.hpp"
-#include "spatial/primitives/triangle.hpp"
+#include "pods/spatial/primitives/circle.hpp"
+#include "pods/spatial/primitives/line.hpp"
+#include "pods/spatial/primitives/rectangle.hpp"
+#include "pods/spatial/primitives/segment.hpp"
+#include "pods/spatial/primitives/square.hpp"
+#include "pods/spatial/primitives/triangle.hpp"
 
 // Complex geometry
-#include "spatial/complex/grid.hpp"
-#include "spatial/complex/layer.hpp"
-#include "spatial/complex/path.hpp"
-#include "spatial/complex/polygon.hpp"
-#include "spatial/complex/trajectory.hpp"
-#include "spatial/linestring.hpp"
-#include "spatial/ring.hpp"
+#include "pods/spatial/complex/grid.hpp"
+#include "pods/spatial/complex/layer.hpp"
+#include "pods/spatial/complex/path.hpp"
+#include "pods/spatial/complex/polygon.hpp"
+#include "pods/spatial/complex/trajectory.hpp"
+#include "pods/spatial/linestring.hpp"
+#include "pods/spatial/ring.hpp"
 
 // Multi-geometry
-#include "spatial/multi/multi_linestring.hpp"
-#include "spatial/multi/multi_point.hpp"
-#include "spatial/multi/multi_polygon.hpp"
+#include "pods/spatial/multi/multi_linestring.hpp"
+#include "pods/spatial/multi/multi_point.hpp"
+#include "pods/spatial/multi/multi_polygon.hpp"
 
 // Gaussian types
-#include "spatial/gaussian/box.hpp"
-#include "spatial/gaussian/circle.hpp"
-#include "spatial/gaussian/point.hpp"
-#include "spatial/gaussian/rectangle.hpp"
+#include "pods/spatial/gaussian/box.hpp"
+#include "pods/spatial/gaussian/circle.hpp"
+#include "pods/spatial/gaussian/point.hpp"
+#include "pods/spatial/gaussian/rectangle.hpp"
 
 // Robot types
-#include "spatial/robot/accel.hpp"
-#include "spatial/robot/inertia.hpp"
-#include "spatial/robot/odom.hpp"
-#include "spatial/robot/twist.hpp"
-#include "spatial/robot/wrench.hpp"
+#include "pods/spatial/robot/accel.hpp"
+#include "pods/spatial/robot/inertia.hpp"
+#include "pods/spatial/robot/odom.hpp"
+#include "pods/spatial/robot/twist.hpp"
+#include "pods/spatial/robot/wrench.hpp"
 
 // Spatial indexing
-#include "spatial/quadtree.hpp"
-#include "spatial/rtree.hpp"
+#include "pods/spatial/quadtree.hpp"
+#include "pods/spatial/rtree.hpp"
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)
-namespace dp = datapod;
 #endif

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <datapod/reflection/for_each_field.hpp>
 #include <datapod/reflection/to_tuple.hpp>
-#include <datapod/temporal/stamp.hpp>
+#include <datapod/pods/temporal/stamp.hpp>
 #include <thread>
 #include <vector>
 

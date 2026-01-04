@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/adapters/variant.hpp>
+#include <datapod/pods/adapters/variant.hpp>
 #include <string>
 
 using namespace datapod;

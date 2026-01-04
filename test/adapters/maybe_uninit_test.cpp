@@ -1,7 +1,6 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/maybe_uninit.hpp"
+#include "datapod/pods/adapters/maybe_uninit.hpp"
 #include <string>
 
 using namespace datapod;

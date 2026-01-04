@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/bitset.hpp"
+#include "datapod/pods/adapters/bitset.hpp"
 
 using namespace datapod;
 

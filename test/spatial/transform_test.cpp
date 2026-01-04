@@ -2,7 +2,7 @@
 #include <doctest/doctest.h>
 
 #include "datapod/datapod.hpp"
-#include "datapod/spatial/transform.hpp"
+#include "datapod/pods/spatial/transform.hpp"
 
 using namespace datapod;
 
@@ -163,5 +163,48 @@ TEST_SUITE("Transform") {
 
         CHECK(std::get<0>(tuple) == doctest::Approx(1.0)); // rw
         CHECK(std::get<5>(tuple) == doctest::Approx(0.5)); // dx = tx/2
+    }
+
+    // ========================================================================
+    // TEST: Namespace Utilities
+    // ========================================================================
+
+    TEST_CASE("transform::identity - creates identity transform") {
+        auto tf = transform::identity();
+        CHECK(tf.rw == 1.0);
+        CHECK(tf.rx == 0.0);
+        CHECK(tf.ry == 0.0);
+        CHECK(tf.rz == 0.0);
+        CHECK_FALSE(tf.is_set());
+    }
+
+    TEST_CASE("transform::make - rotation only") {
+        auto tf = transform::make(1.0, 0.0, 0.0, 0.0);
+        CHECK(tf.rw == 1.0);
+        CHECK(tf.rx == 0.0);
+        CHECK(tf.ry == 0.0);
+        CHECK(tf.rz == 0.0);
+    }
+
+    TEST_CASE("transform::make - translation only") {
+        auto tf = transform::make(1.0, 2.0, 3.0);
+
+        double tx, ty, tz;
+        tf.get_translation(tx, ty, tz);
+
+        CHECK(tx == doctest::Approx(1.0));
+        CHECK(ty == doctest::Approx(2.0));
+        CHECK(tz == doctest::Approx(3.0));
+    }
+
+    TEST_CASE("transform::make - rotation and translation") {
+        auto tf = transform::make(1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0);
+
+        double tx, ty, tz;
+        tf.get_translation(tx, ty, tz);
+
+        CHECK(tx == doctest::Approx(1.0));
+        CHECK(ty == doctest::Approx(2.0));
+        CHECK(tz == doctest::Approx(3.0));
     }
 }

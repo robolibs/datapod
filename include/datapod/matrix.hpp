@@ -36,26 +36,24 @@
  */
 
 // Core tensor types (fixed-size)
-#include "matrix/matrix.hpp"
-#include "matrix/scalar.hpp"
-#include "matrix/tensor.hpp"
-#include "matrix/vector.hpp"
+#include "pods/matrix/matrix.hpp"
+#include "pods/matrix/scalar.hpp"
+#include "pods/matrix/tensor.hpp"
+#include "pods/matrix/vector.hpp"
 
 // Dynamic tensor types (runtime-sized)
-#include "matrix/dynamic.hpp"
+#include "pods/matrix/dynamic.hpp"
 
 // Mathematical types
-#include "matrix/math/bigint.hpp"
-#include "matrix/math/complex.hpp"
-#include "matrix/math/dual.hpp"
-#include "matrix/math/fraction.hpp"
-#include "matrix/math/hypercomplex.hpp"
-#include "matrix/math/interval.hpp"
-#include "matrix/math/modular.hpp"
-#include "matrix/math/phasor.hpp"
-#include "matrix/math/polynomial.hpp"
+#include "pods/matrix/math/bigint.hpp"
+#include "pods/matrix/math/complex.hpp"
+#include "pods/matrix/math/dual.hpp"
+#include "pods/matrix/math/fraction.hpp"
+#include "pods/matrix/math/hypercomplex.hpp"
+#include "pods/matrix/math/interval.hpp"
+#include "pods/matrix/math/modular.hpp"
+#include "pods/matrix/math/phasor.hpp"
+#include "pods/matrix/math/polynomial.hpp"
 
-// Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
-#if defined(SHORT_NAMESPACE)
-namespace dp = datapod;
-#endif
+// Note: dp:: namespace is now used for primitive types (see types/types.hpp)
+// The old SHORT_NAMESPACE alias has been removed

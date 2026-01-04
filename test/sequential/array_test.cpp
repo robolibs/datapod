@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/sequential/array.hpp"
+#include "datapod/pods/sequential/array.hpp"
 
 using namespace datapod;
 

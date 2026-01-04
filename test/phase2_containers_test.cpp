@@ -2,11 +2,11 @@
 #include <string>
 #include <vector>
 
-#include "datapod/adapters/bitset.hpp"
-#include "datapod/sequential/bitvec.hpp"
-#include "datapod/sequential/cstring.hpp"
-#include "datapod/sequential/flat_matrix.hpp"
-#include "datapod/sequential/vecvec.hpp"
+#include "datapod/pods/adapters/bitset.hpp"
+#include "datapod/pods/sequential/bitvec.hpp"
+#include "datapod/pods/sequential/cstring.hpp"
+#include "datapod/pods/sequential/flat_matrix.hpp"
+#include "datapod/pods/sequential/vecvec.hpp"
 
 using namespace datapod;
 

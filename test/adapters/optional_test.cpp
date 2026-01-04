@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/optional.hpp"
-#include "datapod/sequential/string.hpp"
+#include "datapod/pods/adapters/optional.hpp"
+#include "datapod/pods/sequential/string.hpp"
 
 using namespace datapod;
 

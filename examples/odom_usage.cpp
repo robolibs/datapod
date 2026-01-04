@@ -1,6 +1,6 @@
-#include <datapod/spatial/pose.hpp>
-#include <datapod/spatial/robot/odom.hpp>
-#include <datapod/spatial/robot/twist.hpp>
+#include <datapod/pods/spatial/pose.hpp>
+#include <datapod/pods/spatial/robot/odom.hpp>
+#include <datapod/pods/spatial/robot/twist.hpp>
 #include <iostream>
 
 using namespace datapod;

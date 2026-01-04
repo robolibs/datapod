@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <cstddef>
@@ -11,15 +12,15 @@ namespace datapod {
     // Calculate byte offset of a member within a struct (pointer to object, pointer to member)
     template <typename T, typename Member> offset_t member_offset(T const *t, Member const *m) {
         static_assert(std::is_trivially_copyable_v<T>, "member_offset requires trivially copyable type");
-        return static_cast<offset_t>(reinterpret_cast<std::uint8_t const *>(m) -
-                                     reinterpret_cast<std::uint8_t const *>(t));
+        return static_cast<offset_t>(reinterpret_cast<datapod::u8 const *>(m) -
+                                     reinterpret_cast<datapod::u8 const *>(t));
     }
 
     // Calculate byte offset of a member within a struct (pointer to object, pointer-to-member)
     template <typename T, typename Member> offset_t member_offset(T const *t, Member T::*m) {
         static_assert(std::is_trivially_copyable_v<T>, "member_offset requires trivially copyable type");
-        return static_cast<offset_t>(reinterpret_cast<std::uint8_t const *>(&(t->*m)) -
-                                     reinterpret_cast<std::uint8_t const *>(t));
+        return static_cast<offset_t>(reinterpret_cast<datapod::u8 const *>(&(t->*m)) -
+                                     reinterpret_cast<datapod::u8 const *>(t));
     }
 
 } // namespace datapod

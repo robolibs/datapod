@@ -1,18 +1,19 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <type_traits>
 
-#include "datapod/adapters/pair.hpp"
 #include "datapod/core/decay.hpp"
 #include "datapod/core/type_traits.hpp"
+#include "datapod/pods/adapters/pair.hpp"
 #include "datapod/reflection/to_tuple.hpp"
 
 namespace datapod {
 
     namespace detail {
 
-        template <class F, class Tuple, std::size_t... I>
+        template <class F, class Tuple, datapod::usize... I>
         constexpr bool tuple_equal_impl(F &&is_equal, Tuple &&a, Tuple &&b, std::index_sequence<I...>) {
             return (is_equal(std::get<I>(std::forward<Tuple>(a)), std::get<I>(std::forward<Tuple>(b))) && ...);
         }

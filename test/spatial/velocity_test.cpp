@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/velocity.hpp>
+#include <datapod/pods/spatial/velocity.hpp>
 
 using namespace datapod;
 
@@ -101,5 +101,28 @@ TEST_SUITE("Velocity") {
     TEST_CASE("POD properties") {
         CHECK(std::is_standard_layout_v<Velocity>);
         CHECK(std::is_trivially_copyable_v<Velocity>);
+    }
+
+    // ===== NAMESPACE UTILITIES =====
+
+    TEST_CASE("velocity::make - creates Velocity from components") {
+        auto v = datapod::velocity::make(1.5, 2.5, 3.5);
+        CHECK(v.vx == 1.5);
+        CHECK(v.vy == 2.5);
+        CHECK(v.vz == 3.5);
+    }
+
+    TEST_CASE("velocity::make - creates zero Velocity") {
+        auto v = datapod::velocity::make(0.0, 0.0, 0.0);
+        CHECK(v.vx == 0.0);
+        CHECK(v.vy == 0.0);
+        CHECK(v.vz == 0.0);
+    }
+
+    TEST_CASE("velocity::make - creates Velocity with negative values") {
+        auto v = datapod::velocity::make(-1.0, -2.0, -3.0);
+        CHECK(v.vx == -1.0);
+        CHECK(v.vy == -2.0);
+        CHECK(v.vz == -3.0);
     }
 }

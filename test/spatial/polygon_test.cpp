@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/complex/polygon.hpp>
+#include <datapod/pods/spatial/complex/polygon.hpp>
 
 using namespace datapod;
 

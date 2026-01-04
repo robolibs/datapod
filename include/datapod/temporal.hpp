@@ -8,15 +8,14 @@
  * data, events, and time-based operations.
  */
 
-#include "temporal/circular_buffer.hpp"
-#include "temporal/event.hpp"
-#include "temporal/financial.hpp"
-#include "temporal/multi_series.hpp"
-#include "temporal/stamp.hpp"
-#include "temporal/time_series.hpp"
-#include "temporal/window.hpp"
+#include "pods/temporal/circular_buffer.hpp"
+#include "pods/temporal/event.hpp"
+#include "pods/temporal/financial.hpp"
+#include "pods/temporal/multi_series.hpp"
+#include "pods/temporal/stamp.hpp"
+#include "pods/temporal/time_series.hpp"
+#include "pods/temporal/window.hpp"
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)
-namespace dp = datapod;
 #endif

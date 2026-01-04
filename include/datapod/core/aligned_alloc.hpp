@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstdlib>
 
@@ -7,7 +8,7 @@
 namespace datapod {
 
     // Cross-platform aligned allocation
-    inline void *aligned_alloc(std::size_t alignment, std::size_t size) {
+    inline void *aligned_alloc(datapod::usize alignment, datapod::usize size) {
         alignment = next_power_of_two(alignment);
         size = to_next_multiple(size, alignment);
 
@@ -21,7 +22,7 @@ namespace datapod {
     }
 
     // Cross-platform aligned free
-    inline void aligned_free([[maybe_unused]] std::size_t alignment, void *ptr) {
+    inline void aligned_free([[maybe_unused]] datapod::usize alignment, void *ptr) {
 #if defined(_MSC_VER)
         _aligned_free(ptr);
 #else

@@ -1,7 +1,7 @@
-#include <datapod/matrix/matrix.hpp>
-#include <datapod/matrix/scalar.hpp>
-#include <datapod/matrix/tensor.hpp>
-#include <datapod/matrix/vector.hpp>
+#include <datapod/pods/matrix/matrix.hpp>
+#include <datapod/pods/matrix/scalar.hpp>
+#include <datapod/pods/matrix/tensor.hpp>
+#include <datapod/pods/matrix/vector.hpp>
 
 #include <cassert>
 #include <iostream>

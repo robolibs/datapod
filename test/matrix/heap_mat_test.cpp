@@ -1,8 +1,8 @@
 #include <doctest/doctest.h>
 
-#include "datapod/matrix/matrix.hpp"
-#include "datapod/matrix/tensor.hpp"
-#include "datapod/matrix/vector.hpp"
+#include "datapod/pods/matrix/matrix.hpp"
+#include "datapod/pods/matrix/tensor.hpp"
+#include "datapod/pods/matrix/vector.hpp"
 #include "datapod/serialization/serialize.hpp"
 
 using namespace datapod;

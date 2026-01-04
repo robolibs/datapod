@@ -1,7 +1,6 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/either.hpp"
+#include "datapod/pods/adapters/either.hpp"
 #include <string>
 
 using namespace datapod;

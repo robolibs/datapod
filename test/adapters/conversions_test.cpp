@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/conversions.hpp"
-#include "datapod/adapters/error.hpp"
+#include "datapod/pods/adapters/conversions.hpp"
+#include "datapod/pods/adapters/error.hpp"
 
 using namespace datapod;
 

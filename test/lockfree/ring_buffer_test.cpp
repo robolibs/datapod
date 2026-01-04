@@ -1,4 +1,4 @@
-#include <datapod/lockfree/ring_buffer.hpp>
+#include <datapod/pods/lockfree/ring_buffer.hpp>
 #include <cassert>
 #include <iostream>
 

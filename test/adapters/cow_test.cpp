@@ -1,7 +1,6 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/cow.hpp"
+#include "datapod/pods/adapters/cow.hpp"
 #include <string>
 
 using namespace datapod;

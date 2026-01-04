@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/pair.hpp"
+#include "datapod/pods/adapters/pair.hpp"
 #include <string>
 #include <vector>
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/linestring.hpp>
+#include <datapod/pods/spatial/linestring.hpp>
 
 using namespace datapod;
 

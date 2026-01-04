@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstdint>
 
@@ -70,21 +71,21 @@ namespace datapod {
         } else if constexpr (sizeof(T) == 2U) {
             union {
                 T t;
-                std::uint16_t i;
+                datapod::u16 i;
             } u{t};
             u.i = DATAGRAM_BYTESWAP_16(u.i);
             return u.t;
         } else if constexpr (sizeof(T) == 4U) {
             union {
                 T t;
-                std::uint32_t i;
+                datapod::u32 i;
             } u{t};
             u.i = DATAGRAM_BYTESWAP_32(u.i);
             return u.t;
         } else if constexpr (sizeof(T) == 8U) {
             union {
                 T t;
-                std::uint64_t i;
+                datapod::u64 i;
             } u{t};
             u.i = DATAGRAM_BYTESWAP_64(u.i);
             return u.t;

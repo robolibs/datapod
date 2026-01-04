@@ -1,5 +1,5 @@
 #include <cstring>
-#include <datapod/sequential/array.hpp>
+#include <datapod/pods/sequential/array.hpp>
 #include <iostream>
 
 using namespace datapod;

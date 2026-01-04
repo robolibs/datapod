@@ -1,7 +1,6 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/non_null.hpp"
+#include "datapod/pods/adapters/non_null.hpp"
 #include <string>
 
 using namespace datapod;

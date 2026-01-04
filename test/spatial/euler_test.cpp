@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/quaternion.hpp> // This includes euler.hpp and implements conversions
+#include <datapod/pods/spatial/quaternion.hpp> // This includes euler.hpp and implements conversions
 
 using namespace datapod;
 
@@ -204,3 +204,28 @@ TEST_CASE("Euler - to_quaternion and back") {
 TEST_CASE("Euler - is standard layout") { CHECK(std::is_standard_layout_v<Euler>); }
 
 TEST_CASE("Euler - is trivially copyable") { CHECK(std::is_trivially_copyable_v<Euler>); }
+
+// ============================================================================
+// TEST: Namespace Utilities
+// ============================================================================
+
+TEST_CASE("euler::make - creates Euler from components") {
+    auto e = datapod::euler::make(0.1, 0.2, 0.3);
+    CHECK(e.roll == 0.1);
+    CHECK(e.pitch == 0.2);
+    CHECK(e.yaw == 0.3);
+}
+
+TEST_CASE("euler::make - creates zero Euler") {
+    auto e = datapod::euler::make(0.0, 0.0, 0.0);
+    CHECK(e.roll == 0.0);
+    CHECK(e.pitch == 0.0);
+    CHECK(e.yaw == 0.0);
+}
+
+TEST_CASE("euler::make - creates Euler with negative values") {
+    auto e = datapod::euler::make(-0.5, -1.0, -1.5);
+    CHECK(e.roll == -0.5);
+    CHECK(e.pitch == -1.0);
+    CHECK(e.yaw == -1.5);
+}

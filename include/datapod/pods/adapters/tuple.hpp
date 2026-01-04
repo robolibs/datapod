@@ -1,0 +1,354 @@
+#pragma once
+#include <datapod/types/types.hpp>
+
+#include <cinttypes>
+#include <type_traits>
+#include <utility>
+
+#include "datapod/core/decay.hpp"
+
+namespace datapod {
+
+    template <typename... Ts> struct Tuple;
+
+    template <datapod::usize I, typename... Ts> struct tuple_element;
+
+    template <datapod::usize I, typename T, typename... Ts>
+    struct tuple_element<I, Tuple<T, Ts...>> : tuple_element<I - 1U, Tuple<Ts...>> {};
+
+    template <typename T, typename... Ts> struct tuple_element<0U, Tuple<T, Ts...>> {
+        using type = T;
+    };
+
+    template <datapod::usize I, typename T, typename... Ts>
+    struct tuple_element<I, T, Ts...> : tuple_element<I - 1U, Ts...> {};
+
+    template <typename T, typename... Ts> struct tuple_element<0U, T, Ts...> {
+        using type = T;
+    };
+
+    template <datapod::usize I, typename... Ts> using tuple_element_t = typename tuple_element<I, Ts...>::type;
+
+    template <typename T, typename... Ts> constexpr datapod::usize max_align_of() {
+        if constexpr (sizeof...(Ts) == 0U) {
+            return alignof(T);
+        } else {
+            return std::max(static_cast<datapod::usize>(alignof(T)), max_align_of<Ts...>());
+        }
+    }
+
+    template <typename T, typename... Ts>
+    constexpr datapod::usize get_offset(datapod::usize const current_idx, datapod::usize current_offset = 0U) {
+        if (auto const misalign = current_offset % alignof(T); misalign != 0U) {
+            current_offset += (alignof(T) - misalign) % alignof(T);
+        }
+
+        if (current_idx == 0U) {
+            return current_offset;
+        }
+
+        current_offset += sizeof(T);
+
+        if constexpr (sizeof...(Ts) == 0U) {
+            return current_idx == 1 ? current_offset + sizeof(T) : current_offset;
+        } else {
+            return get_offset<Ts...>(current_idx - 1U, current_offset);
+        }
+    }
+
+    template <typename... Ts> constexpr datapod::usize get_total_size() {
+        return get_offset<Ts...>(sizeof...(Ts) + 1U);
+    }
+
+    template <datapod::usize I, typename T, typename... Ts> constexpr auto get_arg(T &&arg, Ts &&...args) {
+        if constexpr (I == 0U) {
+            return std::forward<T>(arg);
+        } else {
+            return get_arg<I - 1U>(std::forward<Ts>(args)...);
+        }
+    }
+
+    template <datapod::usize I, typename... Ts> auto &get(Tuple<Ts...> &t) {
+        using return_t = tuple_element_t<I, Ts...>;
+        return *std::launder(reinterpret_cast<return_t *>(t.template get_ptr<I>()));
+    }
+
+    template <datapod::usize I, typename... Ts> auto const &get(Tuple<Ts...> const &t) {
+        using return_t = tuple_element_t<I, Ts...>;
+        return *std::launder(reinterpret_cast<return_t const *>(t.template get_ptr<I>()));
+    }
+
+    template <datapod::usize I, typename... Ts> auto &get(Tuple<Ts...> &&t) {
+        using return_t = tuple_element_t<I, Ts...>;
+        return *std::launder(reinterpret_cast<return_t *>(t.template get_ptr<I>()));
+    }
+
+    template <typename... Ts> struct Tuple {
+        template <std::size_t... Is> using seq_t = std::index_sequence<Is...>;
+        static constexpr auto Indices = std::make_index_sequence<sizeof...(Ts)>{};
+
+        Tuple() { default_construct(Indices); }
+
+        Tuple(Tuple const &o) { copy_construct(o, Indices); }
+
+        Tuple &operator=(Tuple const &o) {
+            if (&o != this) {
+                copy_assign(o, Indices);
+            }
+            return *this;
+        }
+
+        Tuple(Tuple &&o) noexcept { move_construct(o, Indices); }
+
+        Tuple &operator=(Tuple &&o) noexcept {
+            move_assign(o, Indices);
+            return *this;
+        }
+
+        Tuple(Ts &&...args) { // NOLINT
+            move_construct_from_args(Indices, std::forward<Ts>(args)...);
+        }
+
+        ~Tuple() { destruct(Indices); }
+
+        constexpr void swap(Tuple &other) noexcept { swap_impl(other, Indices); }
+
+        template <std::size_t... Is> constexpr void move_construct_from_args(seq_t<Is...>, Ts &&...args) {
+            (new (get_ptr<Is>()) tuple_element_t<Is, Ts...>(get_arg<Is>(std::forward<Ts>(args)...)), ...);
+        }
+
+        template <std::size_t... Is> constexpr void default_construct(seq_t<Is...>) {
+            ((new (get_ptr<Is>()) tuple_element_t<Is, Ts...>{}), ...);
+        }
+
+        template <typename From, std::size_t... Is> constexpr void copy_construct(From const &from, seq_t<Is...>) {
+            (new (get_ptr<Is>()) tuple_element_t<Is, Ts...>(get<Is>(from)), ...);
+        }
+
+        template <typename From, std::size_t... Is> constexpr void copy_assign(From const &from, seq_t<Is...>) {
+            ((get<Is>(*this) = get<Is>(from)), ...);
+        }
+
+        template <typename From, std::size_t... Is> constexpr void move_construct(From &&from, seq_t<Is...>) {
+            (new (get_ptr<Is>()) tuple_element_t<Is, Ts...>(std::move(get<Is>(from))), ...);
+        }
+
+        template <typename From, std::size_t... Is> constexpr void move_assign(From &&from, seq_t<Is...>) {
+            ((get<Is>(*this) = std::move(get<Is>(from))), ...);
+        }
+
+        template <std::size_t... Is> constexpr void swap_impl(Tuple &other, seq_t<Is...>) noexcept {
+            using std::swap;
+            ((swap(get<Is>(*this), get<Is>(other))), ...);
+        }
+
+        template <typename T> constexpr void destruct(T &t) {
+            static_assert(!std::is_array_v<T>);
+            t.~T();
+        }
+
+        template <std::size_t... Is> constexpr void destruct(seq_t<Is...>) { (destruct(get<Is>(*this)), ...); }
+
+        template <datapod::usize I> constexpr auto get_ptr() {
+            return reinterpret_cast<char *>(&mem_) + get_offset<Ts...>(I);
+        }
+
+        template <datapod::usize I> constexpr auto get_ptr() const {
+            return reinterpret_cast<char const *>(&mem_) + get_offset<Ts...>(I);
+        }
+
+        // Member apply() - invokes a callable with tuple elements as arguments
+        template <typename F> constexpr decltype(auto) apply(F &&f) & {
+            return apply_impl(Indices, std::forward<F>(f), *this);
+        }
+
+        template <typename F> constexpr decltype(auto) apply(F &&f) const & {
+            return apply_impl(Indices, std::forward<F>(f), *this);
+        }
+
+        template <typename F> constexpr decltype(auto) apply(F &&f) && {
+            return apply_impl(Indices, std::forward<F>(f), std::move(*this));
+        }
+
+        // Member for_each() - invokes a callable for each element
+        template <typename F> constexpr void for_each(F &&f) & { for_each_impl(Indices, std::forward<F>(f)); }
+
+        template <typename F> constexpr void for_each(F &&f) const & { for_each_impl(Indices, std::forward<F>(f)); }
+
+        template <typename F> constexpr void for_each(F &&f) && { for_each_impl_move(Indices, std::forward<F>(f)); }
+
+        std::aligned_storage_t<get_total_size<Ts...>(), max_align_of<Ts...>()> mem_;
+
+      private:
+        template <std::size_t... Is, typename F> constexpr void for_each_impl(seq_t<Is...>, F &&f) {
+            (std::invoke(std::forward<F>(f), get<Is>(*this)), ...);
+        }
+
+        template <std::size_t... Is, typename F> constexpr void for_each_impl(seq_t<Is...>, F &&f) const {
+            (std::invoke(std::forward<F>(f), get<Is>(*this)), ...);
+        }
+
+        template <std::size_t... Is, typename F> constexpr void for_each_impl_move(seq_t<Is...>, F &&f) {
+            (std::invoke(std::forward<F>(f), std::move(get<Is>(*this))), ...);
+        }
+    };
+
+    template <typename Head, typename... Tail> Tuple(Head &&first, Tail &&...tail) -> Tuple<Head, Tail...>;
+
+    template <typename Tuple> struct is_tuple : std::false_type {};
+
+    template <typename... T> struct is_tuple<Tuple<T...>> : std::true_type {};
+
+    template <typename T> inline constexpr auto is_tuple_v = is_tuple<T>::value;
+
+    template <typename T> struct tuple_size;
+
+    template <typename... T>
+    struct tuple_size<Tuple<T...>> : public std::integral_constant<datapod::usize, sizeof...(T)> {};
+
+    template <typename T> constexpr datapod::usize tuple_size_v = tuple_size<std::decay_t<T>>::value;
+
+    template <typename F, typename Tuple, std::size_t... I>
+    constexpr decltype(auto) apply_impl(std::index_sequence<I...>, F &&f, Tuple &&t) {
+        return std::invoke(std::forward<F>(f), get<I>(std::forward<Tuple>(t))...);
+    }
+
+    template <typename F, typename Tuple, typename Enable = std::enable_if_t<is_tuple_v<std::decay_t<Tuple>>>>
+    constexpr decltype(auto) apply(F &&f, Tuple &&t) {
+        return apply_impl(std::make_index_sequence<tuple_size_v<Tuple>>{}, std::forward<F>(f), std::forward<Tuple>(t));
+    }
+
+    template <typename F, typename Tuple, std::size_t... I>
+    constexpr decltype(auto) apply_impl(std::index_sequence<I...>, F &&f, Tuple const &a, Tuple const &b) {
+        return (std::invoke(std::forward<F>(f), get<I>(a), get<I>(b)), ...);
+    }
+
+    template <typename F, typename Tuple> constexpr decltype(auto) apply(F &&f, Tuple const &a, Tuple const &b) {
+        return apply_impl(std::make_index_sequence<tuple_size_v<std::remove_reference_t<Tuple>>>{}, std::forward<F>(f),
+                          a, b);
+    }
+
+    template <typename T1, typename T2, std::size_t... I>
+    constexpr decltype(auto) eq(std::index_sequence<I...>, T1 const &a, T2 const &b) {
+        return ((get<I>(a) == get<I>(b)) && ...);
+    }
+
+    template <typename T1, typename T2>
+    std::enable_if_t<is_tuple_v<decay_t<T1>> && is_tuple_v<decay_t<T2>>, bool> operator==(T1 &&a, T2 &&b) {
+        return eq(std::make_index_sequence<tuple_size_v<std::remove_reference_t<T1>>>{}, a, b);
+    }
+
+    template <typename Tuple>
+    std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator!=(Tuple const &a, Tuple const &b) {
+        return !(a == b);
+    }
+
+    template <typename Tuple, datapod::usize Index = 0U> bool lt(Tuple const &a, Tuple const &b) {
+        if constexpr (Index == tuple_size_v<Tuple>) {
+            return false;
+        } else {
+            if (get<Index>(a) < get<Index>(b)) {
+                return true;
+            }
+            if (get<Index>(b) < get<Index>(a)) {
+                return false;
+            }
+            return lt<Tuple, Index + 1U>(a, b);
+        }
+    }
+
+    template <typename Tuple>
+    std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator<(Tuple const &a, Tuple const &b) {
+        return lt(a, b);
+    }
+
+    template <typename Tuple>
+    std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator<=(Tuple const &a, Tuple const &b) {
+        return !(b < a);
+    }
+
+    template <typename Tuple>
+    std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator>(Tuple const &a, Tuple const &b) {
+        return b < a;
+    }
+
+    template <typename Tuple>
+    std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator>=(Tuple const &a, Tuple const &b) {
+        return !(a < b);
+    }
+
+    // swap for Tuple
+    template <typename... Ts> void swap(Tuple<Ts...> &a, Tuple<Ts...> &b) noexcept { a.swap(b); }
+
+    // tuple_cat - concatenate tuples
+    template <typename... Ts1, typename... Ts2>
+    constexpr auto tuple_cat(Tuple<Ts1...> const &t1, Tuple<Ts2...> const &t2) {
+        return [&]<std::size_t... I1, std::size_t... I2>(std::index_sequence<I1...>, std::index_sequence<I2...>) {
+            using result_type = Tuple<std::decay_t<Ts1>..., std::decay_t<Ts2>...>;
+            return result_type{std::decay_t<Ts1>(get<I1>(t1))..., std::decay_t<Ts2>(get<I2>(t2))...};
+        }(std::index_sequence_for<Ts1...>{}, std::index_sequence_for<Ts2...>{});
+    }
+
+    // tuple_cat with three or more tuples (recursive)
+    template <typename... Ts1, typename... Ts2, typename... Rest>
+    constexpr auto tuple_cat(Tuple<Ts1...> const &t1, Tuple<Ts2...> const &t2, Rest const &...rest) {
+        return tuple_cat(tuple_cat(t1, t2), rest...);
+    }
+
+    // make_from_tuple - construct object from tuple
+    template <typename T, typename... Ts, std::size_t... I>
+    constexpr T make_from_tuple_impl(Tuple<Ts...> const &t, std::index_sequence<I...>) {
+        return T{get<I>(t)...};
+    }
+
+    template <typename T, typename... Ts> constexpr T make_from_tuple(Tuple<Ts...> const &t) {
+        return make_from_tuple_impl<T>(t, std::index_sequence_for<Ts...>{});
+    }
+
+    // get by type (only if type appears exactly once)
+    namespace detail {
+        template <typename T, typename... Ts> constexpr datapod::usize count_type() {
+            return ((std::is_same_v<T, Ts> ? 1 : 0) + ...);
+        }
+
+        template <typename T, typename First, typename... Rest> constexpr datapod::usize find_type_index_impl() {
+            if constexpr (std::is_same_v<T, First>) {
+                return 0;
+            } else {
+                return 1 + find_type_index_impl<T, Rest...>();
+            }
+        }
+
+        template <typename T, typename... Ts> constexpr datapod::usize find_type_index() {
+            return find_type_index_impl<T, Ts...>();
+        }
+    } // namespace detail
+
+    template <typename T, typename... Ts> constexpr T &get(Tuple<Ts...> &t) noexcept {
+        static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
+        constexpr datapod::usize index = detail::find_type_index<T, Ts...>();
+        return get<index>(t);
+    }
+
+    template <typename T, typename... Ts> constexpr T const &get(Tuple<Ts...> const &t) noexcept {
+        static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
+        constexpr datapod::usize index = detail::find_type_index<T, Ts...>();
+        return get<index>(t);
+    }
+
+    namespace tuple {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace tuple
+
+} // namespace datapod
+
+namespace std {
+
+    template <typename... Pack>
+    struct tuple_size<datapod::Tuple<Pack...>> : datapod::tuple_size<datapod::Tuple<Pack...>> {};
+
+    template <datapod::usize I, typename... Pack>
+    struct tuple_element<I, datapod::Tuple<Pack...>> : datapod::tuple_element<I, datapod::Tuple<Pack...>> {};
+
+} // namespace std

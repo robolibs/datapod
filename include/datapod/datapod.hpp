@@ -17,6 +17,9 @@
  * - #include <datapod/trees.hpp>       - OrderedMap, OrderedSet, BinaryTree, NaryTree, Trie
  */
 
+// Primitive types (Rust-inspired, zero std:: dependencies)
+#include "types/types.hpp"
+
 // Core utilities (always needed)
 #include "core/decay.hpp"
 #include "core/exception.hpp"
@@ -37,10 +40,10 @@
 #include "core/next_power_of_2.hpp"
 #include "core/strong.hpp"
 
-// Memory management
-#include "memory/allocator.hpp"
-#include "memory/offset_ptr.hpp"
-#include "memory/ptr.hpp"
+// Memory management (PODs)
+#include "pods/memory/allocator.hpp"
+#include "pods/memory/offset_ptr.hpp"
+#include "pods/memory/ptr.hpp"
 
 // Reflection system
 #include "reflection/arity.hpp"
@@ -72,5 +75,4 @@
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)
-namespace dp = datapod;
 #endif

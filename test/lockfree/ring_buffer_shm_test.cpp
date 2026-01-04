@@ -1,6 +1,6 @@
 #include <cassert>
-#include <datapod/lockfree/ring_buffer.hpp>
-#include <datapod/sequential/string.hpp>
+#include <datapod/pods/lockfree/ring_buffer.hpp>
+#include <datapod/pods/sequential/string.hpp>
 #include <iostream>
 
 using namespace datapod;

@@ -1,4 +1,4 @@
-#include <datapod/adapters/bitset.hpp>
+#include <datapod/pods/adapters/bitset.hpp>
 #include <datapod/core/mode.hpp>
 #include <datapod/reflection/to_tuple.hpp>
 #include <datapod/serialization/buf.hpp>

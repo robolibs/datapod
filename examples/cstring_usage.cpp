@@ -1,4 +1,4 @@
-#include <datapod/sequential/cstring.hpp>
+#include <datapod/pods/sequential/cstring.hpp>
 #include <iostream>
 
 using namespace datapod;

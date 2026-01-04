@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/robot/odom.hpp>
+#include <datapod/pods/spatial/robot/odom.hpp>
 
 using namespace datapod;
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/robot/inertia.hpp>
+#include <datapod/pods/spatial/robot/inertia.hpp>
 
 using namespace datapod;
 

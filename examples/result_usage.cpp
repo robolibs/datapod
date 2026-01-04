@@ -1,5 +1,5 @@
-#include <datapod/adapters/error.hpp>
-#include <datapod/adapters/result.hpp>
+#include <datapod/pods/adapters/error.hpp>
+#include <datapod/pods/adapters/result.hpp>
 #include <datapod/core/none.hpp>
 #include <iostream>
 

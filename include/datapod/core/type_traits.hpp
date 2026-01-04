@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <type_traits>
@@ -8,9 +9,9 @@ namespace datapod {
     // Detect if T is a character array (char[N] or char const[N])
     template <typename T, typename = void> struct IsCharArrayHelper : std::false_type {};
 
-    template <std::size_t N> struct IsCharArrayHelper<char const[N]> : std::true_type {};
+    template <datapod::usize N> struct IsCharArrayHelper<char const[N]> : std::true_type {};
 
-    template <std::size_t N> struct IsCharArrayHelper<char[N]> : std::true_type {};
+    template <datapod::usize N> struct IsCharArrayHelper<char[N]> : std::true_type {};
 
     template <typename T> constexpr bool is_char_array_v = IsCharArrayHelper<T>::value;
 

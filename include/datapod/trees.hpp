@@ -15,8 +15,8 @@
  * - Trie<T> - Prefix tree
  */
 
-#include "trees/binary_tree.hpp"
-#include "trees/nary_tree.hpp"
-#include "trees/ordered_map.hpp"
-#include "trees/ordered_set.hpp"
-#include "trees/trie.hpp"
+#include "pods/trees/binary_tree.hpp"
+#include "pods/trees/nary_tree.hpp"
+#include "pods/trees/ordered_map.hpp"
+#include "pods/trees/ordered_set.hpp"
+#include "pods/trees/trie.hpp"

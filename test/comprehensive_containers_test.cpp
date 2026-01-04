@@ -3,15 +3,15 @@
 #include <string>
 #include <vector>
 
-#include "datapod/associative/map.hpp"
-#include "datapod/associative/mutable_fws_multimap.hpp"
-#include "datapod/associative/set.hpp"
+#include "datapod/pods/associative/map.hpp"
+#include "datapod/pods/associative/mutable_fws_multimap.hpp"
+#include "datapod/pods/associative/set.hpp"
 #include "datapod/core/mmap.hpp"
-#include "datapod/memory/mmap_vec.hpp"
-#include "datapod/memory/offset_ptr.hpp"
-#include "datapod/memory/ptr.hpp"
-#include "datapod/sequential/nvec.hpp"
-#include "datapod/spatial/rtree.hpp"
+#include "datapod/pods/memory/mmap_vec.hpp"
+#include "datapod/pods/memory/offset_ptr.hpp"
+#include "datapod/pods/memory/ptr.hpp"
+#include "datapod/pods/sequential/nvec.hpp"
+#include "datapod/pods/spatial/rtree.hpp"
 
 using namespace datapod;
 

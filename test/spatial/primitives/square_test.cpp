@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/primitives/square.hpp>
+#include <datapod/pods/spatial/primitives/square.hpp>
 
 using namespace datapod;
 
