@@ -306,4 +306,9 @@ namespace datapod {
         return SharedPtr<T>::make(std::forward<Args>(args)...);
     }
 
+    namespace shared_ptr {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace shared_ptr
+
 } // namespace datapod

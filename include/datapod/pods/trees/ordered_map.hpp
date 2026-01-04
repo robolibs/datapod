@@ -870,4 +870,9 @@ namespace datapod {
         return !(lhs == rhs);
     }
 
+    namespace ordered_map {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ordered_map
+
 } // namespace datapod

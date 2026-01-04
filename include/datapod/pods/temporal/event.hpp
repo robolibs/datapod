@@ -138,4 +138,9 @@ namespace datapod {
     using LogEventStamped = Event<LogEvent>;
     using SystemEventStamped = Event<SystemEvent>;
 
+    namespace event {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace event
+
 } // namespace datapod

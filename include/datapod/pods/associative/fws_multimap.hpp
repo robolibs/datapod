@@ -179,4 +179,9 @@ namespace datapod {
     // Convenience alias
     template <typename K, typename V> using FwsMultimapVec = FwsMultimap<Vector<V>, Vector<K>>;
 
+    namespace fws_multimap {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace fws_multimap
+
 } // namespace datapod

@@ -1052,6 +1052,11 @@ namespace datapod {
 
     using String = BasicString<char *>;
 
+    namespace seq_string {
+        /// Placeholder for template container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace seq_string
+
 } // namespace datapod
 
 // std::hash specialization for datapod::String

@@ -21,4 +21,9 @@ namespace datapod {
         using Set = HashStorage<T, offset::ptr, Identity, Identity, Hash, Eq>;
     } // namespace offset
 
+    namespace set {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace set
+
 } // namespace datapod

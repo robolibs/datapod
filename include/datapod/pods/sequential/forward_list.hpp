@@ -373,4 +373,9 @@ namespace datapod {
         return !(lhs == rhs);
     }
 
+    namespace forward_list {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace forward_list
+
 } // namespace datapod

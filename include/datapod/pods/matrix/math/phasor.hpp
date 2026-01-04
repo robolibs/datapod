@@ -222,4 +222,10 @@ namespace datapod {
         using phasord = Phasor<double>;
 
     } // namespace mat
+
+    namespace phasor {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace phasor
+
 } // namespace datapod

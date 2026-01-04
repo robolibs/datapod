@@ -103,4 +103,9 @@ namespace datapod {
         inline bool same_code(const Error &other) const noexcept { return code == other.code; }
     };
 
+    namespace error {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace error
+
 } // namespace datapod

@@ -510,4 +510,9 @@ namespace datapod {
         Array<block_t, num_blocks> blocks_{};
     };
 
+    namespace bitset {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace bitset
+
 } // namespace datapod

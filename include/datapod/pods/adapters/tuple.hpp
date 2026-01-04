@@ -333,6 +333,11 @@ namespace datapod {
         return get<index>(t);
     }
 
+    namespace tuple {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace tuple
+
 } // namespace datapod
 
 namespace std {

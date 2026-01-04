@@ -341,4 +341,9 @@ namespace datapod {
         }
     };
 
+    namespace circular_buffer {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace circular_buffer
+
 } // namespace datapod

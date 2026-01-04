@@ -367,4 +367,10 @@ namespace datapod {
         using TensorXi = DynamicTensor<int>;
 
     } // namespace mat
+
+    namespace dynamic {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace dynamic
+
 } // namespace datapod

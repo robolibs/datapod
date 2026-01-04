@@ -360,4 +360,9 @@ namespace datapod {
     template <typename K, typename V, typename SizeType = std::size_t>
     using PagedVecvecTyped = PagedVecvec<Vector<Page<SizeType, std::uint16_t>>, Paged<Vector<V>>, K>;
 
+    namespace paged_vecvec {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace paged_vecvec
+
 } // namespace datapod

@@ -383,4 +383,10 @@ namespace datapod {
         using quaterniond = Quaternion<double>;
 
     } // namespace mat
+
+    namespace mat_quaternion {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace mat_quaternion
+
 } // namespace datapod

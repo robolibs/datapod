@@ -216,4 +216,10 @@ namespace datapod {
         using mod_mersenne_31 = Modular<uint32_t, 2147483647>; // 2^31 - 1 (Mersenne prime)
 
     } // namespace mat
+
+    namespace modular {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace modular
+
 } // namespace datapod

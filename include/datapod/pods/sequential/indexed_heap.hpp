@@ -326,4 +326,9 @@ namespace datapod {
     template <typename Key, typename Priority>
     using MaxIndexedHeap = IndexedHeap<Key, Priority, std::greater<Priority>>;
 
+    namespace indexed_heap {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace indexed_heap
+
 } // namespace datapod

@@ -167,4 +167,10 @@ namespace datapod {
         template <typename T> inline constexpr bool is_scalar_v = is_scalar<T>::value;
 
     } // namespace mat
+
+    namespace scalar {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace scalar
+
 } // namespace datapod

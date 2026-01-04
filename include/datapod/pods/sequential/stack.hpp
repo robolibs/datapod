@@ -59,4 +59,9 @@ namespace datapod {
 
     template <typename T, typename Container = Vector<T>> using Lifo = Stack<T, Container>;
 
+    namespace stack {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace stack
+
 } // namespace datapod

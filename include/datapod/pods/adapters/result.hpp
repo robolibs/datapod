@@ -448,4 +448,9 @@ namespace datapod {
         return Result<T, E>::err(result.error());
     }
 
+    namespace result {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace result
+
 } // namespace datapod

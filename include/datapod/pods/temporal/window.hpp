@@ -289,4 +289,9 @@ namespace datapod {
         inline bool operator!=(const TumblingWindow &other) const noexcept { return !(*this == other); }
     };
 
+    namespace window {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace window
+
 } // namespace datapod

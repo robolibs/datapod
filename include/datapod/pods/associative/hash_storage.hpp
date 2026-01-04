@@ -666,4 +666,9 @@ namespace datapod {
         bool self_allocated_{false};
     };
 
+    namespace hash_storage {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace hash_storage
+
 } // namespace datapod

@@ -213,4 +213,9 @@ namespace datapod {
         inline bool operator!=(const MultiSeries &other) const noexcept { return !(*this == other); }
     };
 
+    namespace multi_series {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace multi_series
+
 } // namespace datapod

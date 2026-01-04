@@ -266,4 +266,9 @@ namespace datapod {
         template <> struct Unpin<Type> : std::false_type {};                                                           \
     }
 
+    namespace pin_ns {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace pin_ns
+
 } // namespace datapod

@@ -200,4 +200,9 @@ namespace datapod {
 
     template <typename T, typename U> bool operator!=(Arena<T> const &, Arena<U> const &) noexcept { return true; }
 
+    namespace arena {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace arena
+
 } // namespace datapod

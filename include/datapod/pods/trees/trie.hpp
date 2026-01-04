@@ -272,4 +272,9 @@ namespace datapod {
     /// Convenience alias for set-like trie (just stores keys, no values)
     using TrieSet = Trie<bool>;
 
+    namespace trie {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace trie
+
 } // namespace datapod

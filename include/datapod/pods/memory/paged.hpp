@@ -147,4 +147,9 @@ namespace datapod {
         Array<Node, free_list_size> free_list_{};
     };
 
+    namespace paged {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace paged
+
 } // namespace datapod

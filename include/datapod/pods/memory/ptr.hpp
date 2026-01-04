@@ -60,4 +60,9 @@ namespace datapod {
 
     template <typename T> using ptr_value_t = typename PtrValueType<T>::type;
 
+    namespace ptr_ns {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ptr_ns
+
 } // namespace datapod

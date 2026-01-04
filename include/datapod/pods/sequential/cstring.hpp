@@ -579,4 +579,9 @@ namespace datapod {
     using Cstring = BasicCstring<char const *>;
     using CstringView = BasicCstringView<char const *>;
 
+    namespace cstring {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace cstring
+
 } // namespace datapod

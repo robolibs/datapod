@@ -426,4 +426,9 @@ namespace datapod {
         return result;
     }
 
+    namespace ring_buffer {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ring_buffer
+
 } // namespace datapod

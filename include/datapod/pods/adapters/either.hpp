@@ -218,4 +218,9 @@ namespace datapod {
 
     template <typename L, typename R> Either<L, R> Right(R value) { return Either<L, R>::right(std::move(value)); }
 
+    namespace either {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace either
+
 } // namespace datapod

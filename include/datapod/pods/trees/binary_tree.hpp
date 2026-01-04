@@ -498,4 +498,9 @@ namespace datapod {
         }
     };
 
+    namespace binary_tree {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace binary_tree
+
 } // namespace datapod

@@ -109,4 +109,9 @@ namespace datapod {
         return {n_rows, n_columns, std::move(v)};
     }
 
+    namespace flat_matrix {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace flat_matrix
+
 } // namespace datapod

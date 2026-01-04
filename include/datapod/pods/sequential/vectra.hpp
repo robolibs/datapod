@@ -485,4 +485,9 @@ namespace datapod {
         }
     }
 
+    namespace vectra {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace vectra
+
 } // namespace datapod

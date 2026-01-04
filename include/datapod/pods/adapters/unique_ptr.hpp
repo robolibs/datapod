@@ -193,4 +193,9 @@ namespace datapod {
     // make_unique for arrays
     template <typename T> UniquePtr<T[]> make_unique(std::size_t size) { return UniquePtr<T[]>(new T[size]()); }
 
+    namespace unique_ptr {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace unique_ptr
+
 } // namespace datapod

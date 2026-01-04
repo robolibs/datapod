@@ -396,4 +396,10 @@ namespace datapod {
         using uint1024 = Bigint<16>; // 1024-bit
 
     } // namespace mat
+
+    namespace bigint {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace bigint
+
 } // namespace datapod

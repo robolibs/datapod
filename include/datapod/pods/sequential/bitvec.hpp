@@ -352,4 +352,9 @@ namespace datapod {
 
     using Bitvec = BasicBitvec<Vector<std::uint64_t>>;
 
+    namespace bitvec {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace bitvec
+
 } // namespace datapod

@@ -149,4 +149,9 @@ namespace datapod {
     template <typename T, std::size_t N> using FixedFifo = FixedQueue<T, N, false>;
     template <typename T, std::size_t N> using OverwritingFifo = FixedQueue<T, N, true>;
 
+    namespace fixed_queue {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace fixed_queue
+
 } // namespace datapod

@@ -306,4 +306,9 @@ namespace datapod {
         constexpr bool operator!=(OHLCV const &other) const noexcept { return timestamp != other.timestamp; }
     };
 
+    namespace financial {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace financial
+
 } // namespace datapod

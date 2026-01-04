@@ -56,4 +56,9 @@ namespace datapod {
         return false;
     }
 
+    namespace allocator {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace allocator
+
 } // namespace datapod

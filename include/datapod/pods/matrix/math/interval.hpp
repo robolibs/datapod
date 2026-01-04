@@ -283,4 +283,10 @@ namespace datapod {
         using intervald = Interval<double>;
 
     } // namespace mat
+
+    namespace interval {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace interval
+
 } // namespace datapod

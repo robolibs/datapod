@@ -785,4 +785,10 @@ namespace datapod {
         using Tensor4Xdd = Tensor<double, Dynamic, Dynamic, Dynamic, Dynamic>;
 
     } // namespace mat
+
+    namespace tensor {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace tensor
+
 } // namespace datapod

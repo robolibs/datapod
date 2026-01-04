@@ -380,4 +380,9 @@ namespace datapod {
         mutable bool is_borrowed_mut_ = false;
     };
 
+    namespace ref_cell {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ref_cell
+
 } // namespace datapod

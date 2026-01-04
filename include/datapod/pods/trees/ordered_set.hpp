@@ -882,4 +882,9 @@ namespace datapod {
         }
     };
 
+    namespace ordered_set {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace ordered_set
+
 } // namespace datapod

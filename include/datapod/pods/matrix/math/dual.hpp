@@ -237,4 +237,10 @@ namespace datapod {
         using duald = Dual<double>;
 
     } // namespace mat
+
+    namespace dual {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace dual
+
 } // namespace datapod

@@ -88,4 +88,9 @@ namespace datapod {
     /// Helper to create initialized MaybeUninit
     template <typename T> MaybeUninit<T> init(T value) { return MaybeUninit<T>::init(std::move(value)); }
 
+    namespace maybe_uninit {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace maybe_uninit
+
 } // namespace datapod

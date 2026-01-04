@@ -144,194 +144,194 @@ namespace datapod {
 ## Matrix Types (include/datapod/pods/matrix/)
 
 ### Core Matrix
-- [ ] **Matrix** - `include/datapod/pods/matrix/matrix.hpp`
+- [x] **Matrix** - `include/datapod/pods/matrix/matrix.hpp`
   - Namespace: `matrix` - Functions: `unimplemented()` (template)
-- [ ] **Vector** - `include/datapod/pods/matrix/vector.hpp`
+- [x] **Vector** - `include/datapod/pods/matrix/vector.hpp`
   - Namespace: `vector` - Functions: `unimplemented()` (template)
-- [ ] **Tensor** - `include/datapod/pods/matrix/tensor.hpp`
+- [x] **Tensor** - `include/datapod/pods/matrix/tensor.hpp`
   - Namespace: `tensor` - Functions: `unimplemented()` (template)
-- [ ] **Scalar** - `include/datapod/pods/matrix/scalar.hpp`
+- [x] **Scalar** - `include/datapod/pods/matrix/scalar.hpp`
   - Namespace: `scalar` - Functions: `unimplemented()` (template wrapper)
-- [ ] **Dynamic** - `include/datapod/pods/matrix/dynamic.hpp`
+- [x] **Dynamic** - `include/datapod/pods/matrix/dynamic.hpp`
   - Namespace: `dynamic` - Functions: `unimplemented()` (dynamic matrix)
 
 ### Math Types (include/datapod/pods/matrix/math/)
-- [ ] **mat::Quaternion** - `include/datapod/pods/matrix/math/quaternion.hpp`
+- [x] **mat::Quaternion** - `include/datapod/pods/matrix/math/quaternion.hpp`
   - Namespace: `mat_quaternion` - Functions: `unimplemented()` (template, wrapped by spatial::Quaternion)
-- [ ] **Complex** - `include/datapod/pods/matrix/math/complex.hpp`
+- [x] **Complex** - `include/datapod/pods/matrix/math/complex.hpp`
   - Namespace: `complex` - Functions: `unimplemented()` (template)
-- [ ] **Dual** - `include/datapod/pods/matrix/math/dual.hpp`
+- [x] **Dual** - `include/datapod/pods/matrix/math/dual.hpp`
   - Namespace: `dual` - Functions: `unimplemented()` (template)
-- [ ] **Phasor** - `include/datapod/pods/matrix/math/phasor.hpp`
+- [x] **Phasor** - `include/datapod/pods/matrix/math/phasor.hpp`
   - Namespace: `phasor` - Functions: `unimplemented()` (template)
-- [ ] **Polynomial** - `include/datapod/pods/matrix/math/polynomial.hpp`
+- [x] **Polynomial** - `include/datapod/pods/matrix/math/polynomial.hpp`
   - Namespace: `polynomial` - Functions: `unimplemented()` (template)
-- [ ] **Fraction** - `include/datapod/pods/matrix/math/fraction.hpp`
+- [x] **Fraction** - `include/datapod/pods/matrix/math/fraction.hpp`
   - Namespace: `fraction` - Functions: `unimplemented()` (template)
-- [ ] **Interval** - `include/datapod/pods/matrix/math/interval.hpp`
+- [x] **Interval** - `include/datapod/pods/matrix/math/interval.hpp`
   - Namespace: `interval` - Functions: `unimplemented()` (template)
-- [ ] **Modular** - `include/datapod/pods/matrix/math/modular.hpp`
+- [x] **Modular** - `include/datapod/pods/matrix/math/modular.hpp`
   - Namespace: `modular` - Functions: `unimplemented()` (template)
-- [ ] **BigInt** - `include/datapod/pods/matrix/math/bigint.hpp`
+- [x] **BigInt** - `include/datapod/pods/matrix/math/bigint.hpp`
   - Namespace: `bigint` - Functions: `unimplemented()` (template)
-- [ ] **Hypercomplex** - `include/datapod/pods/matrix/math/hypercomplex.hpp`
+- [x] **Hypercomplex** - `include/datapod/pods/matrix/math/hypercomplex.hpp`
   - Namespace: `hypercomplex` - Functions: `unimplemented()` (template)
 
 ---
 
 ## Sequential Types (include/datapod/pods/sequential/)
 
-- [ ] **Array** - `include/datapod/pods/sequential/array.hpp`
+- [x] **Array** - `include/datapod/pods/sequential/array.hpp`
   - Namespace: `array` - Functions: `unimplemented()` (template container)
-- [ ] **Vector** - `include/datapod/pods/sequential/vector.hpp`
+- [x] **Vector** - `include/datapod/pods/sequential/vector.hpp`
   - Namespace: `seq_vector` - Functions: `unimplemented()` (template container)
-- [ ] **Deque** - `include/datapod/pods/sequential/deque.hpp`
+- [x] **Deque** - `include/datapod/pods/sequential/deque.hpp`
   - Namespace: `deque` - Functions: `unimplemented()` (template container)
-- [ ] **List** - `include/datapod/pods/sequential/list.hpp`
+- [x] **List** - `include/datapod/pods/sequential/list.hpp`
   - Namespace: `list` - Functions: `unimplemented()` (template container)
-- [ ] **ForwardList** - `include/datapod/pods/sequential/forward_list.hpp`
+- [x] **ForwardList** - `include/datapod/pods/sequential/forward_list.hpp`
   - Namespace: `forward_list` - Functions: `unimplemented()` (template container)
-- [ ] **String** - `include/datapod/pods/sequential/string.hpp`
+- [x] **String** - `include/datapod/pods/sequential/string.hpp`
   - Namespace: `string` - Functions: `unimplemented()` (template container)
-- [ ] **CString** - `include/datapod/pods/sequential/cstring.hpp`
+- [x] **CString** - `include/datapod/pods/sequential/cstring.hpp`
   - Namespace: `cstring` - Functions: `unimplemented()` (fixed string)
-- [ ] **Stack** - `include/datapod/pods/sequential/stack.hpp`
+- [x] **Stack** - `include/datapod/pods/sequential/stack.hpp`
   - Namespace: `stack` - Functions: `unimplemented()` (template adapter)
-- [ ] **Queue** - `include/datapod/pods/sequential/queue.hpp`
+- [x] **Queue** - `include/datapod/pods/sequential/queue.hpp`
   - Namespace: `queue` - Functions: `unimplemented()` (template adapter)
-- [ ] **FixedQueue** - `include/datapod/pods/sequential/fixed_queue.hpp`
+- [x] **FixedQueue** - `include/datapod/pods/sequential/fixed_queue.hpp`
   - Namespace: `fixed_queue` - Functions: `unimplemented()` (template)
-- [ ] **Heap** - `include/datapod/pods/sequential/heap.hpp`
+- [x] **Heap** - `include/datapod/pods/sequential/heap.hpp`
   - Namespace: `heap` - Functions: `unimplemented()` (template)
-- [ ] **IndexedHeap** - `include/datapod/pods/sequential/indexed_heap.hpp`
+- [x] **IndexedHeap** - `include/datapod/pods/sequential/indexed_heap.hpp`
   - Namespace: `indexed_heap` - Functions: `unimplemented()` (template)
-- [ ] **BitVec** - `include/datapod/pods/sequential/bitvec.hpp`
+- [x] **BitVec** - `include/datapod/pods/sequential/bitvec.hpp`
   - Namespace: `bitvec` - Functions: `unimplemented()` (bit vector)
-- [ ] **Vectra** - `include/datapod/pods/sequential/vectra.hpp`
+- [x] **Vectra** - `include/datapod/pods/sequential/vectra.hpp`
   - Namespace: `vectra` - Functions: `unimplemented()` (template)
-- [ ] **VecVec** - `include/datapod/pods/sequential/vecvec.hpp`
+- [x] **VecVec** - `include/datapod/pods/sequential/vecvec.hpp`
   - Namespace: `vecvec` - Functions: `unimplemented()` (template)
-- [ ] **PagedVecVec** - `include/datapod/pods/sequential/paged_vecvec.hpp`
+- [x] **PagedVecVec** - `include/datapod/pods/sequential/paged_vecvec.hpp`
   - Namespace: `paged_vecvec` - Functions: `unimplemented()` (template)
-- [ ] **NVec** - `include/datapod/pods/sequential/nvec.hpp`
+- [x] **NVec** - `include/datapod/pods/sequential/nvec.hpp`
   - Namespace: `nvec` - Functions: `unimplemented()` (template)
-- [ ] **FlatMatrix** - `include/datapod/pods/sequential/flat_matrix.hpp`
+- [x] **FlatMatrix** - `include/datapod/pods/sequential/flat_matrix.hpp`
   - Namespace: `flat_matrix` - Functions: `unimplemented()` (template)
 
 ---
 
 ## Associative Types (include/datapod/pods/associative/)
 
-- [ ] **Map** - `include/datapod/pods/associative/map.hpp`
+- [x] **Map** - `include/datapod/pods/associative/map.hpp`
   - Namespace: `map` - Functions: `unimplemented()` (template container)
-- [ ] **Set** - `include/datapod/pods/associative/set.hpp`
+- [x] **Set** - `include/datapod/pods/associative/set.hpp`
   - Namespace: `set` - Functions: `unimplemented()` (template container)
-- [ ] **FWSMultimap** - `include/datapod/pods/associative/fws_multimap.hpp`
+- [x] **FWSMultimap** - `include/datapod/pods/associative/fws_multimap.hpp`
   - Namespace: `fws_multimap` - Functions: `unimplemented()` (template)
-- [ ] **MutableFWSMultimap** - `include/datapod/pods/associative/mutable_fws_multimap.hpp`
+- [x] **MutableFWSMultimap** - `include/datapod/pods/associative/mutable_fws_multimap.hpp`
   - Namespace: `mutable_fws_multimap` - Functions: `unimplemented()` (template)
-- [ ] **HashStorage** - `include/datapod/pods/associative/hash_storage.hpp`
+- [x] **HashStorage** - `include/datapod/pods/associative/hash_storage.hpp`
   - Namespace: `hash_storage` - Functions: `unimplemented()` (template)
 
 ---
 
 ## Tree Types (include/datapod/pods/trees/)
 
-- [ ] **BinaryTree** - `include/datapod/pods/trees/binary_tree.hpp`
+- [x] **BinaryTree** - `include/datapod/pods/trees/binary_tree.hpp`
   - Namespace: `binary_tree` - Functions: `unimplemented()` (template)
-- [ ] **NaryTree** - `include/datapod/pods/trees/nary_tree.hpp`
+- [x] **NaryTree** - `include/datapod/pods/trees/nary_tree.hpp`
   - Namespace: `nary_tree` - Functions: `unimplemented()` (template)
-- [ ] **OrderedMap** - `include/datapod/pods/trees/ordered_map.hpp`
+- [x] **OrderedMap** - `include/datapod/pods/trees/ordered_map.hpp`
   - Namespace: `ordered_map` - Functions: `unimplemented()` (template)
-- [ ] **OrderedSet** - `include/datapod/pods/trees/ordered_set.hpp`
+- [x] **OrderedSet** - `include/datapod/pods/trees/ordered_set.hpp`
   - Namespace: `ordered_set` - Functions: `unimplemented()` (template)
-- [ ] **Trie** - `include/datapod/pods/trees/trie.hpp`
+- [x] **Trie** - `include/datapod/pods/trees/trie.hpp`
   - Namespace: `trie` - Functions: `unimplemented()` (template)
 
 ---
 
 ## Adapter Types (include/datapod/pods/adapters/)
 
-- [ ] **Optional** - `include/datapod/pods/adapters/optional.hpp`
+- [x] **Optional** - `include/datapod/pods/adapters/optional.hpp`
   - Namespace: `optional` - Functions: `unimplemented()` (template)
-- [ ] **Result** - `include/datapod/pods/adapters/result.hpp`
+- [x] **Result** - `include/datapod/pods/adapters/result.hpp`
   - Namespace: `result` - Functions: `unimplemented()` (template)
-- [ ] **Variant** - `include/datapod/pods/adapters/variant.hpp`
+- [x] **Variant** - `include/datapod/pods/adapters/variant.hpp`
   - Namespace: `variant` - Functions: `unimplemented()` (template)
-- [ ] **Either** - `include/datapod/pods/adapters/either.hpp`
+- [x] **Either** - `include/datapod/pods/adapters/either.hpp`
   - Namespace: `either` - Functions: `unimplemented()` (template)
-- [ ] **Pair** - `include/datapod/pods/adapters/pair.hpp`
+- [x] **Pair** - `include/datapod/pods/adapters/pair.hpp`
   - Namespace: `pair` - Functions: `unimplemented()` (template)
-- [ ] **Tuple** - `include/datapod/pods/adapters/tuple.hpp`
+- [x] **Tuple** - `include/datapod/pods/adapters/tuple.hpp`
   - Namespace: `tuple` - Functions: `unimplemented()` (template)
-- [ ] **UniquePtr** - `include/datapod/pods/adapters/unique_ptr.hpp`
+- [x] **UniquePtr** - `include/datapod/pods/adapters/unique_ptr.hpp`
   - Namespace: `unique_ptr` - Functions: `unimplemented()` (template)
-- [ ] **SharedPtr** - `include/datapod/pods/adapters/shared_ptr.hpp`
+- [x] **SharedPtr** - `include/datapod/pods/adapters/shared_ptr.hpp`
   - Namespace: `shared_ptr` - Functions: `unimplemented()` (template)
-- [ ] **NonNull** - `include/datapod/pods/adapters/non_null.hpp`
+- [x] **NonNull** - `include/datapod/pods/adapters/non_null.hpp`
   - Namespace: `non_null` - Functions: `unimplemented()` (template)
-- [ ] **Pin** - `include/datapod/pods/adapters/pin.hpp`
+- [x] **Pin** - `include/datapod/pods/adapters/pin.hpp`
   - Namespace: `pin` - Functions: `unimplemented()` (template)
-- [ ] **RefCell** - `include/datapod/pods/adapters/ref_cell.hpp`
+- [x] **RefCell** - `include/datapod/pods/adapters/ref_cell.hpp`
   - Namespace: `ref_cell` - Functions: `unimplemented()` (template)
-- [ ] **OnceCell** - `include/datapod/pods/adapters/once_cell.hpp`
+- [x] **OnceCell** - `include/datapod/pods/adapters/once_cell.hpp`
   - Namespace: `once_cell` - Functions: `unimplemented()` (template)
-- [ ] **Lazy** - `include/datapod/pods/adapters/lazy.hpp`
+- [x] **Lazy** - `include/datapod/pods/adapters/lazy.hpp`
   - Namespace: `lazy` - Functions: `unimplemented()` (template)
-- [ ] **MaybeUninit** - `include/datapod/pods/adapters/maybe_uninit.hpp`
+- [x] **MaybeUninit** - `include/datapod/pods/adapters/maybe_uninit.hpp`
   - Namespace: `maybe_uninit` - Functions: `unimplemented()` (template)
-- [ ] **Bitset** - `include/datapod/pods/adapters/bitset.hpp`
+- [x] **Bitset** - `include/datapod/pods/adapters/bitset.hpp`
   - Namespace: `bitset` - Functions: `unimplemented()` (template)
-- [ ] **Error** - `include/datapod/pods/adapters/error.hpp`
+- [x] **Error** - `include/datapod/pods/adapters/error.hpp`
   - Namespace: `error` - Functions: `unimplemented()` (error type)
-- [ ] **COW** - `include/datapod/pods/adapters/cow.hpp`
+- [x] **COW** - `include/datapod/pods/adapters/cow.hpp`
   - Namespace: `cow` - Functions: `unimplemented()` (copy-on-write)
-- [ ] **Conversions** - `include/datapod/pods/adapters/conversions.hpp`
+- [x] **Conversions** - `include/datapod/pods/adapters/conversions.hpp`
   - Namespace: `conversions` - Functions: `unimplemented()` (utilities)
 
 ---
 
 ## Temporal Types (include/datapod/pods/temporal/)
 
-- [ ] **Stamp** - `include/datapod/pods/temporal/stamp.hpp`
+- [x] **Stamp** - `include/datapod/pods/temporal/stamp.hpp`
   - Namespace: `stamp` - Functions: `unimplemented()` (template)
-- [ ] **Event** - `include/datapod/pods/temporal/event.hpp`
+- [x] **Event** - `include/datapod/pods/temporal/event.hpp`
   - Namespace: `event` - Functions: `make(...)` (if concrete types exist)
-- [ ] **Financial** - `include/datapod/pods/temporal/financial.hpp`
+- [x] **Financial** - `include/datapod/pods/temporal/financial.hpp`
   - Namespace: `financial` - Functions: `make(...)` for Tick, OHLCV
-- [ ] **Window** - `include/datapod/pods/temporal/window.hpp`
+- [x] **Window** - `include/datapod/pods/temporal/window.hpp`
   - Namespace: `window` - Functions: `make(start, end)`
-- [ ] **TimeSeries** - `include/datapod/pods/temporal/time_series.hpp`
+- [x] **TimeSeries** - `include/datapod/pods/temporal/time_series.hpp`
   - Namespace: `time_series` - Functions: `unimplemented()` (template container)
-- [ ] **MultiSeries** - `include/datapod/pods/temporal/multi_series.hpp`
+- [x] **MultiSeries** - `include/datapod/pods/temporal/multi_series.hpp`
   - Namespace: `multi_series` - Functions: `unimplemented()` (container)
-- [ ] **CircularBuffer** - `include/datapod/pods/temporal/circular_buffer.hpp`
+- [x] **CircularBuffer** - `include/datapod/pods/temporal/circular_buffer.hpp`
   - Namespace: `circular_buffer` - Functions: `unimplemented()` (template container)
 
 ---
 
 ## Memory Types (include/datapod/pods/memory/)
 
-- [ ] **Arena** - `include/datapod/pods/memory/arena.hpp`
+- [x] **Arena** - `include/datapod/pods/memory/arena.hpp`
   - Namespace: `arena` - Functions: `unimplemented()` (allocator)
-- [ ] **Pool** - `include/datapod/pods/memory/pool.hpp`
+- [x] **Pool** - `include/datapod/pods/memory/pool.hpp`
   - Namespace: `pool` - Functions: `unimplemented()` (allocator)
-- [ ] **Allocator** - `include/datapod/pods/memory/allocator.hpp`
+- [x] **Allocator** - `include/datapod/pods/memory/allocator.hpp`
   - Namespace: `allocator` - Functions: `unimplemented()` (allocator)
-- [ ] **Ptr** - `include/datapod/pods/memory/ptr.hpp`
+- [x] **Ptr** - `include/datapod/pods/memory/ptr.hpp`
   - Namespace: `ptr` - Functions: `unimplemented()` (pointer type)
-- [ ] **OffsetPtr** - `include/datapod/pods/memory/offset_ptr.hpp`
+- [x] **OffsetPtr** - `include/datapod/pods/memory/offset_ptr.hpp`
   - Namespace: `offset_ptr` - Functions: `unimplemented()` (offset pointer)
-- [ ] **MmapVec** - `include/datapod/pods/memory/mmap_vec.hpp`
+- [x] **MmapVec** - `include/datapod/pods/memory/mmap_vec.hpp`
   - Namespace: `mmap_vec` - Functions: `unimplemented()` (mmap vector)
-- [ ] **Paged** - `include/datapod/pods/memory/paged.hpp`
+- [x] **Paged** - `include/datapod/pods/memory/paged.hpp`
   - Namespace: `paged` - Functions: `unimplemented()` (paged allocator)
 
 ---
 
 ## Lockfree Types (include/datapod/pods/lockfree/)
 
-- [ ] **RingBuffer** - `include/datapod/pods/lockfree/ring_buffer.hpp`
+- [x] **RingBuffer** - `include/datapod/pods/lockfree/ring_buffer.hpp`
   - Namespace: `ring_buffer` - Functions: `unimplemented()` (template)
 
 ---

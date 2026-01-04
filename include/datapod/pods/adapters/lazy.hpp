@@ -117,4 +117,9 @@ namespace datapod {
         return Lazy<T>(std::forward<F>(f));
     }
 
+    namespace lazy {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace lazy
+
 } // namespace datapod

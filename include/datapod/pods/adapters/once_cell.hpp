@@ -140,4 +140,9 @@ namespace datapod {
         mutable std::mutex mutex_;
     };
 
+    namespace once_cell {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace once_cell
+
 } // namespace datapod

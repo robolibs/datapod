@@ -294,4 +294,10 @@ namespace datapod {
         using octoniond = Octonion<double>;
 
     } // namespace mat
+
+    namespace hypercomplex {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace hypercomplex
+
 } // namespace datapod

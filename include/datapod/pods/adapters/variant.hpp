@@ -398,6 +398,11 @@ namespace datapod {
         return vis(get<I>(v));
     }
 
+    namespace variant {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace variant
+
 } // namespace datapod
 
 namespace std {

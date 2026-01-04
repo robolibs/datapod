@@ -63,4 +63,9 @@ namespace datapod {
         return Result<Optional<T>, E>::err(std::move(res).error());
     }
 
+    namespace conversions {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace conversions
+
 } // namespace datapod

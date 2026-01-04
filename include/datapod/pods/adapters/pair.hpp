@@ -106,6 +106,11 @@ namespace datapod {
         a.swap(b);
     }
 
+    namespace pair {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace pair
+
 } // namespace datapod
 
 // Specializations for std::tuple_size and std::tuple_element to enable structured bindings

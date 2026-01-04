@@ -183,4 +183,9 @@ namespace datapod {
     /// Timestamped int64 value
     using StampedLong = Stamp<int64_t>;
 
+    namespace stamp {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace stamp
+
 } // namespace datapod

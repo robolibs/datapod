@@ -249,4 +249,10 @@ namespace datapod {
         using fraction64 = Fraction<int64_t>;
 
     } // namespace mat
+
+    namespace fraction {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace fraction
+
 } // namespace datapod

@@ -547,4 +547,9 @@ namespace datapod {
         return !(lhs < rhs);
     }
 
+    namespace seq_vector {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace seq_vector
+
 } // namespace datapod

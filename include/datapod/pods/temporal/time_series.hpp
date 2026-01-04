@@ -442,4 +442,9 @@ namespace datapod {
         }
     };
 
+    namespace time_series {
+        /// Placeholder for template/container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace time_series
+
 } // namespace datapod
