@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -31,7 +32,7 @@ namespace datapod {
         constexpr BasicBitvec(Vec &&v) : size_{v.size() * bits_per_block}, blocks_{std::move(v)} {}
         constexpr BasicBitvec(Vec &&v, size_type const size) : size_{size}, blocks_{std::move(v)} {}
 
-        static constexpr BasicBitvec max(std::size_t const size) {
+        static constexpr BasicBitvec max(datapod::usize const size) {
             BasicBitvec ret;
             ret.resize(size);
             for (auto &b : ret.blocks_) {
@@ -73,7 +74,8 @@ namespace datapod {
         void set(std::string_view s) {
             assert(std::all_of(begin(s), end(s), [](char const c) { return c == '0' || c == '1'; }));
             resize(s.size());
-            for (auto i = std::size_t{0U}; i != std::min(static_cast<std::size_t>(size_), s.size()); ++i) {
+            auto const max_size = std::min(static_cast<datapod::usize>(size_), static_cast<datapod::usize>(s.size()));
+            for (auto i = datapod::usize{0U}; i != max_size; ++i) {
                 set(i, s[s.size() - i - 1] != '0');
             }
         }
@@ -118,11 +120,11 @@ namespace datapod {
 
         bool operator[](Key const i) const noexcept { return test(i); }
 
-        std::size_t count() const noexcept {
+        datapod::usize count() const noexcept {
             if (empty()) {
                 return 0;
             }
-            auto sum = std::size_t{0U};
+            auto sum = datapod::usize{0U};
             for (auto i = size_type{0U}; i != blocks_.size() - 1; ++i) {
                 sum += popcount(blocks_[i]);
             }
@@ -350,7 +352,7 @@ namespace datapod {
         Vec blocks_{};
     };
 
-    using Bitvec = BasicBitvec<Vector<std::uint64_t>>;
+    using Bitvec = BasicBitvec<Vector<datapod::u64>>;
 
     namespace bitvec {
         /// Placeholder for template/container type (no useful make() function)

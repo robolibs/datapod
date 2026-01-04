@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <cstring>
@@ -30,14 +31,14 @@ namespace datapod {
               typename Eq>
     struct HashStorage {
         using entry_t = T;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using size_type = hash_t;
         using key_type = decay_t<decltype(std::declval<GetKey>().operator()(std::declval<T>()))>;
         using mapped_type = decay_t<decltype(std::declval<GetValue>().operator()(std::declval<T>()))>;
-        using group_t = std::uint64_t;
-        using h2_t = std::uint8_t;
+        using group_t = datapod::u64;
+        using h2_t = datapod::u8;
         static constexpr size_type const WIDTH = 8U;
-        static constexpr std::size_t const ALIGNMENT = alignof(T);
+        static constexpr datapod::usize const ALIGNMENT = alignof(T);
 
         template <typename Key> hash_t compute_hash(Key const &k) const { return static_cast<size_type>(Hash{}(k)); }
 
@@ -105,7 +106,7 @@ namespace datapod {
 
             bit_mask match_empty_or_deleted() const noexcept { return bit_mask{(ctrl_ & (~ctrl_ << 7U)) & MSBS}; }
 
-            std::size_t count_leading_empty_or_deleted() const noexcept {
+            datapod::usize count_leading_empty_or_deleted() const noexcept {
                 return (trailing_zeros(((~ctrl_ & (ctrl_ >> 7U)) | GAPS) + 1U) + 7U) >> 3U;
             }
 
@@ -117,7 +118,7 @@ namespace datapod {
             using value_type = HashStorage::entry_t;
             using reference = HashStorage::entry_t &;
             using pointer = HashStorage::entry_t *;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
 
             constexpr iterator() noexcept = default;
 
@@ -160,7 +161,7 @@ namespace datapod {
             using value_type = HashStorage::entry_t;
             using reference = HashStorage::entry_t const &;
             using pointer = HashStorage::entry_t const *;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
 
             constexpr const_iterator() noexcept = default;
             const_iterator(iterator i) noexcept : inner_(std::move(i)) {}
@@ -197,7 +198,7 @@ namespace datapod {
         static constexpr bool is_deleted(ctrl_t const c) noexcept { return c == DELETED; }
         static constexpr bool is_empty_or_deleted(ctrl_t const c) noexcept { return c < END; }
 
-        static constexpr std::size_t normalize_capacity(size_type const n) noexcept {
+        static constexpr datapod::usize normalize_capacity(size_type const n) noexcept {
             return n == 0U ? 1U : ~size_type{} >> leading_zeros(n);
         }
 
@@ -340,7 +341,7 @@ namespace datapod {
         }
 
         // erase()
-        template <typename Key> std::size_t erase_impl(Key &&key) {
+        template <typename Key> datapod::usize erase_impl(Key &&key) {
             auto it = find(std::forward<Key>(key));
             if (it == end()) {
                 return 0U;
@@ -349,9 +350,9 @@ namespace datapod {
             return 1U;
         }
 
-        std::size_t erase(key_type const &k) { return erase_impl(k); }
+        datapod::usize erase(key_type const &k) { return erase_impl(k); }
 
-        template <typename Key> std::size_t erase(Key &&key) { return erase_impl(std::forward<Key>(key)); }
+        template <typename Key> datapod::usize erase(Key &&key) { return erase_impl(std::forward<Key>(key)); }
 
         void erase(iterator const it) noexcept {
             it.entry_->~T();
@@ -393,9 +394,9 @@ namespace datapod {
         bool empty() const noexcept { return size() == 0U; }
         size_type size() const noexcept { return size_; }
         size_type capacity() const noexcept { return capacity_; }
-        size_type max_size() const noexcept { return std::numeric_limits<std::size_t>::max(); }
+        size_type max_size() const noexcept { return std::numeric_limits<datapod::usize>::max(); }
 
-        bool was_never_full(std::size_t const index) const noexcept {
+        bool was_never_full(datapod::usize const index) const noexcept {
             auto const index_before = (index - WIDTH) & capacity_;
             auto const empty_after = group{ctrl_ + index}.match_empty();
             auto const empty_before = group{ctrl_ + index_before}.match_empty();
@@ -404,7 +405,7 @@ namespace datapod {
 
         void erase_meta_only(const_iterator it) noexcept {
             --size_;
-            auto const index = static_cast<std::size_t>(it.inner_.ctrl_ - ctrl_);
+            auto const index = static_cast<datapod::usize>(it.inner_.ctrl_ - ctrl_);
             auto const wnf = was_never_full(index);
             set_ctrl(index, static_cast<h2_t>(wnf ? EMPTY : DELETED));
             growth_left_ += wnf;
@@ -491,18 +492,18 @@ namespace datapod {
         void reset_growth_left() noexcept { growth_left_ = capacity_to_growth(capacity_) - size_; }
 
         void reset_ctrl() noexcept {
-            std::memset(ctrl_, EMPTY, static_cast<std::size_t>(capacity_ + WIDTH + 1U));
+            std::memset(ctrl_, EMPTY, static_cast<datapod::usize>(capacity_ + WIDTH + 1U));
             ctrl_[capacity_] = END;
         }
 
         void initialize_entries() {
             self_allocated_ = true;
             auto const size = static_cast<size_type>(capacity_ * sizeof(T) + (capacity_ + 1U + WIDTH) * sizeof(ctrl_t));
-            entries_ = reinterpret_cast<T *>(aligned_alloc(ALIGNMENT, static_cast<std::size_t>(size)));
+            entries_ = reinterpret_cast<T *>(aligned_alloc(ALIGNMENT, static_cast<datapod::usize>(size)));
             if (entries_ == nullptr) {
                 throw_exception(std::bad_alloc{});
             }
-            ctrl_ = reinterpret_cast<ctrl_t *>(reinterpret_cast<std::uint8_t *>(entries_) + capacity_ * sizeof(T));
+            ctrl_ = reinterpret_cast<ctrl_t *>(reinterpret_cast<datapod::u8 *>(entries_) + capacity_ * sizeof(T));
             reset_ctrl();
             reset_growth_left();
         }

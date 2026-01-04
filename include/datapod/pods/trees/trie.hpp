@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <string_view>
@@ -53,7 +54,7 @@ namespace datapod {
         };
 
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
 
         // ====================================================================
         // Construction

@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -15,15 +16,15 @@
 
 namespace datapod {
 
-    template <typename DataType, template <typename, typename...> typename VectorType, std::uint32_t Dims,
-              typename NumType, std::uint32_t MaxItems, typename SizeType>
+    template <typename DataType, template <typename, typename...> typename VectorType, datapod::u32 Dims,
+              typename NumType, datapod::u32 MaxItems, typename SizeType>
     struct BasicRtree {
         static constexpr auto const kInfinity = std::numeric_limits<NumType>::max();
 
         static constexpr auto const kSplitMinItemsPercentage = 10U;
         static constexpr auto const kSplitMinItems = ((MaxItems * kSplitMinItemsPercentage) / 100) + 1;
 
-        enum class kind : std::uint8_t { kLeaf, kBranch, kEndFreeList };
+        enum class kind : datapod::u8 { kLeaf, kBranch, kEndFreeList };
 
         struct node;
 
@@ -84,10 +85,10 @@ namespace datapod {
                 }
             }
 
-            std::uint32_t largest_axis() const noexcept {
+            datapod::u32 largest_axis() const noexcept {
                 auto axis = 0U;
                 auto nlength = max_[0] - min_[0];
-                for (std::uint32_t i = 1; i != Dims; ++i) {
+                for (datapod::u32 i = 1; i != Dims; ++i) {
                     auto const length = max_[i] - min_[i];
                     if (length > nlength) {
                         nlength = length;
@@ -117,12 +118,12 @@ namespace datapod {
         };
 
         struct node {
-            void sort_by_axis(std::uint32_t const axis, bool const rev, bool const max) {
-                auto const by_index = max ? static_cast<std::uint32_t>(Dims + axis) : axis;
+            void sort_by_axis(datapod::u32 const axis, bool const rev, bool const max) {
+                auto const by_index = max ? static_cast<datapod::u32>(Dims + axis) : axis;
                 qsort(0U, count_, by_index, rev);
             }
 
-            void qsort(std::uint32_t const start, std::uint32_t const end, std::uint32_t const index, bool const rev) {
+            void qsort(datapod::u32 const start, datapod::u32 const end, datapod::u32 const index, bool const rev) {
                 struct rect4 {
                     NumType all[Dims * 2U];
                 };
@@ -156,7 +157,7 @@ namespace datapod {
                 qsort(start + left + 1, end, index, rev);
             }
 
-            std::uint32_t choose_least_enlargement(rect const &insert_rect) const {
+            datapod::u32 choose_least_enlargement(rect const &insert_rect) const {
                 auto j = 0U;
                 auto j_enlarge = kInfinity;
                 for (auto i = 0U; i < count_; i++) {
@@ -171,7 +172,7 @@ namespace datapod {
                 return j;
             }
 
-            void move_rect_at_index_into(std::uint32_t const index, node &into) noexcept {
+            void move_rect_at_index_into(datapod::u32 const index, node &into) noexcept {
                 into.rects_[into.count_] = rects_[index];
                 rects_[index] = rects_[count_ - 1];
                 if (kind_ == kind::kLeaf) {
@@ -185,7 +186,7 @@ namespace datapod {
                 ++into.count_;
             }
 
-            void swap(std::uint32_t const i, std::uint32_t const j) noexcept {
+            void swap(datapod::u32 const i, datapod::u32 const j) noexcept {
                 std::swap(rects_[i], rects_[j]);
                 if (kind_ == kind::kLeaf) {
                     std::swap(data_[i], data_[j]);
@@ -206,7 +207,7 @@ namespace datapod {
             using node_vector_t = Array<node_idx_t, MaxItems>;
             using data_vector_t = Array<DataType, MaxItems>;
 
-            std::uint32_t count_{0U};
+            datapod::u32 count_{0U};
             kind kind_;
             Array<rect, MaxItems> rects_;
 
@@ -251,7 +252,7 @@ namespace datapod {
         }
 
         void node_insert(rect const &nr, node_idx_t const n_idx, rect const &insert_rect, DataType data,
-                         std::uint32_t depth, bool &split) {
+                         datapod::u32 depth, bool &split) {
             auto &current_node = get_node(n_idx);
             if (current_node.kind_ == kind::kLeaf) {
                 if (current_node.count_ == MaxItems) {
@@ -259,7 +260,7 @@ namespace datapod {
                     return;
                 }
 
-                auto const index = static_cast<std::uint32_t>(current_node.count_);
+                auto const index = static_cast<datapod::u32>(current_node.count_);
                 current_node.rects_[index] = insert_rect;
                 current_node.data_[index] = std::move(data);
                 current_node.count_++;
@@ -320,7 +321,7 @@ namespace datapod {
             }
         }
 
-        std::uint32_t node_choose(node const &search_node, rect const &search_rect, std::uint32_t const depth) {
+        datapod::u32 node_choose(node const &search_node, rect const &search_rect, datapod::u32 const depth) {
             auto const h = m_.path_hint_[depth];
             if (h < search_node.count_) {
                 if (search_node.rects_[h].contains(search_rect)) {
@@ -391,7 +392,7 @@ namespace datapod {
         }
 
         template <typename Fn>
-        void node_delete(rect &node_rect, node_idx_t delete_node_id, rect &input_rect, std::uint32_t const depth,
+        void node_delete(rect &node_rect, node_idx_t delete_node_id, rect &input_rect, datapod::u32 const depth,
                          bool &removed, bool &shrunk, Fn &&fn) {
             removed = false;
             shrunk = false;
@@ -525,15 +526,15 @@ namespace datapod {
             node_idx_t free_list_ = node_idx_t::invalid();
             SizeType count_{0U};
             SizeType height_{0U};
-            Array<std::uint32_t, 16U> path_hint_{};
+            Array<datapod::u32, 16U> path_hint_{};
         } m_;
 
         VectorType<node_idx_t, node> nodes_;
     };
 
     // Convenience alias - using VectorMap as the default container
-    template <typename T, std::uint32_t Dims = 2U, typename NumType = float, std::uint32_t MaxItems = 64U,
-              typename SizeType = std::uint32_t>
+    template <typename T, datapod::u32 Dims = 2U, typename NumType = float, datapod::u32 MaxItems = 64U,
+              typename SizeType = datapod::u32>
     using Rtree = BasicRtree<T, VectorMap, Dims, NumType, MaxItems, SizeType>;
 
     // ============================================================================
@@ -557,7 +558,7 @@ namespace datapod {
      * @tparam T The type of data stored with each bounding box
      * @tparam MaxEntries Maximum entries per node (default: 16, like Boost quadratic<16>)
      */
-    template <typename T, std::uint32_t MaxEntries = 16> struct RTree {
+    template <typename T, datapod::u32 MaxEntries = 16> struct RTree {
         struct Entry {
             AABB bounds;
             T data;
@@ -597,7 +598,7 @@ namespace datapod {
         inline Vector<Entry> search(const AABB &query_bounds) const { return query_intersects(query_bounds); }
 
         // k-Nearest Neighbor search
-        inline Vector<Entry> query_nearest(const Point &query_point, std::size_t k) const {
+        inline Vector<Entry> query_nearest(const Point &query_point, datapod::usize k) const {
             // Collect all entries with their distances
             Vector<std::pair<double, Entry>> candidates;
 
@@ -616,8 +617,8 @@ namespace datapod {
 
             // Take first k
             Vector<Entry> results;
-            std::size_t count = std::min(k, candidates.size());
-            for (std::size_t i = 0; i < count; ++i) {
+            datapod::usize count = std::min(k, candidates.size());
+            for (datapod::usize i = 0; i < count; ++i) {
                 results.push_back(candidates[i].second);
             }
 
@@ -672,7 +673,7 @@ namespace datapod {
         }
 
         // Utilities
-        inline std::size_t size() const noexcept { return tree_.m_.count_; }
+        inline datapod::usize size() const noexcept { return tree_.m_.count_; }
 
         inline bool empty() const noexcept { return size() == 0; }
 
@@ -684,9 +685,9 @@ namespace datapod {
         struct Iterator {
             const RTree *rtree_;
             Vector<Entry> entries_;
-            std::size_t index_;
+            datapod::usize index_;
 
-            Iterator(const RTree *rtree, std::size_t index) : rtree_(rtree), index_(index) {
+            Iterator(const RTree *rtree, datapod::usize index) : rtree_(rtree), index_(index) {
                 if (rtree_ && index == 0) {
                     // Collect all entries
                     rtree_->tree_.search({rtree_->tree_.m_.rect_.min_[0], rtree_->tree_.m_.rect_.min_[1],
@@ -717,7 +718,7 @@ namespace datapod {
         inline Iterator end() const { return Iterator(nullptr, size()); }
 
       private:
-        using TreeType = BasicRtree<T, VectorMap, 3, double, MaxEntries, std::uint32_t>;
+        using TreeType = BasicRtree<T, VectorMap, 3, double, MaxEntries, datapod::u32>;
         TreeType tree_;
 
         // Helper: AABB to coord_t
@@ -745,7 +746,7 @@ namespace datapod {
      * @tparam T The type of data stored with each point
      * @tparam MaxEntries Maximum entries per node (default: 16)
      */
-    template <typename T, std::uint32_t MaxEntries = 16> struct PointRTree {
+    template <typename T, datapod::u32 MaxEntries = 16> struct PointRTree {
         struct Entry {
             Point point;
             T data;
@@ -783,7 +784,7 @@ namespace datapod {
         }
 
         // k-Nearest Neighbor search
-        inline Vector<Entry> query_nearest(const Point &query_point, std::size_t k) const {
+        inline Vector<Entry> query_nearest(const Point &query_point, datapod::usize k) const {
             // Collect all entries with their distances
             Vector<std::pair<double, Entry>> candidates;
 
@@ -802,8 +803,8 @@ namespace datapod {
 
             // Take first k
             Vector<Entry> results;
-            std::size_t count = std::min(k, candidates.size());
-            for (std::size_t i = 0; i < count; ++i) {
+            datapod::usize count = std::min(k, candidates.size());
+            for (datapod::usize i = 0; i < count; ++i) {
                 results.push_back(candidates[i].second);
             }
 
@@ -858,7 +859,7 @@ namespace datapod {
         }
 
         // Utilities
-        inline std::size_t size() const noexcept { return tree_.m_.count_; }
+        inline datapod::usize size() const noexcept { return tree_.m_.count_; }
 
         inline bool empty() const noexcept { return size() == 0; }
 
@@ -870,9 +871,9 @@ namespace datapod {
         struct Iterator {
             const PointRTree *rtree_;
             Vector<Entry> entries_;
-            std::size_t index_;
+            datapod::usize index_;
 
-            Iterator(const PointRTree *rtree, std::size_t index) : rtree_(rtree), index_(index) {
+            Iterator(const PointRTree *rtree, datapod::usize index) : rtree_(rtree), index_(index) {
                 if (rtree_ && index == 0) {
                     // Collect all entries
                     rtree_->tree_.search({rtree_->tree_.m_.rect_.min_[0], rtree_->tree_.m_.rect_.min_[1],
@@ -903,7 +904,7 @@ namespace datapod {
         inline Iterator end() const { return Iterator(nullptr, size()); }
 
       private:
-        using TreeType = BasicRtree<T, VectorMap, 3, double, MaxEntries, std::uint32_t>;
+        using TreeType = BasicRtree<T, VectorMap, 3, double, MaxEntries, datapod::u32>;
         TreeType tree_;
 
         // Helper: AABB to coord_t

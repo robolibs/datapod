@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <cinttypes>
@@ -16,8 +17,8 @@
 
 namespace datapod {
 
-    template <std::size_t Size> struct Bitset {
-        using block_t = std::uint64_t;
+    template <datapod::usize Size> struct Bitset {
+        using block_t = datapod::u64;
         static constexpr auto const bits_per_block = sizeof(block_t) * 8U;
         static constexpr auto const num_blocks = Size / bits_per_block + (Size % bits_per_block == 0U ? 0U : 1U);
 
@@ -47,13 +48,14 @@ namespace datapod {
         }
 
         constexpr Bitset &set(std::string_view s) noexcept {
-            for (std::size_t i = 0U; i != std::min(Size, s.size()); ++i) {
+            auto const max_size = std::min(Size, static_cast<datapod::usize>(s.size()));
+            for (datapod::usize i = 0U; i != max_size; ++i) {
                 set(i, s[s.size() - i - 1U] != '0');
             }
             return *this;
         }
 
-        constexpr Bitset &set(std::size_t const i, bool const val = true) noexcept {
+        constexpr Bitset &set(datapod::usize const i, bool const val = true) noexcept {
             assert((i / bits_per_block) < num_blocks);
             auto &block = blocks_[i / bits_per_block];
             auto const bit = i % bits_per_block;
@@ -73,7 +75,7 @@ namespace datapod {
         }
 
         // Reset single bit to false
-        constexpr Bitset &reset(std::size_t const i) noexcept {
+        constexpr Bitset &reset(datapod::usize const i) noexcept {
             set(i, false);
             return *this;
         }
@@ -82,7 +84,7 @@ namespace datapod {
         void reset() noexcept { blocks_ = {}; }
 
         // Flip single bit
-        constexpr Bitset &flip(std::size_t const i) noexcept {
+        constexpr Bitset &flip(datapod::usize const i) noexcept {
             assert((i / bits_per_block) < num_blocks);
             auto &block = blocks_[i / bits_per_block];
             auto const bit = i % bits_per_block;
@@ -98,17 +100,17 @@ namespace datapod {
             return *this;
         }
 
-        bool operator[](std::size_t const i) const noexcept { return test(i); }
+        bool operator[](datapod::usize const i) const noexcept { return test(i); }
 
-        std::size_t count() const noexcept {
-            std::size_t sum = 0U;
-            for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
+        datapod::usize count() const noexcept {
+            datapod::usize sum = 0U;
+            for (datapod::usize i = 0U; i != num_blocks - 1U; ++i) {
                 sum += popcount(blocks_[i]);
             }
             return sum + popcount(sanitized_last_block());
         }
 
-        constexpr bool test(std::size_t const i) const noexcept {
+        constexpr bool test(datapod::usize const i) const noexcept {
             if (i >= Size) {
                 return false;
             }
@@ -117,10 +119,10 @@ namespace datapod {
             return (block & (block_t{1U} << bit)) != 0U;
         }
 
-        std::size_t size() const noexcept { return Size; }
+        datapod::usize size() const noexcept { return Size; }
 
         bool any() const noexcept {
-            for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
+            for (datapod::usize i = 0U; i != num_blocks - 1U; ++i) {
                 if (blocks_[i] != 0U) {
                     return true;
                 }
@@ -132,7 +134,7 @@ namespace datapod {
 
         bool all() const noexcept {
             // Check all full blocks
-            for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
+            for (datapod::usize i = 0U; i != num_blocks - 1U; ++i) {
                 if (blocks_[i] != ~block_t{0U}) {
                     return false;
                 }
@@ -155,16 +157,16 @@ namespace datapod {
         }
 
         template <typename Fn> void for_each_set_bit(Fn &&f) const {
-            auto const check_block = [&](std::size_t const i, block_t const block) {
+            auto const check_block = [&](datapod::usize const i, block_t const block) {
                 if (block != 0U) {
-                    for (auto bit = std::size_t{0U}; bit != bits_per_block; ++bit) {
+                    for (auto bit = datapod::usize{0U}; bit != bits_per_block; ++bit) {
                         if ((block & (block_t{1U} << bit)) != 0U) {
-                            f(std::size_t{i * bits_per_block + bit});
+                            f(datapod::usize{i * bits_per_block + bit});
                         }
                     }
                 }
             };
-            for (auto i = std::size_t{0U}; i != blocks_.size() - 1; ++i) {
+            for (auto i = datapod::usize{0U}; i != blocks_.size() - 1; ++i) {
                 check_block(i, blocks_[i]);
             }
             check_block(blocks_.size() - 1, sanitized_last_block());
@@ -173,7 +175,7 @@ namespace datapod {
         std::string to_string() const {
             std::string s{};
             s.resize(Size);
-            for (std::size_t i = 0U; i != Size; ++i) {
+            for (datapod::usize i = 0U; i != Size; ++i) {
                 s[i] = test(Size - i - 1U) ? '1' : '0';
             }
             return s;
@@ -189,7 +191,7 @@ namespace datapod {
                 return static_cast<unsigned long>(blocks_[0U]);
             } else {
                 // Check if higher blocks are zero
-                for (std::size_t i = 1U; i < num_blocks; ++i) {
+                for (datapod::usize i = 1U; i < num_blocks; ++i) {
                     if (blocks_[i] != 0U) {
                         throw std::overflow_error("bitset value cannot fit in unsigned long");
                     }
@@ -208,7 +210,7 @@ namespace datapod {
                 return blocks_[0U];
             } else {
                 // Check if higher blocks are zero
-                for (std::size_t i = 1U; i < num_blocks; ++i) {
+                for (datapod::usize i = 1U; i < num_blocks; ++i) {
                     if (blocks_[i] != 0U) {
                         throw std::overflow_error("bitset value cannot fit in unsigned long long");
                     }
@@ -218,21 +220,21 @@ namespace datapod {
         }
 
         // Count number of 1 bits (alias for count())
-        constexpr std::size_t count_ones() const noexcept { return count(); }
+        constexpr datapod::usize count_ones() const noexcept { return count(); }
 
         // Count number of 0 bits
-        constexpr std::size_t count_zeros() const noexcept { return Size - count(); }
+        constexpr datapod::usize count_zeros() const noexcept { return Size - count(); }
 
         // Count leading zeros from MSB
-        constexpr std::size_t leading_zeros() const noexcept {
+        constexpr datapod::usize leading_zeros() const noexcept {
             if constexpr (Size == 0U) {
                 return 0U;
             }
 
-            std::size_t total_lz = 0U;
+            datapod::usize total_lz = 0U;
 
             // Start from the most significant block
-            for (std::size_t i = num_blocks; i-- > 0;) {
+            for (datapod::usize i = num_blocks; i-- > 0;) {
                 auto const block = (i == num_blocks - 1U) ? sanitized_last_block() : blocks_[i];
 
                 if (block != 0U) {
@@ -260,13 +262,13 @@ namespace datapod {
         }
 
         // Count trailing zeros from LSB
-        constexpr std::size_t trailing_zeros() const noexcept {
+        constexpr datapod::usize trailing_zeros() const noexcept {
             if constexpr (Size == 0U) {
                 return 0U;
             }
 
             // Start from the least significant block
-            for (std::size_t i = 0U; i < num_blocks; ++i) {
+            for (datapod::usize i = 0U; i < num_blocks; ++i) {
                 auto const block = blocks_[i];
                 if (block != 0U) {
                     auto const tz = datapod::trailing_zeros(block);
@@ -277,7 +279,7 @@ namespace datapod {
         }
 
         // Rotate bits left by n positions
-        constexpr Bitset &rotate_left(std::size_t n) noexcept {
+        constexpr Bitset &rotate_left(datapod::usize n) noexcept {
             if constexpr (Size == 0U) {
                 return *this;
             }
@@ -301,7 +303,7 @@ namespace datapod {
         }
 
         // Rotate bits right by n positions
-        constexpr Bitset &rotate_right(std::size_t n) noexcept {
+        constexpr Bitset &rotate_right(datapod::usize n) noexcept {
             if constexpr (Size == 0U) {
                 return *this;
             }
@@ -325,7 +327,7 @@ namespace datapod {
         }
 
         friend bool operator==(Bitset const &a, Bitset const &b) noexcept {
-            for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
+            for (datapod::usize i = 0U; i != num_blocks - 1U; ++i) {
                 if (a.blocks_[i] != b.blocks_[i]) {
                     return false;
                 }
@@ -344,7 +346,7 @@ namespace datapod {
             }
 
             if constexpr (num_blocks > 1) {
-                for (std::size_t i = num_blocks - 1; i-- > 0;) {
+                for (datapod::usize i = num_blocks - 1; i-- > 0;) {
                     auto const x = a.blocks_[i];
                     auto const y = b.blocks_[i];
                     if (x < y) {
@@ -414,7 +416,7 @@ namespace datapod {
             return copy;
         }
 
-        Bitset &operator>>=(std::size_t const shift) noexcept {
+        Bitset &operator>>=(datapod::usize const shift) noexcept {
             if (shift >= Size) {
                 reset();
                 return *this;
@@ -437,11 +439,11 @@ namespace datapod {
                 auto const border = num_blocks - shift_blocks - 1U;
 
                 if (shift_bits == 0U) {
-                    for (std::size_t i = 0U; i <= border; ++i) {
+                    for (datapod::usize i = 0U; i <= border; ++i) {
                         blocks_[i] = blocks_[i + shift_blocks];
                     }
                 } else {
-                    for (std::size_t i = 0U; i < border; ++i) {
+                    for (datapod::usize i = 0U; i < border; ++i) {
                         blocks_[i] = (blocks_[i + shift_blocks] >> shift_bits) |
                                      (blocks_[i + shift_blocks + 1] << (bits_per_block - shift_bits));
                     }
@@ -456,7 +458,7 @@ namespace datapod {
             }
         }
 
-        Bitset &operator<<=(std::size_t const shift) noexcept {
+        Bitset &operator<<=(datapod::usize const shift) noexcept {
             if (shift >= Size) {
                 reset();
                 return *this;
@@ -474,11 +476,11 @@ namespace datapod {
                 auto const shift_bits = shift % bits_per_block;
 
                 if (shift_bits == 0U) {
-                    for (auto i = std::size_t{num_blocks - 1}; i >= shift_blocks; --i) {
+                    for (auto i = datapod::usize{num_blocks - 1}; i >= shift_blocks; --i) {
                         blocks_[i] = blocks_[i - shift_blocks];
                     }
                 } else {
-                    for (auto i = std::size_t{num_blocks - 1}; i != shift_blocks; --i) {
+                    for (auto i = datapod::usize{num_blocks - 1}; i != shift_blocks; --i) {
                         blocks_[i] = (blocks_[i - shift_blocks] << shift_bits) |
                                      (blocks_[i - shift_blocks - 1U] >> (bits_per_block - shift_bits));
                     }
@@ -493,13 +495,13 @@ namespace datapod {
             }
         }
 
-        Bitset operator>>(std::size_t const i) const noexcept {
+        Bitset operator>>(datapod::usize const i) const noexcept {
             auto copy = *this;
             copy >>= i;
             return copy;
         }
 
-        Bitset operator<<(std::size_t const i) const noexcept {
+        Bitset operator<<(datapod::usize const i) const noexcept {
             auto copy = *this;
             copy <<= i;
             return copy;

@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <utility>
 
@@ -166,7 +167,7 @@ namespace datapod {
         // Observers
         T *get() const noexcept { return ptr_; }
 
-        T &operator[](std::size_t index) const noexcept { return ptr_[index]; }
+        T &operator[](datapod::usize index) const noexcept { return ptr_[index]; }
 
         explicit operator bool() const noexcept { return ptr_ != nullptr; }
 
@@ -191,7 +192,7 @@ namespace datapod {
     };
 
     // make_unique for arrays
-    template <typename T> UniquePtr<T[]> make_unique(std::size_t size) { return UniquePtr<T[]>(new T[size]()); }
+    template <typename T> UniquePtr<T[]> make_unique(datapod::usize size) { return UniquePtr<T[]>(new T[size]()); }
 
     namespace unique_ptr {
         /// Placeholder for template/container type (no useful make() function)

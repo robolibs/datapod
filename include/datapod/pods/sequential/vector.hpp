@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -12,14 +13,14 @@
 namespace datapod {
 
     // Dynamic array container templated on pointer type
-    template <typename T, typename Ptr = T *, typename Alloc = Allocator<T>, typename AccessType = std::size_t>
+    template <typename T, typename Ptr = T *, typename Alloc = Allocator<T>, typename AccessType = datapod::usize>
     class BasicVector {
       public:
         using value_type = T;
         using allocator_type = Alloc;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
         using access_type = AccessType;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using reference = T &;
         using const_reference = T const &;
         using pointer = Ptr;

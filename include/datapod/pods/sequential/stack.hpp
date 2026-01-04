@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <stdexcept>
@@ -11,7 +12,7 @@ namespace datapod {
 
     template <typename T, typename Container = Vector<T>> struct Stack {
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
         using container_type = Container;
 
         Stack() = default;

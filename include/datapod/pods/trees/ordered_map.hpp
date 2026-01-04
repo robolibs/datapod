@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -60,8 +61,8 @@ namespace datapod {
         using key_type = K;
         using mapped_type = V;
         using value_type = std::pair<K const, V>;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using key_compare = Compare;
 
         // ====================================================================
@@ -72,7 +73,7 @@ namespace datapod {
           public:
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = std::pair<K const &, V &>;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = void;
             using reference = value_type;
 
@@ -125,7 +126,7 @@ namespace datapod {
           public:
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = std::pair<K const &, V const &>;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = void;
             using reference = value_type;
 

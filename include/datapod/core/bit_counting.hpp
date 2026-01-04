@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #if defined(_MSC_VER)
 #include <intrin.h>
@@ -41,11 +42,11 @@ namespace datapod {
             return index;
 #elif defined(_MSC_VER)
             unsigned long index = 0U;
-            if (static_cast<std::uint32_t>(t) == 0) {
+            if (static_cast<datapod::u32>(t) == 0) {
                 _BitScanForward(&index, t >> 32U);
                 return index + 32U;
             }
-            _BitScanForward(&index, static_cast<std::uint32_t>(t));
+            _BitScanForward(&index, static_cast<datapod::u32>(t));
             return index;
 #else
             return static_cast<unsigned>(__builtin_ctzll(t));
@@ -81,7 +82,7 @@ namespace datapod {
             if ((t >> 32U) && _BitScanReverse(&index, t >> 32U)) {
                 return 31U - index;
             }
-            if (_BitScanReverse(&index, static_cast<std::uint32_t>(t))) {
+            if (_BitScanReverse(&index, static_cast<datapod::u32>(t))) {
                 return 63U - index;
             }
             return 64U;
@@ -102,16 +103,16 @@ namespace datapod {
     }
 
     // Population count - number of 1 bits
-    inline std::size_t popcount(std::uint64_t const b) noexcept {
+    inline datapod::usize popcount(datapod::u64 const b) noexcept {
 #if defined(_MSC_VER) && defined(_M_X64)
         return __popcnt64(b);
 #elif defined(_MSC_VER)
-        return static_cast<std::size_t>(__popcnt(static_cast<std::uint32_t>(b)) +
-                                        __popcnt(static_cast<std::uint32_t>(b >> 32U)));
+        return static_cast<datapod::usize>(__popcnt(static_cast<datapod::u32>(b)) +
+                                           __popcnt(static_cast<datapod::u32>(b >> 32U)));
 #elif defined(__INTEL_COMPILER)
-        return static_cast<std::size_t>(_mm_popcnt_u64(b));
+        return static_cast<datapod::usize>(_mm_popcnt_u64(b));
 #else
-        return static_cast<std::size_t>(__builtin_popcountll(b));
+        return static_cast<datapod::usize>(__builtin_popcountll(b));
 #endif
     }
 

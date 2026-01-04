@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -29,7 +30,7 @@ namespace datapod {
     // Memory-mapped file wrapper
     struct Mmap {
         static constexpr auto const OFFSET = 0ULL;
-        static constexpr auto const ENTIRE_FILE = std::numeric_limits<std::size_t>::max();
+        static constexpr auto const ENTIRE_FILE = std::numeric_limits<datapod::usize>::max();
 
         enum class Protection { READ, WRITE, MODIFY };
 
@@ -115,7 +116,7 @@ namespace datapod {
             }
         }
 
-        void resize(std::size_t const new_size) {
+        void resize(datapod::usize const new_size) {
             verify(prot_ == Protection::WRITE || prot_ == Protection::MODIFY, "read-only not resizable");
             if (size_ < new_size) {
                 resize_map(next_power_of_two(new_size));
@@ -123,27 +124,27 @@ namespace datapod {
             used_size_ = new_size;
         }
 
-        void reserve(std::size_t const new_size) {
+        void reserve(datapod::usize const new_size) {
             verify(prot_ == Protection::WRITE || prot_ == Protection::MODIFY, "read-only not resizable");
             if (size_ < new_size) {
                 resize_map(next_power_of_two(new_size));
             }
         }
 
-        std::size_t size() const noexcept { return used_size_; }
+        datapod::usize size() const noexcept { return used_size_; }
 
         std::string_view view() const noexcept { return {static_cast<char const *>(addr_), size()}; }
 
-        std::uint8_t *data() noexcept { return static_cast<std::uint8_t *>(addr_); }
-        std::uint8_t const *data() const noexcept { return static_cast<std::uint8_t const *>(addr_); }
+        datapod::u8 *data() noexcept { return static_cast<datapod::u8 *>(addr_); }
+        datapod::u8 const *data() const noexcept { return static_cast<datapod::u8 const *>(addr_); }
 
-        std::uint8_t *begin() noexcept { return data(); }
-        std::uint8_t *end() noexcept { return data() + used_size_; }
-        std::uint8_t const *begin() const noexcept { return data(); }
-        std::uint8_t const *end() const noexcept { return data() + used_size_; }
+        datapod::u8 *begin() noexcept { return data(); }
+        datapod::u8 *end() noexcept { return data() + used_size_; }
+        datapod::u8 const *begin() const noexcept { return data(); }
+        datapod::u8 const *end() const noexcept { return data() + used_size_; }
 
-        std::uint8_t &operator[](std::size_t const i) noexcept { return data()[i]; }
-        std::uint8_t const &operator[](std::size_t const i) const noexcept { return data()[i]; }
+        datapod::u8 &operator[](datapod::usize const i) noexcept { return data()[i]; }
+        datapod::u8 const &operator[](datapod::usize const i) const noexcept { return data()[i]; }
 
       private:
         void open_file(char const *path) {
@@ -188,17 +189,17 @@ namespace datapod {
 #endif
         }
 
-        std::size_t file_size() const {
+        datapod::usize file_size() const {
 #ifdef _WIN32
             LARGE_INTEGER size;
             if (::GetFileSizeEx(file_handle_, &size)) {
-                return static_cast<std::size_t>(size.QuadPart);
+                return static_cast<datapod::usize>(size.QuadPart);
             }
             return 0;
 #else
             struct stat st;
             if (::fstat(fd_, &st) == 0) {
-                return static_cast<std::size_t>(st.st_size);
+                return static_cast<datapod::usize>(st.st_size);
             }
             return 0;
 #endif
@@ -265,7 +266,7 @@ namespace datapod {
 #endif
         }
 
-        void resize_map(std::size_t const new_size) {
+        void resize_map(datapod::usize const new_size) {
             if (prot_ == Protection::READ) {
                 return;
             }
@@ -277,8 +278,8 @@ namespace datapod {
         }
 
         Protection prot_{Protection::READ};
-        std::size_t size_{0};
-        std::size_t used_size_{0};
+        datapod::usize size_{0};
+        datapod::usize used_size_{0};
         void *addr_{nullptr};
 
 #ifdef _WIN32

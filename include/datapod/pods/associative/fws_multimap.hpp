@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <iterator>
@@ -38,7 +39,7 @@ namespace datapod {
             return index_start_ + index;
         }
 
-        std::size_t size() const noexcept { return index_end_ - index_start_; }
+        datapod::usize size() const noexcept { return index_end_ - index_start_; }
         bool empty() const noexcept { return size() == 0U; }
 
         DataVec const &data_;
@@ -147,7 +148,7 @@ namespace datapod {
             complete_ = true;
         }
 
-        void reserve_index(index_t size) { index_.reserve(static_cast<std::size_t>(size) + 1); }
+        void reserve_index(index_t size) { index_.reserve(static_cast<datapod::usize>(size) + 1); }
 
         entry_t operator[](index_t const index) const {
             assert(index < index_.size() - 1);
@@ -163,8 +164,8 @@ namespace datapod {
         friend iterator begin(FwsMultimap const &e) { return e.begin(); }
         friend iterator end(FwsMultimap const &e) { return e.end(); }
 
-        std::size_t index_size() const { return index_.size(); }
-        std::size_t data_size() const { return data_.size(); }
+        datapod::usize index_size() const { return index_.size(); }
+        datapod::usize data_size() const { return data_.size(); }
         bool finished() const { return complete_; }
 
         // Serialization support

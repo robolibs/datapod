@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <iterator>
@@ -22,7 +23,7 @@ namespace datapod {
             using const_iterator = typename DataVec::const_iterator;
 
             using iterator_category = std::random_access_iterator_tag;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = std::add_pointer_t<value_type>;
             using reference = Bucket;
 
@@ -63,27 +64,27 @@ namespace datapod {
 
             bool empty() const { return begin() == end(); }
 
-            value_type &operator[](std::size_t const i) {
+            value_type &operator[](datapod::usize const i) {
                 assert(is_inside_bucket(i));
                 return map_->data_[to_idx(map_->bucket_starts_[i_] + i)];
             }
 
-            value_type const &operator[](std::size_t const i) const {
+            value_type const &operator[](datapod::usize const i) const {
                 assert(is_inside_bucket(i));
                 return map_->data_[to_idx(map_->bucket_starts_[i_] + i)];
             }
 
-            value_type const &at(std::size_t const i) const {
+            value_type const &at(datapod::usize const i) const {
                 verify(i < size(), "Bucket::at: index out of range");
                 return *(begin() + i);
             }
 
-            value_type &at(std::size_t const i) {
+            value_type &at(datapod::usize const i) {
                 verify(i < size(), "Bucket::at: index out of range");
                 return *(begin() + i);
             }
 
-            std::size_t size() const { return bucket_end_idx() - bucket_begin_idx(); }
+            datapod::usize size() const { return bucket_end_idx() - bucket_begin_idx(); }
             iterator begin() { return map_->data_.begin() + bucket_begin_idx(); }
             iterator end() { return map_->data_.begin() + bucket_end_idx(); }
             const_iterator begin() const { return map_->data_.begin() + bucket_begin_idx(); }
@@ -140,7 +141,7 @@ namespace datapod {
             index_value_type bucket_end_idx() const {
                 return map_->empty() ? index_value_type{} : to_idx(map_->bucket_starts_[i_ + 1U]);
             }
-            bool is_inside_bucket(std::size_t const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
+            bool is_inside_bucket(datapod::usize const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
 
             BasicVecvec *map_;
             index_value_type i_;
@@ -152,7 +153,7 @@ namespace datapod {
             using const_iterator = iterator;
 
             using iterator_category = std::random_access_iterator_tag;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = std::add_pointer_t<value_type>;
             using reference = std::add_lvalue_reference<value_type>;
 
@@ -181,12 +182,12 @@ namespace datapod {
 
             bool empty() const { return begin() == end(); }
 
-            value_type const &at(std::size_t const i) const {
+            value_type const &at(datapod::usize const i) const {
                 verify(i < size(), "Bucket::at: index out of range");
                 return *(begin() + i);
             }
 
-            value_type const &operator[](std::size_t const i) const {
+            value_type const &operator[](datapod::usize const i) const {
                 assert(is_inside_bucket(i));
                 return map_->data_[map_->bucket_starts_[i_] + i];
             }
@@ -241,11 +242,11 @@ namespace datapod {
             }
 
           private:
-            std::size_t bucket_begin_idx() const { return to_idx(map_->bucket_starts_[i_]); }
-            std::size_t bucket_end_idx() const { return to_idx(map_->bucket_starts_[i_ + 1]); }
-            bool is_inside_bucket(std::size_t const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
+            datapod::usize bucket_begin_idx() const { return to_idx(map_->bucket_starts_[i_]); }
+            datapod::usize bucket_end_idx() const { return to_idx(map_->bucket_starts_[i_ + 1]); }
+            bool is_inside_bucket(datapod::usize const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
 
-            std::size_t i_;
+            datapod::usize i_;
             BasicVecvec const *map_;
         };
 
@@ -292,7 +293,7 @@ namespace datapod {
             bucket_starts_.push_back(static_cast<index_value_type>(data_.size()));
         }
 
-        Bucket add_back_sized(std::size_t const bucket_size) {
+        Bucket add_back_sized(datapod::usize const bucket_size) {
             if (bucket_starts_.empty()) {
                 bucket_starts_.push_back(index_value_type{0U});
             }
@@ -318,7 +319,7 @@ namespace datapod {
             return emplace_back(std::string_view{s});
         }
 
-        void resize(std::size_t const new_size) {
+        void resize(datapod::usize const new_size) {
             auto const old_size = size();
             if (new_size < old_size) {
                 // Shrink: remove buckets from the end
@@ -330,7 +331,7 @@ namespace datapod {
                     bucket_starts_.push_back(index_value_type{0U});
                 }
                 auto const current_data_size = data_.size();
-                for (std::size_t i = old_size; i < new_size; ++i) {
+                for (datapod::usize i = old_size; i < new_size; ++i) {
                     bucket_starts_.push_back(static_cast<index_value_type>(current_data_size));
                 }
             }
@@ -353,7 +354,7 @@ namespace datapod {
         IndexVec bucket_starts_;
     };
 
-    template <typename K, typename V, typename SizeType = std::size_t>
+    template <typename K, typename V, typename SizeType = datapod::usize>
     using Vecvec = BasicVecvec<K, Vector<V>, Vector<SizeType>>;
 
     namespace vecvec {

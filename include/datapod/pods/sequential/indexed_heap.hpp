@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -59,7 +60,7 @@ namespace datapod {
         using key_type = Key;
         using priority_type = Priority;
         using value_type = Entry;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
         using compare_type = Compare;
 
         // ====================================================================

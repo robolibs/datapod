@@ -25,14 +25,16 @@ namespace datapod {
     using u64 = unsigned long long; // Always 64 bits
 
 // Size types - platform dependent
+// Note: We use the same underlying types as std::size_t/std::ptrdiff_t
+// to ensure compatibility with standard library functions
 #if defined(__LP64__) || defined(_WIN64)
-                                    // 64-bit platforms
-    using usize = unsigned long long;
-    using isize = signed long long;
+    // 64-bit platforms
+    using usize = unsigned long; // Same as std::size_t on 64-bit
+    using isize = signed long;   // Same as std::ptrdiff_t on 64-bit
 #else
-                                    // 32-bit platforms
-    using usize = unsigned int;
-    using isize = signed int;
+    // 32-bit platforms
+    using usize = unsigned int; // Same as std::size_t on 32-bit
+    using isize = signed int;   // Same as std::ptrdiff_t on 32-bit
 #endif
 
     // ============================================================================

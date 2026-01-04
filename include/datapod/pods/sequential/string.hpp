@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -14,8 +15,8 @@ namespace datapod {
     template <typename Ptr = char *> class BasicString {
       public:
         using value_type = char;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using reference = char &;
         using const_reference = char const &;
         using pointer = Ptr;

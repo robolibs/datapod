@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +31,7 @@ namespace datapod {
      * @tparam T The type of data stored with each point
      * @tparam Capacity Maximum entries per node before splitting (default: 16)
      */
-    template <typename T, std::size_t Capacity = 16> struct QuadTree {
+    template <typename T, datapod::usize Capacity = 16> struct QuadTree {
         struct Entry {
             Point point;
             T data;
@@ -111,7 +112,7 @@ namespace datapod {
 
                 for (const auto &old_entry : old_entries) {
                     bool inserted = false;
-                    for (std::size_t i = 0; i < 4; ++i) {
+                    for (datapod::usize i = 0; i < 4; ++i) {
                         if (insert(node.children[i], old_entry)) {
                             inserted = true;
                             break;
@@ -124,7 +125,7 @@ namespace datapod {
             }
 
             // Try to insert in children
-            for (std::size_t i = 0; i < 4; ++i) {
+            for (datapod::usize i = 0; i < 4; ++i) {
                 if (insert(node.children[i], entry)) {
                     return true;
                 }
@@ -148,7 +149,7 @@ namespace datapod {
             }
 
             if (!node.is_leaf()) {
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     query(node.children[i], range, results);
                 }
             }
@@ -175,7 +176,7 @@ namespace datapod {
             }
 
             if (!node.is_leaf()) {
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     query_radius(node.children[i], center, radius, results);
                 }
             }
@@ -188,7 +189,7 @@ namespace datapod {
             }
 
             // Check entries in this node
-            for (std::size_t i = 0; i < node.entries.size(); ++i) {
+            for (datapod::usize i = 0; i < node.entries.size(); ++i) {
                 if (node.entries[i].point == point && node.entries[i].data == data) {
                     // Remove by swapping with last and popping
                     node.entries[i] = node.entries.back();
@@ -199,7 +200,7 @@ namespace datapod {
 
             // Check children
             if (!node.is_leaf()) {
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     if (remove(node.children[i], point, data)) {
                         return true;
                     }
@@ -210,7 +211,7 @@ namespace datapod {
         }
 
         // k-Nearest helper
-        void k_nearest(const Node &node, const Point &point, std::size_t k,
+        void k_nearest(const Node &node, const Point &point, datapod::usize k,
                        Vector<std::pair<double, Entry>> &candidates) const {
             // Add all entries from this node
             for (const auto &entry : node.entries) {
@@ -222,10 +223,10 @@ namespace datapod {
 
             if (!node.is_leaf()) {
                 // Sort children by distance to query point
-                Vector<std::pair<double, std::size_t>> child_distances;
+                Vector<std::pair<double, datapod::usize>> child_distances;
                 child_distances.reserve(4);
 
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     double min_dist = node.children[i].boundary.distance_to_point(point);
                     child_distances.push_back({min_dist * min_dist, i});
                 }
@@ -239,10 +240,10 @@ namespace datapod {
         }
 
         // Count entries helper
-        std::size_t count_entries(const Node &node) const {
-            std::size_t count = node.entries.size();
+        datapod::usize count_entries(const Node &node) const {
+            datapod::usize count = node.entries.size();
             if (!node.is_leaf()) {
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     count += count_entries(node.children[i]);
                 }
             }
@@ -255,7 +256,7 @@ namespace datapod {
                 all_entries.push_back(entry);
             }
             if (!node.is_leaf()) {
-                for (std::size_t i = 0; i < 4; ++i) {
+                for (datapod::usize i = 0; i < 4; ++i) {
                     collect_all(node.children[i], all_entries);
                 }
             }
@@ -321,7 +322,7 @@ namespace datapod {
          * @param k Number of neighbors to find
          * @return Vector of k nearest entries (may be less than k if tree has fewer entries)
          */
-        inline Vector<Entry> k_nearest(const Point &point, std::size_t k) const {
+        inline Vector<Entry> k_nearest(const Point &point, datapod::usize k) const {
             Vector<std::pair<double, Entry>> candidates;
             k_nearest(root_, point, k, candidates);
 
@@ -329,9 +330,9 @@ namespace datapod {
             std::sort(candidates.begin(), candidates.end());
 
             Vector<Entry> results;
-            std::size_t count = std::min(k, candidates.size());
+            datapod::usize count = std::min(k, candidates.size());
             results.reserve(count);
-            for (std::size_t i = 0; i < count; ++i) {
+            for (datapod::usize i = 0; i < count; ++i) {
                 results.push_back(candidates[i].second);
             }
             return results;
@@ -340,7 +341,7 @@ namespace datapod {
         /**
          * @brief Get the total number of entries in the QuadTree
          */
-        inline std::size_t size() const { return count_entries(root_); }
+        inline datapod::usize size() const { return count_entries(root_); }
 
         /**
          * @brief Check if the QuadTree is empty
@@ -363,7 +364,7 @@ namespace datapod {
         // Iterator support
         struct Iterator {
             Vector<Entry> entries;
-            std::size_t index;
+            datapod::usize index;
 
             const Entry &operator*() const { return entries[index]; }
             const Entry *operator->() const { return &entries[index]; }

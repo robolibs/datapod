@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <array>
@@ -11,28 +12,28 @@
 
 namespace datapod {
 
-    template <std::size_t Size, typename Enable = void> struct BytesToIntegerType {};
+    template <datapod::usize Size, typename Enable = void> struct BytesToIntegerType {};
 
-    template <std::size_t Size> struct BytesToIntegerType<Size, std::enable_if_t<Size == 1U>> {
-        using type = std::uint8_t;
+    template <datapod::usize Size> struct BytesToIntegerType<Size, std::enable_if_t<Size == 1U>> {
+        using type = datapod::u8;
     };
 
-    template <std::size_t Size> struct BytesToIntegerType<Size, std::enable_if_t<Size == 2U>> {
-        using type = std::uint16_t;
+    template <datapod::usize Size> struct BytesToIntegerType<Size, std::enable_if_t<Size == 2U>> {
+        using type = datapod::u16;
     };
 
-    template <typename... T> constexpr std::size_t variant_index_bytes() noexcept {
-        return (sizeof...(T) > std::numeric_limits<std::uint8_t>::max()) ? 2U : 1U;
+    template <typename... T> constexpr datapod::usize variant_index_bytes() noexcept {
+        return (sizeof...(T) > std::numeric_limits<datapod::u8>::max()) ? 2U : 1U;
     };
 
     template <typename... T> using variant_index_t = typename BytesToIntegerType<variant_index_bytes<T...>()>::type;
 
-    constexpr auto const TYPE_NOT_FOUND = std::numeric_limits<std::size_t>::max();
+    constexpr auto const TYPE_NOT_FOUND = std::numeric_limits<datapod::usize>::max();
 
-    template <typename Arg, typename... T> constexpr std::size_t index_of_type() noexcept {
+    template <typename Arg, typename... T> constexpr datapod::usize index_of_type() noexcept {
         constexpr std::array<bool, sizeof...(T)> matches = {
             {std::is_same<std::decay_t<Arg>, std::decay_t<T>>::value...}};
-        for (std::size_t i = 0U; i < sizeof...(T); ++i) {
+        for (datapod::usize i = 0U; i < sizeof...(T); ++i) {
             if (matches[i]) {
                 return i;
             }
@@ -50,7 +51,7 @@ namespace datapod {
         using type = typename type_at_index<N - 1, Rest...>::type;
     };
 
-    template <std::size_t Index, typename... T> using type_at_index_t = typename type_at_index<Index, T...>::type;
+    template <datapod::usize Index, typename... T> using type_at_index_t = typename type_at_index<Index, T...>::type;
 
     template <typename... T> struct Variant {
         using index_t = variant_index_t<T...>;
@@ -158,14 +159,14 @@ namespace datapod {
             return *(new (&storage_) std::decay_t<Arg>{std::forward<CtorArgs>(ctor_args)...});
         }
 
-        template <std::size_t I, typename... CtorArgs> type_at_index_t<I, T...> &emplace(CtorArgs &&...ctor_args) {
+        template <datapod::usize I, typename... CtorArgs> type_at_index_t<I, T...> &emplace(CtorArgs &&...ctor_args) {
             static_assert(I < sizeof...(T));
             destruct();
             idx_ = I;
             return *(new (&storage_) std::decay_t<type_at_index_t<I, T...>>{std::forward<CtorArgs>(ctor_args)...});
         }
 
-        constexpr std::size_t index() const noexcept { return idx_; }
+        constexpr datapod::usize index() const noexcept { return idx_; }
 
         void swap(Variant &o) {
             if (idx_ == o.idx_) {
@@ -209,7 +210,7 @@ namespace datapod {
         static __declspec(noreturn) void noret() {}
 #endif
 
-        template <typename F, std::size_t B = 0U, typename... Vs>
+        template <typename F, datapod::usize B = 0U, typename... Vs>
         static auto apply(F &&f, index_t const idx, Vs &&...vs)
             -> decltype(f((vs, std::declval<type_at_index_t<0U, T...> &>())...)) {
             switch (idx) {
@@ -329,12 +330,12 @@ namespace datapod {
         return v.idx_ == index_of_type<std::decay_t<T>, Ts...>();
     }
 
-    template <std::size_t I, typename... Ts>
+    template <datapod::usize I, typename... Ts>
     constexpr datapod::type_at_index_t<I, Ts...> const &get(datapod::Variant<Ts...> const &v) noexcept {
         return v.template as<datapod::type_at_index_t<I, Ts...>>();
     }
 
-    template <std::size_t I, typename... Ts>
+    template <datapod::usize I, typename... Ts>
     constexpr datapod::type_at_index_t<I, Ts...> &get(datapod::Variant<Ts...> &v) noexcept {
         return v.template as<datapod::type_at_index_t<I, Ts...>>();
     }
@@ -354,14 +355,14 @@ namespace datapod {
         return v.idx_ == datapod::index_of_type<T, Ts...>() ? &v.template as<T>() : nullptr;
     }
 
-    template <std::size_t I, typename... Ts>
+    template <datapod::usize I, typename... Ts>
     constexpr std::add_pointer_t<datapod::type_at_index_t<I, Ts...> const>
     get_if(datapod::Variant<Ts...> const &v) noexcept {
         static_assert(I < sizeof...(Ts));
         return v.idx_ == I ? &v.template as<datapod::type_at_index_t<I, Ts...>>() : nullptr;
     }
 
-    template <std::size_t I, typename... Ts>
+    template <datapod::usize I, typename... Ts>
     constexpr std::add_pointer_t<datapod::type_at_index_t<I, Ts...>> get_if(datapod::Variant<Ts...> &v) noexcept {
         static_assert(I < sizeof...(Ts));
         return v.idx_ == I ? &v.template as<datapod::type_at_index_t<I, Ts...>>() : nullptr;
@@ -375,12 +376,12 @@ namespace datapod {
 
     template <class T> struct variant_size;
 
-    template <class... T> struct variant_size<Variant<T...>> : std::integral_constant<std::size_t, sizeof...(T)> {};
+    template <class... T> struct variant_size<Variant<T...>> : std::integral_constant<datapod::usize, sizeof...(T)> {};
 
-    template <class T> constexpr std::size_t variant_size_v = variant_size<T>::value;
+    template <class T> constexpr datapod::usize variant_size_v = variant_size<T>::value;
 
     // Visit by index
-    template <std::size_t I, typename Visitor, typename... Ts>
+    template <datapod::usize I, typename Visitor, typename... Ts>
     constexpr auto visit_at(Visitor &&vis, Variant<Ts...> &v) {
         static_assert(I < sizeof...(Ts), "Index out of bounds");
         if (v.index() != I) {
@@ -389,7 +390,7 @@ namespace datapod {
         return vis(get<I>(v));
     }
 
-    template <std::size_t I, typename Visitor, typename... Ts>
+    template <datapod::usize I, typename Visitor, typename... Ts>
     constexpr auto visit_at(Visitor &&vis, Variant<Ts...> const &v) {
         static_assert(I < sizeof...(Ts), "Index out of bounds");
         if (v.index() != I) {

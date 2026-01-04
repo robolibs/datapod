@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstring>
 #include <new>
@@ -37,7 +38,7 @@ namespace datapod {
         static MaybeUninit init(T value) { return MaybeUninit(std::move(value)); }
 
         /// Create an array of uninitialized values
-        template <std::size_t N> static void uninit_array(MaybeUninit<T> (&array)[N]) noexcept {
+        template <datapod::usize N> static void uninit_array(MaybeUninit<T> (&array)[N]) noexcept {
             // Array is already uninitialized by default
         }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <iterator>
@@ -45,8 +46,8 @@ namespace datapod {
     template <typename T> class Deque {
       public:
         using value_type = T;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using reference = T &;
         using const_reference = T const &;
         using pointer = T *;
@@ -60,7 +61,7 @@ namespace datapod {
           public:
             using iterator_category = std::random_access_iterator_tag;
             using value_type = T;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = T *;
             using reference = T &;
 
@@ -119,7 +120,7 @@ namespace datapod {
           public:
             using iterator_category = std::random_access_iterator_tag;
             using value_type = T;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = T const *;
             using reference = T const &;
 

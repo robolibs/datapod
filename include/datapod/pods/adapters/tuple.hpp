@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <type_traits>
@@ -10,34 +11,34 @@ namespace datapod {
 
     template <typename... Ts> struct Tuple;
 
-    template <std::size_t I, typename... Ts> struct tuple_element;
+    template <datapod::usize I, typename... Ts> struct tuple_element;
 
-    template <std::size_t I, typename T, typename... Ts>
+    template <datapod::usize I, typename T, typename... Ts>
     struct tuple_element<I, Tuple<T, Ts...>> : tuple_element<I - 1U, Tuple<Ts...>> {};
 
     template <typename T, typename... Ts> struct tuple_element<0U, Tuple<T, Ts...>> {
         using type = T;
     };
 
-    template <std::size_t I, typename T, typename... Ts>
+    template <datapod::usize I, typename T, typename... Ts>
     struct tuple_element<I, T, Ts...> : tuple_element<I - 1U, Ts...> {};
 
     template <typename T, typename... Ts> struct tuple_element<0U, T, Ts...> {
         using type = T;
     };
 
-    template <std::size_t I, typename... Ts> using tuple_element_t = typename tuple_element<I, Ts...>::type;
+    template <datapod::usize I, typename... Ts> using tuple_element_t = typename tuple_element<I, Ts...>::type;
 
-    template <typename T, typename... Ts> constexpr std::size_t max_align_of() {
+    template <typename T, typename... Ts> constexpr datapod::usize max_align_of() {
         if constexpr (sizeof...(Ts) == 0U) {
             return alignof(T);
         } else {
-            return std::max(alignof(T), max_align_of<Ts...>());
+            return std::max(static_cast<datapod::usize>(alignof(T)), max_align_of<Ts...>());
         }
     }
 
     template <typename T, typename... Ts>
-    constexpr std::size_t get_offset(std::size_t const current_idx, std::size_t current_offset = 0U) {
+    constexpr datapod::usize get_offset(datapod::usize const current_idx, datapod::usize current_offset = 0U) {
         if (auto const misalign = current_offset % alignof(T); misalign != 0U) {
             current_offset += (alignof(T) - misalign) % alignof(T);
         }
@@ -55,9 +56,11 @@ namespace datapod {
         }
     }
 
-    template <typename... Ts> constexpr std::size_t get_total_size() { return get_offset<Ts...>(sizeof...(Ts) + 1U); }
+    template <typename... Ts> constexpr datapod::usize get_total_size() {
+        return get_offset<Ts...>(sizeof...(Ts) + 1U);
+    }
 
-    template <std::size_t I, typename T, typename... Ts> constexpr auto get_arg(T &&arg, Ts &&...args) {
+    template <datapod::usize I, typename T, typename... Ts> constexpr auto get_arg(T &&arg, Ts &&...args) {
         if constexpr (I == 0U) {
             return std::forward<T>(arg);
         } else {
@@ -65,17 +68,17 @@ namespace datapod {
         }
     }
 
-    template <std::size_t I, typename... Ts> auto &get(Tuple<Ts...> &t) {
+    template <datapod::usize I, typename... Ts> auto &get(Tuple<Ts...> &t) {
         using return_t = tuple_element_t<I, Ts...>;
         return *std::launder(reinterpret_cast<return_t *>(t.template get_ptr<I>()));
     }
 
-    template <std::size_t I, typename... Ts> auto const &get(Tuple<Ts...> const &t) {
+    template <datapod::usize I, typename... Ts> auto const &get(Tuple<Ts...> const &t) {
         using return_t = tuple_element_t<I, Ts...>;
         return *std::launder(reinterpret_cast<return_t const *>(t.template get_ptr<I>()));
     }
 
-    template <std::size_t I, typename... Ts> auto &get(Tuple<Ts...> &&t) {
+    template <datapod::usize I, typename... Ts> auto &get(Tuple<Ts...> &&t) {
         using return_t = tuple_element_t<I, Ts...>;
         return *std::launder(reinterpret_cast<return_t *>(t.template get_ptr<I>()));
     }
@@ -146,11 +149,11 @@ namespace datapod {
 
         template <std::size_t... Is> constexpr void destruct(seq_t<Is...>) { (destruct(get<Is>(*this)), ...); }
 
-        template <std::size_t I> constexpr auto get_ptr() {
+        template <datapod::usize I> constexpr auto get_ptr() {
             return reinterpret_cast<char *>(&mem_) + get_offset<Ts...>(I);
         }
 
-        template <std::size_t I> constexpr auto get_ptr() const {
+        template <datapod::usize I> constexpr auto get_ptr() const {
             return reinterpret_cast<char const *>(&mem_) + get_offset<Ts...>(I);
         }
 
@@ -201,9 +204,9 @@ namespace datapod {
     template <typename T> struct tuple_size;
 
     template <typename... T>
-    struct tuple_size<Tuple<T...>> : public std::integral_constant<std::size_t, sizeof...(T)> {};
+    struct tuple_size<Tuple<T...>> : public std::integral_constant<datapod::usize, sizeof...(T)> {};
 
-    template <typename T> constexpr std::size_t tuple_size_v = tuple_size<std::decay_t<T>>::value;
+    template <typename T> constexpr datapod::usize tuple_size_v = tuple_size<std::decay_t<T>>::value;
 
     template <typename F, typename Tuple, std::size_t... I>
     constexpr decltype(auto) apply_impl(std::index_sequence<I...>, F &&f, Tuple &&t) {
@@ -240,7 +243,7 @@ namespace datapod {
         return !(a == b);
     }
 
-    template <typename Tuple, std::size_t Index = 0U> bool lt(Tuple const &a, Tuple const &b) {
+    template <typename Tuple, datapod::usize Index = 0U> bool lt(Tuple const &a, Tuple const &b) {
         if constexpr (Index == tuple_size_v<Tuple>) {
             return false;
         } else {
@@ -304,11 +307,11 @@ namespace datapod {
 
     // get by type (only if type appears exactly once)
     namespace detail {
-        template <typename T, typename... Ts> constexpr std::size_t count_type() {
+        template <typename T, typename... Ts> constexpr datapod::usize count_type() {
             return ((std::is_same_v<T, Ts> ? 1 : 0) + ...);
         }
 
-        template <typename T, typename First, typename... Rest> constexpr std::size_t find_type_index_impl() {
+        template <typename T, typename First, typename... Rest> constexpr datapod::usize find_type_index_impl() {
             if constexpr (std::is_same_v<T, First>) {
                 return 0;
             } else {
@@ -316,20 +319,20 @@ namespace datapod {
             }
         }
 
-        template <typename T, typename... Ts> constexpr std::size_t find_type_index() {
+        template <typename T, typename... Ts> constexpr datapod::usize find_type_index() {
             return find_type_index_impl<T, Ts...>();
         }
     } // namespace detail
 
     template <typename T, typename... Ts> constexpr T &get(Tuple<Ts...> &t) noexcept {
         static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
-        constexpr std::size_t index = detail::find_type_index<T, Ts...>();
+        constexpr datapod::usize index = detail::find_type_index<T, Ts...>();
         return get<index>(t);
     }
 
     template <typename T, typename... Ts> constexpr T const &get(Tuple<Ts...> const &t) noexcept {
         static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
-        constexpr std::size_t index = detail::find_type_index<T, Ts...>();
+        constexpr datapod::usize index = detail::find_type_index<T, Ts...>();
         return get<index>(t);
     }
 
@@ -345,7 +348,7 @@ namespace std {
     template <typename... Pack>
     struct tuple_size<datapod::Tuple<Pack...>> : datapod::tuple_size<datapod::Tuple<Pack...>> {};
 
-    template <std::size_t I, typename... Pack>
+    template <datapod::usize I, typename... Pack>
     struct tuple_element<I, datapod::Tuple<Pack...>> : datapod::tuple_element<I, datapod::Tuple<Pack...>> {};
 
 } // namespace std

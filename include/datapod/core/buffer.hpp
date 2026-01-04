@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstdint>
 #include <cstdlib>
@@ -12,13 +13,13 @@ namespace datapod {
     struct Buffer final {
         constexpr Buffer() noexcept : buf_(nullptr), size_(0U) {}
 
-        explicit Buffer(std::size_t const size) : buf_(std::malloc(size)), size_(size) {
+        explicit Buffer(datapod::usize const size) : buf_(std::malloc(size)), size_(size) {
             verify(buf_ != nullptr, "buffer initialization failed");
         }
 
         explicit Buffer(char const *str) : Buffer(std::strlen(str)) { std::memcpy(buf_, str, size_); }
 
-        Buffer(char const *str, std::size_t size) : Buffer(size) { std::memcpy(buf_, str, size_); }
+        Buffer(char const *str, datapod::usize size) : Buffer(size) { std::memcpy(buf_, str, size_); }
 
         ~Buffer() { free(); }
 
@@ -44,19 +45,19 @@ namespace datapod {
             return *this;
         }
 
-        std::size_t size() const noexcept { return size_; }
+        datapod::usize size() const noexcept { return size_; }
 
-        std::uint8_t *data() noexcept { return static_cast<std::uint8_t *>(buf_); }
-        std::uint8_t const *data() const noexcept { return static_cast<std::uint8_t const *>(buf_); }
+        datapod::u8 *data() noexcept { return static_cast<datapod::u8 *>(buf_); }
+        datapod::u8 const *data() const noexcept { return static_cast<datapod::u8 const *>(buf_); }
 
-        std::uint8_t *begin() noexcept { return data(); }
-        std::uint8_t *end() noexcept { return data() + size_; }
+        datapod::u8 *begin() noexcept { return data(); }
+        datapod::u8 *end() noexcept { return data() + size_; }
 
-        std::uint8_t const *begin() const noexcept { return data(); }
-        std::uint8_t const *end() const noexcept { return data() + size_; }
+        datapod::u8 const *begin() const noexcept { return data(); }
+        datapod::u8 const *end() const noexcept { return data() + size_; }
 
-        std::uint8_t &operator[](std::size_t const i) noexcept { return data()[i]; }
-        std::uint8_t const &operator[](std::size_t const i) const noexcept { return data()[i]; }
+        datapod::u8 &operator[](datapod::usize const i) noexcept { return data()[i]; }
+        datapod::u8 const &operator[](datapod::usize const i) const noexcept { return data()[i]; }
 
         void reset() noexcept {
             buf_ = nullptr;
@@ -71,7 +72,7 @@ namespace datapod {
         }
 
         void *buf_;
-        std::size_t size_;
+        datapod::usize size_;
     };
 
 } // namespace datapod

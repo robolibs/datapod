@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <tuple>
 #include <type_traits>
@@ -10,7 +11,7 @@ namespace datapod {
 
     // Convert aggregate types to tuples using structured bindings
     namespace detail {
-        template <typename T, std::size_t N> struct ToTupleImpl;
+        template <typename T, datapod::usize N> struct ToTupleImpl;
 
         // Specializations for 0-10 fields
         template <typename T> struct ToTupleImpl<T, 0> {
