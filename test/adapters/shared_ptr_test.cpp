@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/shared_ptr.hpp"
+#include "datapod/pods/adapters/shared_ptr.hpp"
 #include <string>
 
 using namespace datapod;

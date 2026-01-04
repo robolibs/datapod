@@ -1,4 +1,4 @@
-#include <datapod/adapters/bitset.hpp>
+#include <datapod/pods/adapters/bitset.hpp>
 #include <iostream>
 
 using namespace datapod;

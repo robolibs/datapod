@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include <datapod/associative/fws_multimap.hpp>
-#include <datapod/sequential/vector.hpp>
+#include <datapod/pods/associative/fws_multimap.hpp>
+#include <datapod/pods/sequential/vector.hpp>
 
 using namespace datapod;
 

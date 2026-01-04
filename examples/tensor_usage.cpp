@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <datapod/matrix/tensor.hpp>
+#include <datapod/pods/matrix/tensor.hpp>
 #include <iostream>
 
 using namespace datapod::mat;

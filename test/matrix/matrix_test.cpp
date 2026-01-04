@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "datapod/matrix/matrix.hpp"
-#include "datapod/matrix/scalar.hpp"
+#include "datapod/pods/matrix/matrix.hpp"
+#include "datapod/pods/matrix/scalar.hpp"
 #include "datapod/reflection/for_each_field.hpp"
 #include "datapod/reflection/to_tuple.hpp"
 

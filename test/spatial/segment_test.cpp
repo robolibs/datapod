@@ -2,7 +2,7 @@
 
 #include <datapod/reflection/for_each_field.hpp>
 #include <datapod/reflection/to_tuple.hpp>
-#include <datapod/spatial/primitives/segment.hpp>
+#include <datapod/pods/spatial/primitives/segment.hpp>
 
 using namespace datapod;
 

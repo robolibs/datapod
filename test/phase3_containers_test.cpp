@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 
-#include "datapod/associative/fws_multimap.hpp"
-#include "datapod/memory/paged.hpp"
-#include "datapod/sequential/paged_vecvec.hpp"
+#include "datapod/pods/associative/fws_multimap.hpp"
+#include "datapod/pods/memory/paged.hpp"
+#include "datapod/pods/sequential/paged_vecvec.hpp"
 
 using namespace datapod;
 

@@ -2,7 +2,7 @@
 
 #include <datapod/reflection/for_each_field.hpp>
 #include <datapod/reflection/to_tuple.hpp>
-#include <datapod/temporal/circular_buffer.hpp>
+#include <datapod/pods/temporal/circular_buffer.hpp>
 
 using namespace datapod;
 

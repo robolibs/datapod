@@ -37,10 +37,10 @@
 #include "core/next_power_of_2.hpp"
 #include "core/strong.hpp"
 
-// Memory management
-#include "memory/allocator.hpp"
-#include "memory/offset_ptr.hpp"
-#include "memory/ptr.hpp"
+// Memory management (PODs)
+#include "pods/memory/allocator.hpp"
+#include "pods/memory/offset_ptr.hpp"
+#include "pods/memory/ptr.hpp"
 
 // Reflection system
 #include "reflection/arity.hpp"

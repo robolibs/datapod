@@ -9,12 +9,12 @@
 #include "datapod/reflection/for_each_field.hpp"
 
 // Include container headers directly since this is meant to be included after them
-#include "datapod/adapters/optional.hpp"
-#include "datapod/adapters/pair.hpp"
-#include "datapod/adapters/unique_ptr.hpp"
-#include "datapod/sequential/array.hpp"
-#include "datapod/sequential/string.hpp"
-#include "datapod/sequential/vector.hpp"
+#include "datapod/pods/adapters/optional.hpp"
+#include "datapod/pods/adapters/pair.hpp"
+#include "datapod/pods/adapters/unique_ptr.hpp"
+#include "datapod/pods/sequential/array.hpp"
+#include "datapod/pods/sequential/string.hpp"
+#include "datapod/pods/sequential/vector.hpp"
 
 namespace datapod {
 

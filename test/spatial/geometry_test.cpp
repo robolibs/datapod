@@ -2,12 +2,12 @@
 
 #include <datapod/reflection/for_each_field.hpp>
 #include <datapod/reflection/to_tuple.hpp>
-#include <datapod/spatial/linestring.hpp>
-#include <datapod/spatial/multi/multi_linestring.hpp>
-#include <datapod/spatial/multi/multi_point.hpp>
-#include <datapod/spatial/multi/multi_polygon.hpp>
-#include <datapod/spatial/primitives/line.hpp>
-#include <datapod/spatial/ring.hpp>
+#include <datapod/pods/spatial/linestring.hpp>
+#include <datapod/pods/spatial/multi/multi_linestring.hpp>
+#include <datapod/pods/spatial/multi/multi_point.hpp>
+#include <datapod/pods/spatial/multi/multi_polygon.hpp>
+#include <datapod/pods/spatial/primitives/line.hpp>
+#include <datapod/pods/spatial/ring.hpp>
 
 using namespace datapod;
 

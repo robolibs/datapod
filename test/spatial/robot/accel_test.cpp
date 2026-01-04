@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/robot/accel.hpp>
+#include <datapod/pods/spatial/robot/accel.hpp>
 
 using namespace datapod;
 

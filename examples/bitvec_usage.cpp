@@ -1,4 +1,4 @@
-#include <datapod/sequential/bitvec.hpp>
+#include <datapod/pods/sequential/bitvec.hpp>
 #include <iostream>
 
 using namespace datapod;

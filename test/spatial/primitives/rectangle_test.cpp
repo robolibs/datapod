@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/primitives/rectangle.hpp>
+#include <datapod/pods/spatial/primitives/rectangle.hpp>
 
 using namespace datapod;
 

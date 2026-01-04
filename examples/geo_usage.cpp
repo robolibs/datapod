@@ -1,5 +1,5 @@
 #include <cmath>
-#include <datapod/spatial/geo.hpp>
+#include <datapod/pods/spatial/geo.hpp>
 #include <iostream>
 
 using namespace datapod;

@@ -3,9 +3,9 @@
 #include <iostream>
 #include <vector>
 
-#include "datapod/memory/allocator.hpp"
-#include "datapod/memory/offset_ptr.hpp"
-#include "datapod/memory/ptr.hpp"
+#include "datapod/pods/memory/allocator.hpp"
+#include "datapod/pods/memory/offset_ptr.hpp"
+#include "datapod/pods/memory/ptr.hpp"
 
 // Test basic offset_ptr construction
 void test_offset_ptr_construction() {

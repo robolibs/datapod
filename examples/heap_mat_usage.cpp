@@ -13,9 +13,9 @@
  * - Same API for both stack and heap versions (transparent to users)
  */
 
-#include <datapod/matrix/matrix.hpp>
-#include <datapod/matrix/tensor.hpp>
-#include <datapod/matrix/vector.hpp>
+#include <datapod/pods/matrix/matrix.hpp>
+#include <datapod/pods/matrix/tensor.hpp>
+#include <datapod/pods/matrix/vector.hpp>
 #include <datapod/serialization/serialize.hpp>
 #include <iomanip>
 #include <iostream>

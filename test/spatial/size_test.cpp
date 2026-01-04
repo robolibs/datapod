@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/size.hpp>
+#include <datapod/pods/spatial/size.hpp>
 
 using namespace datapod;
 

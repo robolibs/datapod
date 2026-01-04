@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/once_cell.hpp"
+#include "datapod/pods/adapters/once_cell.hpp"
 #include <string>
 #include <thread>
 #include <vector>

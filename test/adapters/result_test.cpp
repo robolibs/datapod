@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/adapters/result.hpp>
+#include <datapod/pods/adapters/result.hpp>
 
 using namespace datapod;
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/quaternion.hpp> // This includes euler.hpp and implements conversions
+#include <datapod/pods/spatial/quaternion.hpp> // This includes euler.hpp and implements conversions
 
 using namespace datapod;
 

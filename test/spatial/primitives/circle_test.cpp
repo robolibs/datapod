@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/primitives/circle.hpp>
+#include <datapod/pods/spatial/primitives/circle.hpp>
 
 using namespace datapod;
 

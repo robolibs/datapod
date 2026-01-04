@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/robot/wrench.hpp>
+#include <datapod/pods/spatial/robot/wrench.hpp>
 
 using namespace datapod;
 

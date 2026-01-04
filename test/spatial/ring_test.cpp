@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/ring.hpp>
+#include <datapod/pods/spatial/ring.hpp>
 
 using namespace datapod;
 

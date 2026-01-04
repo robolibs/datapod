@@ -1,4 +1,4 @@
-#include <datapod/matrix/matrix.hpp>
+#include <datapod/pods/matrix/matrix.hpp>
 #include <iomanip>
 #include <iostream>
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/sequential/cstring.hpp>
+#include <datapod/pods/sequential/cstring.hpp>
 
 using namespace datapod;
 

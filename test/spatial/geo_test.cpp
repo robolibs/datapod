@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
-#include <datapod/spatial/geo.hpp>
+#include <datapod/pods/spatial/geo.hpp>
 
 using namespace datapod;
 

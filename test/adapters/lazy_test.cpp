@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/lazy.hpp"
+#include "datapod/pods/adapters/lazy.hpp"
 #include <string>
 #include <thread>
 #include <vector>

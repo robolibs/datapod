@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/complex/grid.hpp>
-#include <datapod/spatial/euler.hpp>
+#include <datapod/pods/spatial/complex/grid.hpp>
+#include <datapod/pods/spatial/euler.hpp>
 
 using namespace datapod;
 

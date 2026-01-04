@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "datapod/associative/set.hpp"
-#include "datapod/sequential/string.hpp"
+#include "datapod/pods/associative/set.hpp"
+#include "datapod/pods/sequential/string.hpp"
 
 using namespace datapod;
 

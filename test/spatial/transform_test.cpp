@@ -2,7 +2,7 @@
 #include <doctest/doctest.h>
 
 #include "datapod/datapod.hpp"
-#include "datapod/spatial/transform.hpp"
+#include "datapod/pods/spatial/transform.hpp"
 
 using namespace datapod;
 

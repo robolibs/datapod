@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/rtree.hpp>
+#include <datapod/pods/spatial/rtree.hpp>
 
 using namespace datapod;
 

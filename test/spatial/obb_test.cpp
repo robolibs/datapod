@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/obb.hpp>
+#include <datapod/pods/spatial/obb.hpp>
 
 using namespace datapod;
 

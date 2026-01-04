@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/sequential/bitvec.hpp"
+#include "datapod/pods/sequential/bitvec.hpp"
 
 using namespace datapod;
 

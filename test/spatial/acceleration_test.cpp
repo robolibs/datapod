@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <datapod/spatial/acceleration.hpp>
+#include <datapod/pods/spatial/acceleration.hpp>
 
 using namespace datapod;
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "datapod/adapters/unique_ptr.hpp"
+#include "datapod/pods/adapters/unique_ptr.hpp"
 
 using namespace datapod;
 

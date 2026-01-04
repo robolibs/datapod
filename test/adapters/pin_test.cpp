@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include <datapod/adapters/pin.hpp>
+#include <datapod/pods/adapters/pin.hpp>
 #include <string>
 
 using namespace datapod;
