@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.26] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Extend automatic reflection from 10 to 64 fields
+
 ## [0.0.25] - 2026-01-04
 
 ### <!-- 1 -->🐛 Bug Fixes
