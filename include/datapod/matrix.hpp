@@ -57,3 +57,8 @@
 
 // Note: dp:: namespace is now used for primitive types (see types/types.hpp)
 // The old SHORT_NAMESPACE alias has been removed
+
+// Short namespace alias (disable with -DNO_SHORT_NAMESPACE)
+#if !defined(NO_SHORT_NAMESPACE)
+namespace dp = datapod;
+#endif

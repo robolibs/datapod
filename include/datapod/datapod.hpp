@@ -73,6 +73,7 @@
 #include "temporal.hpp"
 #include "trees.hpp"
 
-// Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
-#if defined(SHORT_NAMESPACE)
+// Short namespace alias (disable with -DNO_SHORT_NAMESPACE)
+#if !defined(NO_SHORT_NAMESPACE)
+namespace dp = datapod;
 #endif
