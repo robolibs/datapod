@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.25] - 2026-01-04
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Correct RingBuffer move semantics to prevent premature SHM cleanup
+
 ## [0.0.24] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
