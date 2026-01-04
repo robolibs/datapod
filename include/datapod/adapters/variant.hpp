@@ -141,6 +141,16 @@ namespace datapod {
                                     : a.idx_ >= b.idx_;
         }
 
+#if __cplusplus >= 202002L
+        // C++20 three-way comparison (spaceship operator)
+        friend auto operator<=>(Variant const &a, Variant const &b) noexcept {
+            if (a.idx_ != b.idx_) {
+                return a.idx_ <=> b.idx_;
+            }
+            return apply([](auto &&u, auto &&v) { return u <=> v; }, a.idx_, a, b);
+        }
+#endif
+
         template <typename Arg, typename... CtorArgs> Arg &emplace(CtorArgs &&...ctor_args) {
             static_assert(index_of_type<Arg, T...>() != TYPE_NOT_FOUND);
             destruct();
@@ -368,6 +378,25 @@ namespace datapod {
     template <class... T> struct variant_size<Variant<T...>> : std::integral_constant<std::size_t, sizeof...(T)> {};
 
     template <class T> constexpr std::size_t variant_size_v = variant_size<T>::value;
+
+    // Visit by index
+    template <std::size_t I, typename Visitor, typename... Ts>
+    constexpr auto visit_at(Visitor &&vis, Variant<Ts...> &v) {
+        static_assert(I < sizeof...(Ts), "Index out of bounds");
+        if (v.index() != I) {
+            throw_exception(std::runtime_error{"visit_at: variant does not hold alternative at index"});
+        }
+        return vis(get<I>(v));
+    }
+
+    template <std::size_t I, typename Visitor, typename... Ts>
+    constexpr auto visit_at(Visitor &&vis, Variant<Ts...> const &v) {
+        static_assert(I < sizeof...(Ts), "Index out of bounds");
+        if (v.index() != I) {
+            throw_exception(std::runtime_error{"visit_at: variant does not hold alternative at index"});
+        }
+        return vis(get<I>(v));
+    }
 
 } // namespace datapod
 
