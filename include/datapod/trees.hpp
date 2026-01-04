@@ -20,3 +20,8 @@
 #include "pods/trees/ordered_map.hpp"
 #include "pods/trees/ordered_set.hpp"
 #include "pods/trees/trie.hpp"
+
+// Short namespace alias (disable with -DNO_SHORT_NAMESPACE)
+#if !defined(NO_SHORT_NAMESPACE)
+namespace dp = datapod;
+#endif

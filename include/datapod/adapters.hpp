@@ -36,3 +36,8 @@
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)
 #endif
+
+// Short namespace alias (disable with -DNO_SHORT_NAMESPACE)
+#if !defined(NO_SHORT_NAMESPACE)
+namespace dp = datapod;
+#endif
