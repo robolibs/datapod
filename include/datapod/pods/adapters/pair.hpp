@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <tuple>
 #include <utility>
@@ -40,7 +41,7 @@ namespace datapod {
         constexpr bool operator>=(Pair const &other) const { return !(*this < other); }
 
         // Structured binding support - get by index
-        template <std::size_t I> constexpr auto &get() & {
+        template <datapod::usize I> constexpr auto &get() & {
             static_assert(I < 2, "Index out of range for Pair");
             if constexpr (I == 0) {
                 return first;
@@ -49,7 +50,7 @@ namespace datapod {
             }
         }
 
-        template <std::size_t I> constexpr auto const &get() const & {
+        template <datapod::usize I> constexpr auto const &get() const & {
             static_assert(I < 2, "Index out of range for Pair");
             if constexpr (I == 0) {
                 return first;
@@ -58,7 +59,7 @@ namespace datapod {
             }
         }
 
-        template <std::size_t I> constexpr auto &&get() && {
+        template <datapod::usize I> constexpr auto &&get() && {
             static_assert(I < 2, "Index out of range for Pair");
             if constexpr (I == 0) {
                 return std::move(first);
@@ -88,15 +89,16 @@ namespace datapod {
     }
 
     // Free function get() overloads for structured bindings
-    template <std::size_t I, typename First, typename Second> constexpr auto &get(Pair<First, Second> &p) {
+    template <datapod::usize I, typename First, typename Second> constexpr auto &get(Pair<First, Second> &p) {
         return p.template get<I>();
     }
 
-    template <std::size_t I, typename First, typename Second> constexpr auto const &get(Pair<First, Second> const &p) {
+    template <datapod::usize I, typename First, typename Second>
+    constexpr auto const &get(Pair<First, Second> const &p) {
         return p.template get<I>();
     }
 
-    template <std::size_t I, typename First, typename Second> constexpr auto &&get(Pair<First, Second> &&p) {
+    template <datapod::usize I, typename First, typename Second> constexpr auto &&get(Pair<First, Second> &&p) {
         return std::move(p).template get<I>();
     }
 

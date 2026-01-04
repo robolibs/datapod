@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -20,12 +21,12 @@
 
 namespace datapod {
 
-    template <typename T, std::size_t InlineCapacity, typename Alloc = Allocator<T>> class Vectra {
+    template <typename T, datapod::usize InlineCapacity, typename Alloc = Allocator<T>> class Vectra {
       public:
         using value_type = T;
         using allocator_type = Alloc;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using reference = T &;
         using const_reference = T const &;
         using pointer = T *;
@@ -456,13 +457,13 @@ namespace datapod {
         mutable bool snapshot_valid_;
     };
 
-    template <typename T, std::size_t InlineCapacity, typename Alloc>
+    template <typename T, datapod::usize InlineCapacity, typename Alloc>
     void swap(Vectra<T, InlineCapacity, Alloc> &lhs,
               Vectra<T, InlineCapacity, Alloc> &rhs) noexcept(noexcept(lhs.swap(rhs))) {
         lhs.swap(rhs);
     }
 
-    template <Mode M, typename Ctx, typename T, std::size_t InlineCapacity, typename Alloc>
+    template <Mode M, typename Ctx, typename T, datapod::usize InlineCapacity, typename Alloc>
     void serialize(Ctx &ctx, Vectra<T, InlineCapacity, Alloc> const &value) {
         auto size = value.size();
         serialize<M>(ctx, size);
@@ -471,7 +472,7 @@ namespace datapod {
         }
     }
 
-    template <Mode M, typename Ctx, typename T, std::size_t InlineCapacity, typename Alloc>
+    template <Mode M, typename Ctx, typename T, datapod::usize InlineCapacity, typename Alloc>
     void deserialize(Ctx &ctx, Vectra<T, InlineCapacity, Alloc> &value) {
         using size_type = typename Vectra<T, InlineCapacity, Alloc>::size_type;
         size_type new_size{};

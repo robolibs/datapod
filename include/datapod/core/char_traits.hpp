@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <ios>
 #include <type_traits>
@@ -19,7 +20,7 @@ namespace datapod {
 
         static inline bool lt(char_type const a, char_type const b) noexcept { return a < b; }
 
-        static inline int compare(char_type const *a, char_type const *b, std::size_t size) {
+        static inline int compare(char_type const *a, char_type const *b, datapod::usize size) {
             for (; size; --size, ++a, ++b) {
                 if (lt(*a, *b)) {
                     return -1;
@@ -31,15 +32,15 @@ namespace datapod {
             return 0;
         }
 
-        static inline std::size_t length(char_type const *data) {
-            auto len = std::size_t{0U};
+        static inline datapod::usize length(char_type const *data) {
+            auto len = datapod::usize{0U};
             for (; !eq(*data, char_type{0}); ++data) {
                 ++len;
             }
             return len;
         }
 
-        static inline char_type const *find(char_type const *data, std::size_t size, char_type const &val) {
+        static inline char_type const *find(char_type const *data, datapod::usize size, char_type const &val) {
             for (; size; --size) {
                 if (eq(*data, val)) {
                     return data;
@@ -49,7 +50,7 @@ namespace datapod {
             return nullptr;
         }
 
-        static inline char_type *move(char_type *dst, char_type const *src, std::size_t size) {
+        static inline char_type *move(char_type *dst, char_type const *src, datapod::usize size) {
             if (size == 0) {
                 return dst;
             }
@@ -72,7 +73,7 @@ namespace datapod {
             return beginning;
         }
 
-        static inline char_type *copy(char_type *dst, char_type const *src, std::size_t size) {
+        static inline char_type *copy(char_type *dst, char_type const *src, datapod::usize size) {
             char_type *beginning{dst};
 
             for (; size; --size, ++dst, ++src) {
@@ -82,7 +83,7 @@ namespace datapod {
             return beginning;
         }
 
-        static inline char_type *assign(char_type *dst, std::size_t size, char_type const value) {
+        static inline char_type *assign(char_type *dst, datapod::usize size, char_type const value) {
             char_type *beginning{dst};
 
             for (; size; --size, ++dst) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <type_traits>
@@ -12,7 +13,7 @@ namespace datapod {
 
     namespace detail {
 
-        template <class F, class Tuple, std::size_t... I>
+        template <class F, class Tuple, datapod::usize... I>
         constexpr bool tuple_equal_impl(F &&is_equal, Tuple &&a, Tuple &&b, std::index_sequence<I...>) {
             return (is_equal(std::get<I>(std::forward<Tuple>(a)), std::get<I>(std::forward<Tuple>(b))) && ...);
         }

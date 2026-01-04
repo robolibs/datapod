@@ -38,13 +38,13 @@ namespace datapod {
         explicit SerializationContext(Target &t) : target_{t} {}
 
         // Write raw data to target
-        offset_t write(void const *ptr, std::size_t const size, std::size_t const alignment = 0) {
+        offset_t write(void const *ptr, datapod::usize const size, datapod::usize const alignment = 0) {
             return target_.write(ptr, size, alignment);
         }
 
         // Write value at position
         template <typename T> void write(offset_t const pos, T const &val) {
-            target_.write(static_cast<std::size_t>(pos), val);
+            target_.write(static_cast<datapod::usize>(pos), val);
         }
 
         Target &target_;
@@ -66,7 +66,7 @@ namespace datapod {
     template <typename T> struct is_container<Vector<T>> : std::true_type {};
     template <typename T> struct is_container<Optional<T>> : std::true_type {};
     template <typename A, typename B> struct is_container<Pair<A, B>> : std::true_type {};
-    template <typename T, std::size_t N> struct is_container<Array<T, N>> : std::true_type {};
+    template <typename T, datapod::usize N> struct is_container<Array<T, N>> : std::true_type {};
     template <typename... Ts> struct is_container<Tuple<Ts...>> : std::true_type {};
     template <typename... Ts> struct is_container<Variant<Ts...>> : std::true_type {};
     // Map and Set are type aliases for HashStorage
@@ -74,17 +74,17 @@ namespace datapod {
               typename Eq>
     struct is_container<HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq>> : std::true_type {};
     // Heap-allocated mat types need special serialization
-    template <typename T, std::size_t N> struct is_container<mat::Vector<T, N, true>> : std::true_type {};
+    template <typename T, datapod::usize N> struct is_container<mat::Vector<T, N, true>> : std::true_type {};
     // Stack-allocated mat types also need special serialization
-    template <typename T, std::size_t N> struct is_container<mat::Vector<T, N, false>> : std::true_type {};
-    template <typename T, std::size_t R, std::size_t C>
+    template <typename T, datapod::usize N> struct is_container<mat::Vector<T, N, false>> : std::true_type {};
+    template <typename T, datapod::usize R, datapod::usize C>
     struct is_container<mat::Matrix<T, R, C, true>> : std::true_type {};
-    template <typename T, std::size_t... Dims> struct is_container<mat::HeapTensor<T, Dims...>> : std::true_type {};
+    template <typename T, datapod::usize... Dims> struct is_container<mat::HeapTensor<T, Dims...>> : std::true_type {};
     // Dynamic mat types need special serialization (vector<T, Dynamic>, matrix<T, Dynamic, Dynamic>)
     template <typename T> struct is_container<mat::Vector<T, mat::Dynamic, false>> : std::true_type {};
     template <typename T> struct is_container<mat::Matrix<T, mat::Dynamic, mat::Dynamic, false>> : std::true_type {};
     // Dynamic tensor (any dimension is Dynamic) - use SFINAE to detect
-    template <typename T, std::size_t... Dims>
+    template <typename T, datapod::usize... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
     struct is_container<mat::Tensor<T, Dims...>> : std::true_type {};
     template <typename T> constexpr bool is_container_v = is_container<decay_t<T>>::value;
@@ -105,7 +105,7 @@ namespace datapod {
     template <Mode M, typename Ctx> void serialize(Ctx &ctx, String &value) {
         // Write length
         auto const len = value.size();
-        serialize<M>(ctx, const_cast<std::size_t &>(len));
+        serialize<M>(ctx, const_cast<datapod::usize &>(len));
 
         // Write string data
         if (len > 0) {
@@ -117,7 +117,7 @@ namespace datapod {
     template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, Vector<T> &value) {
         // Write size
         auto const sz = value.size();
-        serialize<M>(ctx, const_cast<std::size_t &>(sz));
+        serialize<M>(ctx, const_cast<datapod::usize &>(sz));
 
         // Write elements
         for (auto &elem : value) {
@@ -144,15 +144,15 @@ namespace datapod {
     }
 
     // Serialize Array (fixed-size array)
-    template <Mode M, typename Ctx, typename T, std::size_t N> void serialize(Ctx &ctx, Array<T, N> &value) {
+    template <Mode M, typename Ctx, typename T, datapod::usize N> void serialize(Ctx &ctx, Array<T, N> &value) {
         for (auto &elem : value) {
             serialize<M>(ctx, elem);
         }
     }
 
     // Serialize C-style arrays (T[N])
-    template <Mode M, typename Ctx, typename T, std::size_t N> void serialize(Ctx &ctx, T (&value)[N]) {
-        for (std::size_t i = 0; i < N; ++i) {
+    template <Mode M, typename Ctx, typename T, datapod::usize N> void serialize(Ctx &ctx, T (&value)[N]) {
+        for (datapod::usize i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -179,8 +179,8 @@ namespace datapod {
               typename Hash, typename Eq>
     void serialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {
         // Write size
-        auto const sz = value.size();
-        serialize<M>(ctx, const_cast<std::size_t &>(sz));
+        auto sz = static_cast<datapod::usize>(value.size());
+        serialize<M>(ctx, sz);
 
         // Write all entries
         for (auto &entry : value) {
@@ -193,38 +193,38 @@ namespace datapod {
     // =============================================================================
 
     // Serialize heap-allocated mat::Vector
-    template <Mode M, typename Ctx, typename T, std::size_t N>
+    template <Mode M, typename Ctx, typename T, datapod::usize N>
     void serialize(Ctx &ctx, mat::Vector<T, N, true> &value) {
         // Fixed size, just write all elements
-        for (std::size_t i = 0; i < N; ++i) {
+        for (datapod::usize i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
     // Serialize stack-allocated mat::Vector
-    template <Mode M, typename Ctx, typename T, std::size_t N>
+    template <Mode M, typename Ctx, typename T, datapod::usize N>
     void serialize(Ctx &ctx, mat::Vector<T, N, false> &value) {
         // Fixed size, just write all elements
-        for (std::size_t i = 0; i < N; ++i) {
+        for (datapod::usize i = 0; i < N; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
     // Serialize heap-allocated mat::Matrix
-    template <Mode M, typename Ctx, typename T, std::size_t R, std::size_t C>
+    template <Mode M, typename Ctx, typename T, datapod::usize R, datapod::usize C>
     void serialize(Ctx &ctx, mat::Matrix<T, R, C, true> &value) {
         // Fixed size, just write all elements (column-major order)
-        for (std::size_t i = 0; i < R * C; ++i) {
+        for (datapod::usize i = 0; i < R * C; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
 
     // Serialize heap-allocated mat::HeapTensor
-    template <Mode M, typename Ctx, typename T, std::size_t... Dims>
+    template <Mode M, typename Ctx, typename T, datapod::usize... Dims>
     void serialize(Ctx &ctx, mat::HeapTensor<T, Dims...> &value) {
         // Fixed size, just write all elements
-        constexpr std::size_t total = (Dims * ...);
-        for (std::size_t i = 0; i < total; ++i) {
+        constexpr datapod::usize total = (Dims * ...);
+        for (datapod::usize i = 0; i < total; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -237,11 +237,11 @@ namespace datapod {
     // Format: [size_t size][T data[0]][T data[1]]...[T data[size-1]]
     template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::Vector<T, mat::Dynamic, false> &value) {
         // Write size
-        auto const sz = value.size();
-        serialize<M>(ctx, const_cast<std::size_t &>(sz));
+        auto sz = static_cast<datapod::usize>(value.size());
+        serialize<M>(ctx, sz);
 
         // Write elements
-        for (std::size_t i = 0; i < sz; ++i) {
+        for (datapod::usize i = 0; i < sz; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -251,14 +251,14 @@ namespace datapod {
     template <Mode M, typename Ctx, typename T>
     void serialize(Ctx &ctx, mat::Matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
         // Write dimensions
-        auto const rows = value.rows();
-        auto const cols = value.cols();
-        serialize<M>(ctx, const_cast<std::size_t &>(rows));
-        serialize<M>(ctx, const_cast<std::size_t &>(cols));
+        auto rows = static_cast<datapod::usize>(value.rows());
+        auto cols = static_cast<datapod::usize>(value.cols());
+        serialize<M>(ctx, rows);
+        serialize<M>(ctx, cols);
 
         // Write elements (column-major order)
-        std::size_t total = rows * cols;
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = rows * cols;
+        for (datapod::usize i = 0; i < total; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -268,17 +268,17 @@ namespace datapod {
     template <Mode M, typename Ctx, typename T> void serialize(Ctx &ctx, mat::DynamicTensor<T> &value) {
         // Write rank (number of dimensions)
         auto const r = value.rank();
-        serialize<M>(ctx, const_cast<std::size_t &>(r));
+        serialize<M>(ctx, const_cast<datapod::usize &>(r));
 
         // Write each dimension
-        for (std::size_t i = 0; i < r; ++i) {
+        for (datapod::usize i = 0; i < r; ++i) {
             auto const d = value.dim(i);
-            serialize<M>(ctx, const_cast<std::size_t &>(d));
+            serialize<M>(ctx, const_cast<datapod::usize &>(d));
         }
 
         // Write elements (column-major order)
-        std::size_t total = value.size();
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = value.size();
+        for (datapod::usize i = 0; i < total; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -286,21 +286,21 @@ namespace datapod {
     // Serialize mat::Tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
     // Format: [size_t dyn_dim0][size_t dyn_dim1]...[T data[...]]
     // Only dynamic dimensions are serialized (fixed ones are known at compile-time)
-    template <Mode M, typename Ctx, typename T, std::size_t... Dims>
+    template <Mode M, typename Ctx, typename T, datapod::usize... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
     void serialize(Ctx &ctx, mat::Tensor<T, Dims...> &value) {
         // Write only the dynamic dimensions
-        constexpr std::array<std::size_t, sizeof...(Dims)> template_dims = {Dims...};
-        for (std::size_t i = 0; i < sizeof...(Dims); ++i) {
+        constexpr std::array<datapod::usize, sizeof...(Dims)> template_dims = {Dims...};
+        for (datapod::usize i = 0; i < sizeof...(Dims); ++i) {
             if (template_dims[i] == mat::Dynamic) {
                 auto const d = value.dim(i);
-                serialize<M>(ctx, const_cast<std::size_t &>(d));
+                serialize<M>(ctx, const_cast<datapod::usize &>(d));
             }
         }
 
         // Write elements (column-major order)
-        std::size_t total = value.size();
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = value.size();
+        for (datapod::usize i = 0; i < total; ++i) {
             serialize<M>(ctx, value[i]);
         }
     }
@@ -333,7 +333,7 @@ namespace datapod {
             auto const checksum_start = integrity_offset + static_cast<offset_t>(sizeof(hash_t));
             auto const csum = b.checksum(checksum_start);
             auto const csum_converted = convert_endian<M>(csum);
-            ctx.write(static_cast<std::size_t>(integrity_offset), csum_converted);
+            ctx.write(static_cast<datapod::usize>(integrity_offset), csum_converted);
         }
 
         return std::move(b.buf_);
@@ -346,18 +346,18 @@ namespace datapod {
     template <Mode M> struct DeserializationContext {
         static constexpr Mode MODE = M;
 
-        explicit DeserializationContext(std::uint8_t const *data, std::size_t size)
+        explicit DeserializationContext(datapod::u8 const *data, datapod::usize size)
             : data_{data}, size_{size}, pos_{0} {}
 
         // Read raw data
-        void read(void *dest, std::size_t num_bytes) {
+        void read(void *dest, datapod::usize num_bytes) {
             verify(pos_ + num_bytes <= size_, "deserialization: out of bounds read");
             std::memcpy(dest, data_ + pos_, num_bytes);
             pos_ += num_bytes;
         }
 
         // Skip alignment padding
-        void align(std::size_t alignment) {
+        void align(datapod::usize alignment) {
             if (alignment > 1) {
                 auto const remainder = pos_ % alignment;
                 if (remainder != 0) {
@@ -366,9 +366,9 @@ namespace datapod {
             }
         }
 
-        std::uint8_t const *data_;
-        std::size_t size_;
-        std::size_t pos_;
+        datapod::u8 const *data_;
+        datapod::usize size_;
+        datapod::usize pos_;
     };
 
     // =============================================================================
@@ -399,7 +399,7 @@ namespace datapod {
     // Deserialize String
     template <Mode M, typename Ctx> void deserialize(Ctx &ctx, String &value) {
         // Read length
-        std::size_t len = 0;
+        datapod::usize len = 0;
         deserialize<M>(ctx, len);
 
         // Read string data
@@ -415,7 +415,7 @@ namespace datapod {
     // Deserialize Vector
     template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, Vector<T> &value) {
         // Read size
-        std::size_t sz = 0;
+        datapod::usize sz = 0;
         deserialize<M>(ctx, sz);
 
         // Read elements
@@ -448,15 +448,15 @@ namespace datapod {
     }
 
     // Deserialize Array (fixed-size array)
-    template <Mode M, typename Ctx, typename T, std::size_t N> void deserialize(Ctx &ctx, Array<T, N> &value) {
+    template <Mode M, typename Ctx, typename T, datapod::usize N> void deserialize(Ctx &ctx, Array<T, N> &value) {
         for (auto &elem : value) {
             deserialize<M>(ctx, elem);
         }
     }
 
     // Deserialize C-style arrays (T[N])
-    template <Mode M, typename Ctx, typename T, std::size_t N> void deserialize(Ctx &ctx, T (&value)[N]) {
-        for (std::size_t i = 0; i < N; ++i) {
+    template <Mode M, typename Ctx, typename T, datapod::usize N> void deserialize(Ctx &ctx, T (&value)[N]) {
+        for (datapod::usize i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
@@ -467,8 +467,8 @@ namespace datapod {
     }
 
     // Helper to deserialize Variant at runtime index
-    template <Mode M, std::size_t I, typename Ctx, typename... Ts>
-    void deserialize_variant_at_index(Ctx &ctx, Variant<Ts...> &value, std::size_t idx) {
+    template <Mode M, datapod::usize I, typename Ctx, typename... Ts>
+    void deserialize_variant_at_index(Ctx &ctx, Variant<Ts...> &value, datapod::usize idx) {
         if constexpr (I < sizeof...(Ts)) {
             if (I == idx) {
                 using T = type_at_index_t<I, Ts...>;
@@ -484,7 +484,7 @@ namespace datapod {
     // Deserialize Variant
     template <Mode M, typename Ctx, typename... Ts> void deserialize(Ctx &ctx, Variant<Ts...> &value) {
         // Deserialize index
-        std::size_t idx;
+        datapod::usize idx;
         deserialize<M>(ctx, idx);
 
         // Verify index is valid
@@ -499,14 +499,14 @@ namespace datapod {
               typename Hash, typename Eq>
     void deserialize(Ctx &ctx, HashStorage<T, Ptr, GetKey, GetValue, Hash, Eq> &value) {
         // Read size
-        std::size_t sz = 0;
+        datapod::usize sz = 0;
         deserialize<M>(ctx, sz);
 
         // Clear existing entries
         value.clear();
 
         // Read all entries
-        for (std::size_t i = 0; i < sz; ++i) {
+        for (datapod::usize i = 0; i < sz; ++i) {
             T entry;
             deserialize<M>(ctx, entry);
             value.insert(std::move(entry));
@@ -518,38 +518,38 @@ namespace datapod {
     // =============================================================================
 
     // Deserialize heap-allocated mat::Vector
-    template <Mode M, typename Ctx, typename T, std::size_t N>
+    template <Mode M, typename Ctx, typename T, datapod::usize N>
     void deserialize(Ctx &ctx, mat::Vector<T, N, true> &value) {
         // Fixed size, read all elements
-        for (std::size_t i = 0; i < N; ++i) {
+        for (datapod::usize i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
     // Deserialize stack-allocated mat::Vector
-    template <Mode M, typename Ctx, typename T, std::size_t N>
+    template <Mode M, typename Ctx, typename T, datapod::usize N>
     void deserialize(Ctx &ctx, mat::Vector<T, N, false> &value) {
         // Fixed size, read all elements
-        for (std::size_t i = 0; i < N; ++i) {
+        for (datapod::usize i = 0; i < N; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
     // Deserialize heap-allocated mat::Matrix
-    template <Mode M, typename Ctx, typename T, std::size_t R, std::size_t C>
+    template <Mode M, typename Ctx, typename T, datapod::usize R, datapod::usize C>
     void deserialize(Ctx &ctx, mat::Matrix<T, R, C, true> &value) {
         // Fixed size, read all elements (column-major order)
-        for (std::size_t i = 0; i < R * C; ++i) {
+        for (datapod::usize i = 0; i < R * C; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
     // Deserialize heap-allocated mat::HeapTensor
-    template <Mode M, typename Ctx, typename T, std::size_t... Dims>
+    template <Mode M, typename Ctx, typename T, datapod::usize... Dims>
     void deserialize(Ctx &ctx, mat::HeapTensor<T, Dims...> &value) {
         // Fixed size, read all elements
-        constexpr std::size_t total = (Dims * ...);
-        for (std::size_t i = 0; i < total; ++i) {
+        constexpr datapod::usize total = (Dims * ...);
+        for (datapod::usize i = 0; i < total; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
@@ -561,12 +561,12 @@ namespace datapod {
     // Deserialize mat::Vector<T, Dynamic>
     template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::Vector<T, mat::Dynamic, false> &value) {
         // Read size
-        std::size_t sz = 0;
+        datapod::usize sz = 0;
         deserialize<M>(ctx, sz);
 
         // Resize and read elements
         value.resize(sz);
-        for (std::size_t i = 0; i < sz; ++i) {
+        for (datapod::usize i = 0; i < sz; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
@@ -575,14 +575,14 @@ namespace datapod {
     template <Mode M, typename Ctx, typename T>
     void deserialize(Ctx &ctx, mat::Matrix<T, mat::Dynamic, mat::Dynamic, false> &value) {
         // Read dimensions
-        std::size_t rows = 0, cols = 0;
+        datapod::usize rows = 0, cols = 0;
         deserialize<M>(ctx, rows);
         deserialize<M>(ctx, cols);
 
         // Resize and read elements
         value.resize(rows, cols);
-        std::size_t total = rows * cols;
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = rows * cols;
+        for (datapod::usize i = 0; i < total; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
@@ -590,37 +590,37 @@ namespace datapod {
     // Deserialize mat::DynamicTensor (fully runtime-ranked)
     template <Mode M, typename Ctx, typename T> void deserialize(Ctx &ctx, mat::DynamicTensor<T> &value) {
         // Read rank
-        std::size_t r = 0;
+        datapod::usize r = 0;
         deserialize<M>(ctx, r);
 
         // Read dimensions
-        Vector<std::size_t> dims;
+        Vector<datapod::usize> dims;
         dims.resize(r);
-        for (std::size_t i = 0; i < r; ++i) {
+        for (datapod::usize i = 0; i < r; ++i) {
             deserialize<M>(ctx, dims[i]);
         }
 
         // Resize and read elements
         value.resize(dims);
-        std::size_t total = value.size();
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = value.size();
+        for (datapod::usize i = 0; i < total; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
 
     // Deserialize mat::Tensor<T, Dims...> where any Dim is Dynamic (partially dynamic tensor)
     // Helper to collect dynamic dimensions and call resize
-    template <Mode M, typename Ctx, typename T, std::size_t... Dims>
+    template <Mode M, typename Ctx, typename T, datapod::usize... Dims>
     requires(mat::has_dynamic_dim_v<Dims...>)
     void deserialize(Ctx &ctx, mat::Tensor<T, Dims...> &value) {
-        constexpr std::size_t rank = sizeof...(Dims);
-        constexpr std::array<std::size_t, rank> template_dims = {Dims...};
-        constexpr std::size_t num_dynamic = mat::count_dynamic_dims<Dims...>::value;
+        constexpr datapod::usize rank = sizeof...(Dims);
+        constexpr std::array<datapod::usize, rank> template_dims = {Dims...};
+        constexpr datapod::usize num_dynamic = mat::count_dynamic_dims<Dims...>::value;
 
         // Read dynamic dimensions
-        std::array<std::size_t, num_dynamic> dyn_dims{};
-        std::size_t dyn_idx = 0;
-        for (std::size_t i = 0; i < rank; ++i) {
+        std::array<datapod::usize, num_dynamic> dyn_dims{};
+        datapod::usize dyn_idx = 0;
+        for (datapod::usize i = 0; i < rank; ++i) {
             if (template_dims[i] == mat::Dynamic) {
                 deserialize<M>(ctx, dyn_dims[dyn_idx++]);
             }
@@ -628,13 +628,13 @@ namespace datapod {
 
         // Resize using the dynamic dimensions
         // We need to unpack dyn_dims into the resize call
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        [&]<datapod::usize... Is>(std::index_sequence<Is...>) {
             value.resize(dyn_dims[Is]...);
         }(std::make_index_sequence<num_dynamic>{});
 
         // Read elements
-        std::size_t total = value.size();
-        for (std::size_t i = 0; i < total; ++i) {
+        datapod::usize total = value.size();
+        for (datapod::usize i = 0; i < total; ++i) {
             deserialize<M>(ctx, value[i]);
         }
     }
@@ -674,7 +674,7 @@ namespace datapod {
         return result;
     }
 
-    template <Mode M = Mode::NONE, typename T> T deserialize(std::uint8_t const *data, std::size_t size) {
+    template <Mode M = Mode::NONE, typename T> T deserialize(datapod::u8 const *data, datapod::usize size) {
         T result{};
         auto ctx = DeserializationContext<M>{data, size};
 
@@ -710,7 +710,7 @@ namespace datapod {
     // =============================================================================
 
     template <Mode M = Mode::NONE, typename T> T deserialize(std::string_view buf) {
-        return deserialize<M, T>(reinterpret_cast<std::uint8_t const *>(buf.data()), buf.size());
+        return deserialize<M, T>(reinterpret_cast<datapod::u8 const *>(buf.data()), buf.size());
     }
 
     // Overload for deserialize with explicit type parameter (alternative syntax)
@@ -748,7 +748,7 @@ namespace datapod {
     // =============================================================================
 
     // Check if a pointer is aligned to a given boundary
-    inline bool is_aligned(void const *ptr, std::size_t alignment) noexcept {
+    inline bool is_aligned(void const *ptr, datapod::usize alignment) noexcept {
         return (reinterpret_cast<std::uintptr_t>(ptr) % alignment) == 0;
     }
 
@@ -758,7 +758,7 @@ namespace datapod {
     // On ARM and strict x86, unaligned reads cause hardware faults (SIGBUS).
     template <Mode M = Mode::NONE, typename T> T copy_from_potentially_unaligned(std::string_view buf) {
         // Use max_align_t for maximum portable alignment
-        constexpr std::size_t max_alignment = alignof(std::max_align_t);
+        constexpr datapod::usize max_alignment = alignof(std::max_align_t);
 
         // Check if buffer is already aligned
         if (is_aligned(buf.data(), max_alignment)) {
@@ -773,12 +773,13 @@ namespace datapod {
 
     // Overload for uint8_t pointer
     template <Mode M = Mode::NONE, typename T>
-    T copy_from_potentially_unaligned(std::uint8_t const *data, std::size_t size) {
+    T copy_from_potentially_unaligned(datapod::u8 const *data, datapod::usize size) {
         return copy_from_potentially_unaligned<M, T>(std::string_view(reinterpret_cast<char const *>(data), size));
     }
 
     // Overload for char pointer (for convenience)
-    template <Mode M = Mode::NONE, typename T> T copy_from_potentially_unaligned(char const *data, std::size_t size) {
+    template <Mode M = Mode::NONE, typename T>
+    T copy_from_potentially_unaligned(char const *data, datapod::usize size) {
         return copy_from_potentially_unaligned<M, T>(std::string_view(data, size));
     }
 

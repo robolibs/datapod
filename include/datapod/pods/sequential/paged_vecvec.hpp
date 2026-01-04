@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <iterator>
@@ -30,7 +31,7 @@ namespace datapod {
             using const_reference = typename PagedAlloc::const_reference;
 
             using iterator_category = std::random_access_iterator_tag;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = std::add_pointer_t<value_type>;
 
             ConstBucket(PagedVecvec const *pv, Key const i) : pv_{pv}, i_{i} {}
@@ -45,12 +46,12 @@ namespace datapod {
             friend const_iterator begin(ConstBucket const &b) { return b.begin(); }
             friend const_iterator end(ConstBucket const &b) { return b.end(); }
 
-            value_type const &operator[](std::size_t const i) const {
+            value_type const &operator[](datapod::usize const i) const {
                 assert(i < size());
                 return *(begin() + i);
             }
 
-            value_type const &at(std::size_t const i) const {
+            value_type const &at(datapod::usize const i) const {
                 verify(i < size(), "paged_vecvec: const_bucket::at: index out of range");
                 return *(begin() + i);
             }
@@ -128,7 +129,7 @@ namespace datapod {
             using const_reference = typename PagedAlloc::const_reference;
 
             using iterator_category = std::random_access_iterator_tag;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = std::add_pointer_t<value_type>;
 
             Bucket(PagedVecvec *pv, Key const i) : pv_{pv}, i_{i} {}
@@ -172,7 +173,7 @@ namespace datapod {
 
             template <typename T = std::decay_t<data_value_type>, typename = std::enable_if_t<std::is_same_v<T, char>>>
             std::string_view view() const {
-                return std::string_view{begin(), static_cast<std::size_t>(size())};
+                return std::string_view{begin(), static_cast<datapod::usize>(size())};
             }
 
             iterator begin() { return pv_->data(i_); }
@@ -184,22 +185,22 @@ namespace datapod {
             friend iterator begin(Bucket &b) { return b.begin(); }
             friend iterator end(Bucket &b) { return b.end(); }
 
-            value_type &operator[](std::size_t const i) {
+            value_type &operator[](datapod::usize const i) {
                 assert(i < size());
                 return *(begin() + i);
             }
 
-            value_type const &operator[](std::size_t const i) const {
+            value_type const &operator[](datapod::usize const i) const {
                 assert(i < size());
                 return *(begin() + i);
             }
 
-            value_type const &at(std::size_t const i) const {
+            value_type const &at(datapod::usize const i) const {
                 verify(i < size(), "bucket::at: index out of range");
                 return *(begin() + i);
             }
 
-            value_type &at(std::size_t const i) {
+            value_type &at(datapod::usize const i) {
                 verify(i < size(), "bucket::at: index out of range");
                 return *(begin() + i);
             }
@@ -357,8 +358,8 @@ namespace datapod {
     };
 
     // Convenience alias
-    template <typename K, typename V, typename SizeType = std::size_t>
-    using PagedVecvecTyped = PagedVecvec<Vector<Page<SizeType, std::uint16_t>>, Paged<Vector<V>>, K>;
+    template <typename K, typename V, typename SizeType = datapod::usize>
+    using PagedVecvecTyped = PagedVecvec<Vector<Page<SizeType, datapod::u16>>, Paged<Vector<V>>, K>;
 
     namespace paged_vecvec {
         /// Placeholder for template/container type (no useful make() function)

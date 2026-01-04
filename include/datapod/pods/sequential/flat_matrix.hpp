@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -102,7 +103,7 @@ namespace datapod {
     template <typename T> using FlatMatrix = BaseFlatMatrix<Vector<T>>;
 
     template <typename T>
-    inline FlatMatrix<T> make_flat_matrix(std::uint32_t const n_rows, std::uint32_t const n_columns,
+    inline FlatMatrix<T> make_flat_matrix(datapod::u32 const n_rows, datapod::u32 const n_columns,
                                           T const &init = T{}) {
         auto v = Vector<T>{};
         v.resize(n_rows * n_columns, init);

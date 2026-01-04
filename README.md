@@ -35,20 +35,20 @@ Datapod is organized into specialized modules for different robotics domains:
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                              DATAPOD LIBRARY                               │
-├─────────────┬──────────────┬──────────────┬──────────────┬─────────────────┤
-│ Sequential  │ Associative  │   Matrix     │   Spatial    │    Temporal     │
-│ Containers  │  Containers  │   (SIMD)     │   Geometry   │   Time-Series   │
-│             │              │              │              │                 │
-│ ┌─────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌─────────────┐ │
-│ │ Vector  │ │ │   Map    │ │ │  vector  │ │ │  Point   │ │ │ TimeSeries  │ │
-│ │ Array   │ │ │   Set    │ │ │  matrix  │ │ │  Pose    │ │ │ Stamp       │ │
-│ │ String  │ │ │ Multimap │ │ │  tensor  │ │ │  Twist   │ │ │ CircBuf     │ │
-│ └─────────┘ │ └──────────┘ │ └──────────┘ │ │  Odom    │ │ └─────────────┘ │
-│             │              │              │ │  RTree   │ │                 │
-│             │              │              │ └──────────┘ │                 │
-└─────────────┴──────────────┴──────────────┴──────────────┴─────────────────┘
-       │               │              │              │              │
-       └───────────────┴──────────────┴──────────────┴──────────────┘
+├──────────┬─────────────┬──────────────┬──────────────┬──────────┬──────────┤
+│  Types   │ Sequential  │ Associative  │   Matrix     │  Spatial │ Temporal │
+│ (Rust)   │ Containers  │  Containers  │   (SIMD)     │ Geometry │  Series  │
+│          │             │              │              │          │          │
+│ ┌──────┐ │ ┌─────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌──────┐ │ ┌──────┐ │
+│ │ dp:: │ │ │ Vector  │ │ │   Map    │ │ │  vector  │ │ │ Point│ │ │ Time │ │
+│ │ u8   │ │ │ Array   │ │ │   Set    │ │ │  matrix  │ │ │ Pose │ │ │Series│ │
+│ │ i32  │ │ │ String  │ │ │ Multimap │ │ │  tensor  │ │ │ Twist│ │ │ Stamp│ │
+│ │ f64  │ │ └─────────┘ │ └──────────┘ │ └──────────┘ │ │ Odom │ │ └──────┘ │
+│ └──────┘ │             │              │              │ │ RTree│ │          │
+│          │             │              │              │ └──────┘ │          │
+└──────────┴─────────────┴──────────────┴──────────────┴──────────┴──────────┘
+     │            │               │              │           │          │
+     └────────────┴───────────────┴──────────────┴───────────┴──────────┘
                                       │
                            ┌──────────▼──────────┐
                            │  Reflection System  │
@@ -144,8 +144,14 @@ make test
 
 ```cpp
 #include <datapod/datapod.hpp>
+#include <datapod/types/types.hpp>  // Rust-inspired types
 
 using namespace datapod;
+
+// Use Rust-style types with dp:: namespace
+dp::u32 robot_id = 42;
+dp::f64 battery_voltage = 12.6;
+dp::usize sensor_count = 16;
 
 // Robot pose tracking (6-DOF localization)
 Point robot_position{1.0, 2.0, 0.0};
@@ -209,6 +215,46 @@ gripper_force.torque = Point{0.1, 0.0, 0.0};   // 0.1 Nm torque
 ```
 
 ## Features
+
+### Primitive Types (Rust-Inspired)
+Datapod provides a complete type system with **zero `std::` dependencies**, using compiler built-ins:
+
+```cpp
+#include <datapod/types/types.hpp>
+
+// Integer types (signed)
+dp::i8   tiny = -128;      // 8-bit signed
+dp::i16  small = -32000;   // 16-bit signed
+dp::i32  normal = -2000;   // 32-bit signed
+dp::i64  big = -9000000;   // 64-bit signed
+
+// Integer types (unsigned)
+dp::u8   byte = 255;       // 8-bit unsigned
+dp::u16  word = 65535;     // 16-bit unsigned
+dp::u32  dword = 4000000;  // 32-bit unsigned
+dp::u64  qword = 18000000; // 64-bit unsigned
+
+// Floating point
+dp::f32  single = 3.14f;   // 32-bit float
+dp::f64  double = 2.718;   // 64-bit double
+
+// Platform types
+dp::usize size = 1024;     // Platform-dependent size
+dp::isize diff = -42;      // Platform-dependent signed size
+
+// Other types
+dp::boolean flag = true;   // Boolean
+dp::byte raw = 0xFF;       // Raw byte
+```
+
+**Why use `dp::` types?**
+- ✅ **No `std::` dependencies** - Pure compiler built-ins
+- ✅ **Rust-style naming** - Familiar to modern developers
+- ✅ **Explicit sizes** - `i32` is always 32 bits, no surprises
+- ✅ **Shorter syntax** - `dp::u32` vs `std::uint32_t`
+- ✅ **Consistent** - Same naming across all platforms
+
+Available in both `datapod::` and `dp::` namespaces for convenience.
 
 ### Sequential Containers
 - **`Vector<T>`** - Dynamic array with custom allocators

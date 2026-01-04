@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -20,7 +21,7 @@
 namespace datapod {
 
     template <typename T, typename SizeType, template <typename> typename Vec,
-              std::size_t Log2MaxEntriesPerBucket = 20U>
+              datapod::usize Log2MaxEntriesPerBucket = 20U>
     struct DynamicFwsMultimapBase {
         using value_type = T;
         using size_type = base_t<SizeType>;
@@ -46,7 +47,7 @@ namespace datapod {
             bucket(bucket<false> const &b) : multimap_{b.multimap_}, index_{b.index_} {}
 
             size_type index() const noexcept { return index_; }
-            std::size_t size() const noexcept { return get_index().size_; }
+            datapod::usize size() const noexcept { return get_index().size_; }
             size_type capacity() const noexcept { return get_index().capacity_; }
             bool empty() const noexcept { return size() == 0; }
 
@@ -392,7 +393,7 @@ namespace datapod {
         size_type element_count() const noexcept { return element_count_; }
         [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
-        std::size_t allocated_size() const noexcept {
+        datapod::usize allocated_size() const noexcept {
             auto size = index_.allocated_size_ * sizeof(index_type) + data_.allocated_size_ * sizeof(value_type);
             for (auto const &v : free_buckets_) {
                 size += v.allocated_size_ * sizeof(index_type);
@@ -554,7 +555,7 @@ namespace datapod {
     };
 
     // Convenience aliases
-    template <typename K, typename V, std::size_t LogMaxBucketSize = 20U>
+    template <typename K, typename V, datapod::usize LogMaxBucketSize = 20U>
     using MutableFwsMultimap = DynamicFwsMultimapBase<V, K, Vector, LogMaxBucketSize>;
 
     namespace mutable_fws_multimap {

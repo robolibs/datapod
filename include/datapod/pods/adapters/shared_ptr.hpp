@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <atomic>
 #include <memory>
@@ -14,8 +15,8 @@ namespace datapod {
         /// Control block for reference counting
         template <typename T> struct ControlBlock {
             T *ptr;
-            std::atomic<std::size_t> strong_count;
-            std::atomic<std::size_t> weak_count;
+            std::atomic<datapod::usize> strong_count;
+            std::atomic<datapod::usize> weak_count;
 
             ControlBlock(T *p) : ptr(p), strong_count(1), weak_count(0) {}
 
@@ -39,9 +40,9 @@ namespace datapod {
 
             void release_weak() noexcept { weak_count.fetch_sub(1, std::memory_order_acq_rel); }
 
-            std::size_t strong() const noexcept { return strong_count.load(std::memory_order_relaxed); }
+            datapod::usize strong() const noexcept { return strong_count.load(std::memory_order_relaxed); }
 
-            std::size_t weak() const noexcept { return weak_count.load(std::memory_order_relaxed); }
+            datapod::usize weak() const noexcept { return weak_count.load(std::memory_order_relaxed); }
         };
     } // namespace detail
 
@@ -124,10 +125,10 @@ namespace datapod {
         explicit operator bool() const noexcept { return control_ != nullptr && control_->ptr != nullptr; }
 
         /// Get strong reference count
-        std::size_t use_count() const noexcept { return control_ ? control_->strong() : 0; }
+        datapod::usize use_count() const noexcept { return control_ ? control_->strong() : 0; }
 
         /// Get weak reference count
-        std::size_t weak_count() const noexcept { return control_ ? control_->weak() : 0; }
+        datapod::usize weak_count() const noexcept { return control_ ? control_->weak() : 0; }
 
         /// Check if this is the only owner
         bool unique() const noexcept { return use_count() == 1; }
@@ -252,7 +253,7 @@ namespace datapod {
         ~WeakPtr() { release(); }
 
         /// Get strong reference count
-        std::size_t use_count() const noexcept { return control_ ? control_->strong() : 0; }
+        datapod::usize use_count() const noexcept { return control_ ? control_->strong() : 0; }
 
         /// Check if the referenced object has been destroyed
         bool expired() const noexcept { return use_count() == 0; }

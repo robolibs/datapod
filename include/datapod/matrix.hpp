@@ -55,7 +55,5 @@
 #include "pods/matrix/math/phasor.hpp"
 #include "pods/matrix/math/polynomial.hpp"
 
-// Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
-#if defined(SHORT_NAMESPACE)
-namespace dp = datapod;
-#endif
+// Note: dp:: namespace is now used for primitive types (see types/types.hpp)
+// The old SHORT_NAMESPACE alias has been removed

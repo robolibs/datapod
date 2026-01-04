@@ -8,6 +8,7 @@
  */
 
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -91,10 +92,10 @@ namespace datapod {
       private:
         friend class RefCell<T>;
 
-        Ref(const T *ptr, std::size_t *borrow_count) : ptr_(ptr), borrow_count_(borrow_count) { ++(*borrow_count_); }
+        Ref(const T *ptr, datapod::usize *borrow_count) : ptr_(ptr), borrow_count_(borrow_count) { ++(*borrow_count_); }
 
         const T *ptr_;
-        std::size_t *borrow_count_;
+        datapod::usize *borrow_count_;
     };
 
     /**
@@ -336,7 +337,7 @@ namespace datapod {
         /**
          * @brief Get the number of immutable borrows
          */
-        std::size_t borrow_count() const { return borrow_count_; }
+        datapod::usize borrow_count() const { return borrow_count_; }
 
         /**
          * @brief Take the value out of the RefCell, leaving it in a moved-from state
@@ -376,7 +377,7 @@ namespace datapod {
 
       private:
         mutable T value_;
-        mutable std::size_t borrow_count_ = 0;
+        mutable datapod::usize borrow_count_ = 0;
         mutable bool is_borrowed_mut_ = false;
     };
 

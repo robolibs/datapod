@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -11,9 +12,9 @@
 namespace datapod {
 
     // Atomic OR operation - returns the old value before OR
-    inline std::uint64_t fetch_or(std::uint64_t &block, std::uint64_t const mask) {
+    inline datapod::u64 fetch_or(datapod::u64 &block, datapod::u64 const mask) {
 #if defined(_MSC_VER)
-        return _InterlockedOr64(reinterpret_cast<std::int64_t *>(&block), mask);
+        return _InterlockedOr64(reinterpret_cast<datapod::i64 *>(&block), mask);
 #elif defined(__cpp_lib_atomic_ref)
         return std::atomic_ref{block}.fetch_or(mask);
 #else
@@ -22,9 +23,9 @@ namespace datapod {
     }
 
     // Atomic AND operation - returns the old value before AND
-    inline std::uint64_t fetch_and(std::uint64_t &block, std::uint64_t const mask) {
+    inline datapod::u64 fetch_and(datapod::u64 &block, datapod::u64 const mask) {
 #if defined(_MSC_VER)
-        return _InterlockedAnd64(reinterpret_cast<std::int64_t *>(&block), mask);
+        return _InterlockedAnd64(reinterpret_cast<datapod::i64 *>(&block), mask);
 #elif defined(__cpp_lib_atomic_ref)
         return std::atomic_ref{block}.fetch_and(mask);
 #else
@@ -33,7 +34,7 @@ namespace datapod {
     }
 
     // Atomic minimum operation - returns the old value before update
-    inline std::int16_t fetch_min(std::int16_t &block, std::int16_t const val) {
+    inline datapod::i16 fetch_min(datapod::i16 &block, datapod::i16 const val) {
         auto const a = reinterpret_cast<std::atomic_int16_t *>(&block);
         auto old = a->load();
         if (old > val) {
@@ -45,7 +46,7 @@ namespace datapod {
     }
 
     // Atomic maximum operation - returns the old value before update
-    inline std::int16_t fetch_max(std::int16_t &block, std::int16_t const val) {
+    inline datapod::i16 fetch_max(datapod::i16 &block, datapod::i16 const val) {
         auto const a = reinterpret_cast<std::atomic_int16_t *>(&block);
         auto old = a->load();
         if (old < val) {

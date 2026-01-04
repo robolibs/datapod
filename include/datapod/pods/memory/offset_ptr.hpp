@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <cstddef>
@@ -115,31 +116,31 @@ namespace datapod {
             return tmp;
         }
 
-        OffsetPtr operator+(std::ptrdiff_t n) const noexcept {
+        OffsetPtr operator+(datapod::isize n) const noexcept {
             OffsetPtr tmp;
             tmp.set(get() + n);
             return tmp;
         }
 
-        OffsetPtr operator-(std::ptrdiff_t n) const noexcept {
+        OffsetPtr operator-(datapod::isize n) const noexcept {
             OffsetPtr tmp;
             tmp.set(get() - n);
             return tmp;
         }
 
-        std::ptrdiff_t operator-(OffsetPtr const &other) const noexcept { return get() - other.get(); }
+        datapod::isize operator-(OffsetPtr const &other) const noexcept { return get() - other.get(); }
 
-        OffsetPtr &operator+=(std::ptrdiff_t n) noexcept {
+        OffsetPtr &operator+=(datapod::isize n) noexcept {
             set(get() + n);
             return *this;
         }
 
-        OffsetPtr &operator-=(std::ptrdiff_t n) noexcept {
+        OffsetPtr &operator-=(datapod::isize n) noexcept {
             set(get() - n);
             return *this;
         }
 
-        T &operator[](std::ptrdiff_t n) const noexcept { return *(get() + n); }
+        T &operator[](datapod::isize n) const noexcept { return *(get() + n); }
 
         // Access to raw offset (for serialization)
         offset_t offset() const noexcept { return offset_; }

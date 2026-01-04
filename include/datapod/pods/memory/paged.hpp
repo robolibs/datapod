@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <cstring>
@@ -21,7 +22,7 @@ namespace datapod {
         SizeType start_{0U};
     };
 
-    template <typename DataVec, typename SizeType = typename DataVec::size_type, typename PageSizeType = std::uint16_t,
+    template <typename DataVec, typename SizeType = typename DataVec::size_type, typename PageSizeType = datapod::u16,
               PageSizeType MinPageSize = static_cast<PageSizeType>(
                   next_power_of_two(sizeof(Page<SizeType, PageSizeType>) / sizeof(typename DataVec::value_type) > 2U
                                         ? sizeof(Page<SizeType, PageSizeType>) / sizeof(typename DataVec::value_type)
@@ -40,7 +41,7 @@ namespace datapod {
         static_assert(sizeof(value_type) * MinPageSize >= sizeof(page_t));
         static_assert(std::is_trivially_copyable_v<value_type>);
 
-        static constexpr std::size_t free_list_index(size_type const capacity) {
+        static constexpr datapod::usize free_list_index(size_type const capacity) {
             return static_cast<size_type>(constexpr_trailing_zeros(capacity) -
                                           constexpr_trailing_zeros(static_cast<unsigned>(MinPageSize)));
         }
@@ -108,7 +109,7 @@ namespace datapod {
         }
 
         template <typename ItA, typename ItB> void copy(page_t const &to, ItA begin_it, ItB end_it) {
-            auto const n = static_cast<std::size_t>(std::distance(begin_it, end_it));
+            auto const n = static_cast<datapod::usize>(std::distance(begin_it, end_it));
             if (n != 0U) {
                 std::memcpy(data(to), &*begin_it, n * sizeof(value_type));
             }

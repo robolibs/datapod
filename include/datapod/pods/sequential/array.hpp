@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <stdexcept>
@@ -7,10 +8,10 @@
 namespace datapod {
 
     // Fixed-size array (similar to std::array)
-    template <typename T, std::size_t N> struct Array {
+    template <typename T, datapod::usize N> struct Array {
         using value_type = T;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using reference = T &;
         using const_reference = T const &;
         using pointer = T *;
@@ -93,8 +94,8 @@ namespace datapod {
     // Specialization for zero-size array
     template <typename T> struct Array<T, 0> {
         using value_type = T;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using reference = T &;
         using const_reference = T const &;
         using pointer = T *;
@@ -125,8 +126,8 @@ namespace datapod {
     template <typename T, typename... U> Array(T, U...) -> Array<T, 1 + sizeof...(U)>;
 
     // Comparison operators
-    template <typename T, std::size_t N> constexpr bool operator==(Array<T, N> const &lhs, Array<T, N> const &rhs) {
-        for (std::size_t i = 0; i < N; ++i) {
+    template <typename T, datapod::usize N> constexpr bool operator==(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+        for (datapod::usize i = 0; i < N; ++i) {
             if (!(lhs[i] == rhs[i])) {
                 return false;
             }
@@ -134,12 +135,12 @@ namespace datapod {
         return true;
     }
 
-    template <typename T, std::size_t N> constexpr bool operator!=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+    template <typename T, datapod::usize N> constexpr bool operator!=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
         return !(lhs == rhs);
     }
 
-    template <typename T, std::size_t N> constexpr bool operator<(Array<T, N> const &lhs, Array<T, N> const &rhs) {
-        for (std::size_t i = 0; i < N; ++i) {
+    template <typename T, datapod::usize N> constexpr bool operator<(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+        for (datapod::usize i = 0; i < N; ++i) {
             if (lhs[i] < rhs[i]) {
                 return true;
             }
@@ -150,15 +151,15 @@ namespace datapod {
         return false;
     }
 
-    template <typename T, std::size_t N> constexpr bool operator<=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+    template <typename T, datapod::usize N> constexpr bool operator<=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
         return !(rhs < lhs);
     }
 
-    template <typename T, std::size_t N> constexpr bool operator>(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+    template <typename T, datapod::usize N> constexpr bool operator>(Array<T, N> const &lhs, Array<T, N> const &rhs) {
         return rhs < lhs;
     }
 
-    template <typename T, std::size_t N> constexpr bool operator>=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
+    template <typename T, datapod::usize N> constexpr bool operator>=(Array<T, N> const &lhs, Array<T, N> const &rhs) {
         return !(lhs < rhs);
     }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -12,9 +13,9 @@
 
 namespace datapod {
 
-    template <typename T, typename Key = std::uint32_t> struct BasicMmapVec {
+    template <typename T, typename Key = datapod::u32> struct BasicMmapVec {
         using size_type = base_t<Key>;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using access_type = Key;
         using reference = T &;
         using const_reference = T const &;

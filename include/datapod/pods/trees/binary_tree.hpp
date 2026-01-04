@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -59,7 +60,7 @@ namespace datapod {
         };
 
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
         using reference = T &;
         using const_reference = T const &;
 

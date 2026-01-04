@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <cstdlib>
@@ -16,8 +17,8 @@ namespace datapod {
     template <typename T> class Arena {
       public:
         using value_type = T;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using pointer = T *;
         using const_pointer = const T *;
         using reference = T &;
@@ -84,7 +85,7 @@ namespace datapod {
 
         /// Allocate memory for n objects of type T
         /// Allocations are aligned to alignof(T)
-        T *allocate(std::size_t n) {
+        T *allocate(datapod::usize n) {
             if (n > max_size()) {
                 throw std::bad_alloc();
             }
@@ -110,12 +111,12 @@ namespace datapod {
 
         /// Deallocate - NO-OP for arena allocators
         /// Individual deallocations are not supported; use reset() to free all memory
-        void deallocate(T *, std::size_t) noexcept {
+        void deallocate(T *, datapod::usize) noexcept {
             // Arena allocators don't support individual deallocation
         }
 
         /// Maximum number of objects that can be allocated
-        std::size_t max_size() const noexcept { return std::numeric_limits<std::size_t>::max() / sizeof(T); }
+        datapod::usize max_size() const noexcept { return std::numeric_limits<datapod::usize>::max() / sizeof(T); }
 
         /// Construct object at given location
         template <typename U, typename... Args> void construct(U *ptr, Args &&...args) {

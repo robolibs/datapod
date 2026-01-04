@@ -17,7 +17,7 @@ namespace datapod {
 #endif
 
     inline void remove_all(std::string &s, std::string_view substr) {
-        auto pos = std::size_t{};
+        auto pos = datapod::usize{};
         while ((pos = s.find(substr, pos)) != std::string::npos) {
             s.erase(pos, substr.length());
         }

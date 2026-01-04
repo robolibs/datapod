@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <cstdlib>
@@ -17,8 +18,8 @@ namespace datapod {
     template <typename T> class Pool {
       public:
         using value_type = T;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
+        using size_type = datapod::usize;
+        using difference_type = datapod::isize;
         using pointer = T *;
         using const_pointer = const T *;
         using reference = T &;
@@ -96,7 +97,7 @@ namespace datapod {
         /// Allocate memory for n objects of type T
         /// Note: For efficiency, pool allocators ignore n and always allocate one block.
         /// If you need n > 1, call allocate() n times.
-        T *allocate(std::size_t n = 1) {
+        T *allocate(datapod::usize n = 1) {
             if (n == 0) {
                 return nullptr;
             }
@@ -129,7 +130,7 @@ namespace datapod {
         }
 
         /// Deallocate memory - returns block to free list
-        void deallocate(T *ptr, std::size_t n = 1) noexcept {
+        void deallocate(T *ptr, datapod::usize n = 1) noexcept {
             if (ptr == nullptr) {
                 return;
             }
@@ -151,7 +152,7 @@ namespace datapod {
         }
 
         /// Maximum number of objects that can be allocated
-        std::size_t max_size() const noexcept { return std::numeric_limits<std::size_t>::max() / sizeof(T); }
+        datapod::usize max_size() const noexcept { return std::numeric_limits<datapod::usize>::max() / sizeof(T); }
 
         /// Construct object at given location
         template <typename U, typename... Args> void construct(U *ptr, Args &&...args) {

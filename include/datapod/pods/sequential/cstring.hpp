@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cassert>
 #include <cinttypes>
@@ -16,7 +17,7 @@ namespace datapod {
     // The content stored within this container can contain binary data, that is,
     // any number of \0 bytes is permitted within [data(), data() + size()).
     template <typename Ptr = char const *> struct GenericCstring {
-        using msize_t = std::uint32_t;
+        using msize_t = datapod::u32;
         using value_type = char;
 
         static msize_t mstrlen(char const *s) noexcept { return static_cast<msize_t>(std::strlen(s)); }
@@ -125,8 +126,8 @@ namespace datapod {
 
         operator std::string_view() const { return view(); }
 
-        char &operator[](std::size_t const i) noexcept { return data()[i]; }
-        char const &operator[](std::size_t const i) const noexcept { return data()[i]; }
+        char &operator[](datapod::usize const i) noexcept { return data()[i]; }
+        char const &operator[](datapod::usize const i) const noexcept { return data()[i]; }
 
         friend std::ostream &operator<<(std::ostream &out, GenericCstring const &s) { return out << s.view(); }
 
@@ -441,7 +442,7 @@ namespace datapod {
 
         struct heap {
             Ptr ptr_{nullptr};
-            std::uint32_t size_{0};
+            datapod::u32 size_{0};
             bool self_allocated_{false};
             char __fill__[sizeof(uintptr_t) == 8 ? 2 : 6]{0};
             int8_t minus_one_{-1}; // The offset of this field needs to match the

@@ -29,7 +29,7 @@ namespace datapod {
     template <typename T> hash_t type_hash(T const &, hash_t, Map<hash_t, unsigned> &) noexcept;
 
     // Array specialization
-    template <typename T, std::size_t Size>
+    template <typename T, datapod::usize Size>
     hash_t type_hash(Array<T, Size> const &, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         h = hash_combine(h, hash("array"));
         h = hash_combine(h, Size);

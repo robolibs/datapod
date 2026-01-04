@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cmath>
 #include <stdexcept>
@@ -25,8 +26,8 @@ namespace datapod {
      * Fully serializable and reflectable when T is serializable.
      */
     template <typename T> struct Grid {
-        std::size_t rows = 0;
-        std::size_t cols = 0;
+        datapod::usize rows = 0;
+        datapod::usize cols = 0;
         double resolution = 0.0; // Cell size (inradius from concord)
         bool centered = false;   // Whether grid is centered at pose
         Pose pose;               // Spatial transform
@@ -36,22 +37,22 @@ namespace datapod {
         auto members() const noexcept { return std::tie(rows, cols, resolution, centered, pose, data); }
 
         // Index conversion
-        inline std::size_t index(std::size_t r, std::size_t c) const noexcept { return r * cols + c; }
+        inline datapod::usize index(datapod::usize r, datapod::usize c) const noexcept { return r * cols + c; }
 
         // Data access
-        inline T &operator()(std::size_t r, std::size_t c) noexcept { return data[index(r, c)]; }
+        inline T &operator()(datapod::usize r, datapod::usize c) noexcept { return data[index(r, c)]; }
 
-        inline const T &operator()(std::size_t r, std::size_t c) const noexcept { return data[index(r, c)]; }
+        inline const T &operator()(datapod::usize r, datapod::usize c) const noexcept { return data[index(r, c)]; }
 
         // Bounds-checked access
-        inline T &at(std::size_t r, std::size_t c) {
+        inline T &at(datapod::usize r, datapod::usize c) {
             if (r >= rows || c >= cols) {
                 throw std::out_of_range("Grid indices out of bounds");
             }
             return data[index(r, c)];
         }
 
-        inline const T &at(std::size_t r, std::size_t c) const {
+        inline const T &at(datapod::usize r, datapod::usize c) const {
             if (r >= rows || c >= cols) {
                 throw std::out_of_range("Grid indices out of bounds");
             }
@@ -59,7 +60,7 @@ namespace datapod {
         }
 
         // Get world point for a grid cell (center of cell)
-        inline Point get_point(std::size_t r, std::size_t c) const noexcept {
+        inline Point get_point(datapod::usize r, datapod::usize c) const noexcept {
             // Local coordinates (cell center)
             double local_x = (static_cast<double>(c) + 0.5) * resolution;
             double local_y = (static_cast<double>(r) + 0.5) * resolution;
@@ -76,7 +77,7 @@ namespace datapod {
         }
 
         // Convert world coordinates to grid indices
-        inline std::pair<std::size_t, std::size_t> world_to_grid(const Point &world_point) const noexcept {
+        inline std::pair<datapod::usize, datapod::usize> world_to_grid(const Point &world_point) const noexcept {
             // Transform world point to grid's local coordinate system
             Point local_point = pose.inverse_transform_point(world_point);
 
@@ -94,10 +95,10 @@ namespace datapod {
             double row_d = local_y / resolution - 0.5;
 
             // Clamp to valid range
-            std::size_t col =
-                static_cast<std::size_t>(std::max(0.0, std::min(static_cast<double>(cols - 1), std::round(col_d))));
-            std::size_t row =
-                static_cast<std::size_t>(std::max(0.0, std::min(static_cast<double>(rows - 1), std::round(row_d))));
+            datapod::usize col =
+                static_cast<datapod::usize>(std::max(0.0, std::min(static_cast<double>(cols - 1), std::round(col_d))));
+            datapod::usize row =
+                static_cast<datapod::usize>(std::max(0.0, std::min(static_cast<double>(rows - 1), std::round(row_d))));
 
             return {row, col};
         }
@@ -130,7 +131,7 @@ namespace datapod {
         inline auto end() const noexcept { return data.end(); }
 
         // Utility
-        inline std::size_t size() const noexcept { return rows * cols; }
+        inline datapod::usize size() const noexcept { return rows * cols; }
         inline bool empty() const noexcept { return rows == 0 || cols == 0; }
         inline bool is_valid() const noexcept { return rows > 0 && cols > 0 && data.size() == rows * cols; }
 
@@ -140,15 +141,15 @@ namespace datapod {
 
         // Conversion to mat::matrix for compile-time known dimensions
         // Example: auto m = grid.to_mat<10, 10>(); // for a 10x10 grid
-        template <std::size_t R, std::size_t C>
+        template <datapod::usize R, datapod::usize C>
         inline mat::Matrix<T, R, C> to_mat() const noexcept
         requires(std::is_arithmetic_v<T>)
         {
             mat::Matrix<T, R, C> result;
             // Runtime check: only convert if sizes match
             if (rows == R && cols == C) {
-                for (std::size_t r = 0; r < R; ++r) {
-                    for (std::size_t c = 0; c < C; ++c) {
+                for (datapod::usize r = 0; r < R; ++r) {
+                    for (datapod::usize c = 0; c < C; ++c) {
                         result(r, c) = data[index(r, c)];
                     }
                 }
@@ -160,7 +161,7 @@ namespace datapod {
         }
 
         // Create Grid from mat::matrix
-        template <std::size_t R, std::size_t C>
+        template <datapod::usize R, datapod::usize C>
         static inline Grid<T> from_mat(const mat::Matrix<T, R, C> &m, double res = 1.0, bool cent = false,
                                        const Pose &p = Pose{})
         requires(std::is_arithmetic_v<T>)
@@ -172,8 +173,8 @@ namespace datapod {
             grid.centered = cent;
             grid.pose = p;
             grid.data.resize(R * C);
-            for (std::size_t r = 0; r < R; ++r) {
-                for (std::size_t c = 0; c < C; ++c) {
+            for (datapod::usize r = 0; r < R; ++r) {
+                for (datapod::usize c = 0; c < C; ++c) {
                     grid.data[r * C + c] = m(r, c);
                 }
             }

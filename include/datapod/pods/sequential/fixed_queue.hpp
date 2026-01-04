@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <stdexcept>
@@ -10,11 +11,11 @@
 
 namespace datapod {
 
-    template <typename T, std::size_t N, bool OverwriteOnFull = false> struct FixedQueue {
+    template <typename T, datapod::usize N, bool OverwriteOnFull = false> struct FixedQueue {
         static_assert(N > 0, "FixedQueue capacity must be > 0");
 
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
 
         FixedQueue() = default;
 
@@ -146,8 +147,8 @@ namespace datapod {
         size_type size_{0};
     };
 
-    template <typename T, std::size_t N> using FixedFifo = FixedQueue<T, N, false>;
-    template <typename T, std::size_t N> using OverwritingFifo = FixedQueue<T, N, true>;
+    template <typename T, datapod::usize N> using FixedFifo = FixedQueue<T, N, false>;
+    template <typename T, datapod::usize N> using OverwritingFifo = FixedQueue<T, N, true>;
 
     namespace fixed_queue {
         /// Placeholder for template/container type (no useful make() function)

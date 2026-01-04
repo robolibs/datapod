@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <cstddef>
@@ -7,7 +8,7 @@
 namespace datapod {
 
     // Hash type alias
-    using hash_t = std::uint64_t;
+    using hash_t = datapod::u64;
 
     // FNV-1a base hash value
     constexpr auto const BASE_HASH = 14695981039346656037ULL;
@@ -25,14 +26,14 @@ namespace datapod {
     // Hash a string_view using FNV-1a
     constexpr hash_t hash(std::string_view s, hash_t h = BASE_HASH) noexcept {
         auto const ptr = s.data();
-        for (std::size_t i = 0U; i < s.size(); ++i) {
-            h = hash_combine(h, static_cast<std::uint8_t>(ptr[i]));
+        for (datapod::usize i = 0U; i < s.size(); ++i) {
+            h = hash_combine(h, static_cast<datapod::u8>(ptr[i]));
         }
         return h;
     }
 
     // Hash a character array literal
-    template <std::size_t N> constexpr hash_t hash(char const (&str)[N], hash_t const h = BASE_HASH) noexcept {
+    template <datapod::usize N> constexpr hash_t hash(char const (&str)[N], hash_t const h = BASE_HASH) noexcept {
         return hash(std::string_view{str, N - 1U}, h);
     }
 

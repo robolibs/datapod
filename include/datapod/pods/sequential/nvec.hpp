@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cinttypes>
 #include <string_view>
@@ -23,7 +24,7 @@ namespace datapod {
         using const_reference = typename DataVec::const_reference;
 
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using pointer = std::add_pointer_t<value_type>;
 
         ConstBucketNvec() = default;
@@ -51,19 +52,19 @@ namespace datapod {
 
         bool empty() const { return begin() == end(); }
 
-        value_type const &at(std::size_t const i) const {
+        value_type const &at(datapod::usize const i) const {
             verify(i < size(), "bucket::at: index out of range");
             return *(begin() + i);
         }
 
-        value_type const &operator[](std::size_t const i) const {
+        value_type const &operator[](datapod::usize const i) const {
             assert(is_inside_bucket(i));
             return data()[index()[i_] + i];
         }
 
         ConstBucketNvec operator*() const { return *this; }
 
-        std::size_t size() const { return bucket_end_idx() - bucket_begin_idx(); }
+        datapod::usize size() const { return bucket_end_idx() - bucket_begin_idx(); }
 
         const_iterator begin() const { return data().begin() + bucket_begin_idx(); }
         const_iterator end() const { return data().begin() + bucket_end_idx(); }
@@ -127,9 +128,9 @@ namespace datapod {
         DataVec const &data() const { return *data_; }
         IndexVec const &index() const { return *index_; }
 
-        std::size_t bucket_begin_idx() const { return to_idx(index()[i_]); }
-        std::size_t bucket_end_idx() const { return to_idx(index()[i_ + 1U]); }
-        bool is_inside_bucket(std::size_t const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
+        datapod::usize bucket_begin_idx() const { return to_idx(index()[i_]); }
+        datapod::usize bucket_end_idx() const { return to_idx(index()[i_ + 1U]); }
+        bool is_inside_bucket(datapod::usize const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
 
         DataVec const *data_{nullptr};
         IndexVec const *index_{nullptr};
@@ -148,7 +149,7 @@ namespace datapod {
         using const_reference = typename DataVec::const_reference;
 
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using pointer = std::add_pointer_t<value_type>;
 
         BucketNvec() = default;
@@ -183,22 +184,22 @@ namespace datapod {
 
         bool empty() const { return begin() == end(); }
 
-        value_type &at(std::size_t const i) {
+        value_type &at(datapod::usize const i) {
             verify(i < size(), "bucket::at: index out of range");
             return *(begin() + i);
         }
 
-        value_type const &at(std::size_t const i) const {
+        value_type const &at(datapod::usize const i) const {
             verify(i < size(), "bucket::at: index out of range");
             return *(begin() + i);
         }
 
-        value_type &operator[](std::size_t const i) {
+        value_type &operator[](datapod::usize const i) {
             assert(is_inside_bucket(i));
             return data()[index()[i_] + i];
         }
 
-        value_type const &operator[](std::size_t const i) const {
+        value_type const &operator[](datapod::usize const i) const {
             assert(is_inside_bucket(i));
             return data()[index()[i_] + i];
         }
@@ -206,7 +207,7 @@ namespace datapod {
         BucketNvec operator*() const { return {data_, index_, i_}; }
         BucketNvec operator*() { return *this; }
 
-        std::size_t size() const { return bucket_end_idx() - bucket_begin_idx(); }
+        datapod::usize size() const { return bucket_end_idx() - bucket_begin_idx(); }
 
         iterator begin() { return data().begin() + bucket_begin_idx(); }
         iterator end() { return data().begin() + bucket_end_idx(); }
@@ -278,20 +279,20 @@ namespace datapod {
 
         index_value_type bucket_begin_idx() const { return to_idx(index()[i_]); }
         index_value_type bucket_end_idx() const { return to_idx(index()[i_ + 1U]); }
-        bool is_inside_bucket(std::size_t const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
+        bool is_inside_bucket(datapod::usize const i) const { return bucket_begin_idx() + i < bucket_end_idx(); }
 
         size_type i_{};
         DataVec *data_{nullptr};
         IndexVec *index_{nullptr};
     };
 
-    template <std::size_t Depth, typename DataVec, typename IndexVec, typename SizeType> struct ConstMetaBucket {
+    template <datapod::usize Depth, typename DataVec, typename IndexVec, typename SizeType> struct ConstMetaBucket {
         using index_value_type = typename IndexVec::value_type;
 
         using const_iterator = std::conditional_t<Depth == 1U, ConstBucketNvec<DataVec, IndexVec, SizeType>,
                                                   ConstMetaBucket<Depth - 1U, DataVec, IndexVec, SizeType>>;
         using iterator = const_iterator;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using value_type = const_iterator;
         using pointer = void;
         using reference = ConstMetaBucket;
@@ -365,7 +366,7 @@ namespace datapod {
         index_value_type i_{};
     };
 
-    template <std::size_t Depth, typename DataVec, typename IndexVec, typename SizeType> struct MetaBucket {
+    template <datapod::usize Depth, typename DataVec, typename IndexVec, typename SizeType> struct MetaBucket {
         using index_value_type = typename IndexVec::value_type;
 
         using iterator = std::conditional_t<Depth == 1U, BucketNvec<DataVec, IndexVec, SizeType>,
@@ -377,7 +378,7 @@ namespace datapod {
         using iterator_category = std::random_access_iterator_tag;
         using reference = MetaBucket;
         using const_reference = ConstMetaBucket<Depth, DataVec, IndexVec, SizeType>;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using size_type = SizeType;
 
         MetaBucket() = default;
@@ -457,7 +458,7 @@ namespace datapod {
         index_value_type i_{};
     };
 
-    template <typename Key, typename DataVec, typename IndexVec, std::size_t N, typename SizeType = std::uint32_t>
+    template <typename Key, typename DataVec, typename IndexVec, datapod::usize N, typename SizeType = datapod::u32>
     struct BasicNvec {
         using data_vec_t = DataVec;
         using index_vec_t = IndexVec;
@@ -469,7 +470,7 @@ namespace datapod {
         using const_bucket_t = ConstBucketNvec<DataVec, IndexVec, SizeType>;
 
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = datapod::isize;
         using iterator = MetaBucket<N - 1U, DataVec, IndexVec, SizeType>;
         using const_iterator = ConstMetaBucket<N - 1U, DataVec, IndexVec, SizeType>;
         using reference = iterator;
@@ -544,7 +545,7 @@ namespace datapod {
             return {&data_, &index_[0], bucket_start + i};
         }
 
-        template <std::size_t L, typename Container> void add(Container &&c) {
+        template <datapod::usize L, typename Container> void add(Container &&c) {
             if constexpr (L == 0) {
                 index_[0].push_back(static_cast<size_type>(data_.size() + c.size()));
                 for (auto &&x : c) {
@@ -558,7 +559,7 @@ namespace datapod {
             }
         }
 
-        template <std::size_t L, typename... Rest>
+        template <datapod::usize L, typename... Rest>
         size_type get_size(index_value_type const i, index_value_type const j, Rest... rest) const {
             if constexpr (sizeof...(Rest) == 0U) {
                 return index_[L][i + j + 1] - index_[L][i + j];
@@ -567,7 +568,7 @@ namespace datapod {
             }
         }
 
-        template <std::size_t L> size_type get_size(index_value_type const i) const {
+        template <datapod::usize L> size_type get_size(index_value_type const i) const {
             return index_[L][i + 1] - index_[L][i];
         }
 
@@ -579,7 +580,7 @@ namespace datapod {
     };
 
     // Convenience alias
-    template <typename K, typename V, std::size_t N, typename SizeType = std::uint32_t>
+    template <typename K, typename V, datapod::usize N, typename SizeType = datapod::u32>
     using Nvec = BasicNvec<K, Vector<V>, Vector<base_t<K>>, N, SizeType>;
 
     namespace nvec {

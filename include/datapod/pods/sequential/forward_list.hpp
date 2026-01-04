@@ -1,4 +1,5 @@
 #pragma once
+#include <datapod/types/types.hpp>
 
 #include <cstddef>
 #include <iterator>
@@ -48,7 +49,7 @@ namespace datapod {
         };
 
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = datapod::usize;
         using reference = T &;
         using const_reference = T const &;
 
@@ -60,7 +61,7 @@ namespace datapod {
           public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = T;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = T *;
             using reference = T &;
 
@@ -95,7 +96,7 @@ namespace datapod {
           public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = T;
-            using difference_type = std::ptrdiff_t;
+            using difference_type = datapod::isize;
             using pointer = T const *;
             using reference = T const &;
 
