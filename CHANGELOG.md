@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.23] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Add advanced Variant operations
+- Add iterator support to Optional and Result
+- Add conversion methods between Optional and Result
+- Add monadic operations to Result<T,E>
+- Add monadic operations to Optional<T>
+
 ## [0.0.22] - 2026-01-03
 
 ### <!-- 0 -->⛰️  Features

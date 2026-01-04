@@ -7,6 +7,9 @@
 
 namespace datapod {
 
+    // Forward declarations
+    template <typename T, typename E> struct Result;
+
     struct nullopt_t {
         explicit constexpr nullopt_t(int) {}
     };
@@ -247,6 +250,226 @@ namespace datapod {
             }
         }
 
+        // Query operations with predicates
+        template <typename F> constexpr bool is_some_and(F &&predicate) const {
+            return has_value_ && std::invoke(std::forward<F>(predicate), **this);
+        }
+
+        template <typename F> constexpr bool is_none_or(F &&predicate) const {
+            return !has_value_ || std::invoke(std::forward<F>(predicate), **this);
+        }
+
+        // Filter operation
+        template <typename F> constexpr Optional filter(F &&predicate) const & {
+            if (has_value_ && std::invoke(std::forward<F>(predicate), **this)) {
+                return *this;
+            }
+            return nullopt;
+        }
+
+        template <typename F> constexpr Optional filter(F &&predicate) && {
+            if (has_value_ && std::invoke(std::forward<F>(predicate), **this)) {
+                return std::move(*this);
+            }
+            return nullopt;
+        }
+
+        // Inspect operation (for debugging/side effects)
+        template <typename F> constexpr Optional const &inspect(F &&f) const & {
+            if (has_value_) {
+                std::invoke(std::forward<F>(f), **this);
+            }
+            return *this;
+        }
+
+        template <typename F> constexpr Optional &inspect(F &&f) & {
+            if (has_value_) {
+                std::invoke(std::forward<F>(f), **this);
+            }
+            return *this;
+        }
+
+        template <typename F> constexpr Optional &&inspect(F &&f) && {
+            if (has_value_) {
+                std::invoke(std::forward<F>(f), **this);
+            }
+            return std::move(*this);
+        }
+
+        // Expect with custom message
+        constexpr T &expect(char const *msg) & {
+            if (!has_value_) {
+                throw std::runtime_error(msg);
+            }
+            return **this;
+        }
+
+        constexpr T const &expect(char const *msg) const & {
+            if (!has_value_) {
+                throw std::runtime_error(msg);
+            }
+            return **this;
+        }
+
+        constexpr T &&expect(char const *msg) && {
+            if (!has_value_) {
+                throw std::runtime_error(msg);
+            }
+            return std::move(**this);
+        }
+
+        // Take value, leaving None
+        constexpr Optional take() noexcept {
+            if (has_value_) {
+                Optional result{std::move(**this)};
+                reset();
+                return result;
+            }
+            return nullopt;
+        }
+
+        // Take if predicate passes
+        template <typename F> constexpr Optional take_if(F &&predicate) {
+            if (has_value_ && std::invoke(std::forward<F>(predicate), **this)) {
+                Optional result{std::move(**this)};
+                reset();
+                return result;
+            }
+            return nullopt;
+        }
+
+        // Replace value, return old
+        constexpr Optional replace(T &&value) {
+            Optional old = take();
+            emplace(std::move(value));
+            return old;
+        }
+
+        constexpr Optional replace(T const &value) {
+            Optional old = take();
+            emplace(value);
+            return old;
+        }
+
+        // Flatten Optional<Optional<U>> to Optional<U>
+        // Only enabled when T is Optional<U>
+        template <typename U, typename = std::enable_if_t<std::is_same_v<T, Optional<U>>>>
+        constexpr Optional<U> flatten() && {
+            if (has_value_) {
+                return std::move(**this);
+            }
+            return Optional<U>{};
+        }
+
+        template <typename U, typename = std::enable_if_t<std::is_same_v<T, Optional<U>>>>
+        constexpr Optional<U> flatten() const & {
+            if (has_value_) {
+                return **this;
+            }
+            return Optional<U>{};
+        }
+
+        // Zip two Optionals into Optional<Pair>
+        template <typename U> constexpr auto zip(Optional<U> const &other) const {
+            if (has_value_ && other.has_value()) {
+                return Optional<std::pair<T, U>>{std::make_pair(**this, *other)};
+            }
+            return Optional<std::pair<T, U>>{};
+        }
+
+        template <typename U> constexpr auto zip(Optional<U> &&other) {
+            if (has_value_ && other.has_value()) {
+                return Optional<std::pair<T, U>>{std::make_pair(std::move(**this), std::move(*other))};
+            }
+            return Optional<std::pair<T, U>>{};
+        }
+
+        // Zip with function
+        template <typename U, typename F> constexpr auto zip_with(Optional<U> const &other, F &&f) const {
+            using R = std::invoke_result_t<F, T const &, U const &>;
+            if (has_value_ && other.has_value()) {
+                return Optional<R>{std::invoke(std::forward<F>(f), **this, *other)};
+            }
+            return Optional<R>{};
+        }
+
+        template <typename U, typename F> constexpr auto zip_with(Optional<U> &&other, F &&f) {
+            using R = std::invoke_result_t<F, T &&, U &&>;
+            if (has_value_ && other.has_value()) {
+                return Optional<R>{std::invoke(std::forward<F>(f), std::move(**this), std::move(*other))};
+            }
+            return Optional<R>{};
+        }
+
+        // Unwrap with default (requires Default trait)
+        template <typename U = T>
+        constexpr auto unwrap_or_default() && -> std::enable_if_t<std::is_default_constructible_v<U>, U> {
+            if (has_value_) {
+                return std::move(**this);
+            }
+            return U{};
+        }
+
+        template <typename U = T>
+        constexpr auto unwrap_or_default() const & -> std::enable_if_t<std::is_default_constructible_v<U>, U> {
+            if (has_value_) {
+                return **this;
+            }
+            return U{};
+        }
+
+        // Get or insert value
+        constexpr T &get_or_insert(T &&value) {
+            if (!has_value_) {
+                emplace(std::move(value));
+            }
+            return **this;
+        }
+
+        constexpr T &get_or_insert(T const &value) {
+            if (!has_value_) {
+                emplace(value);
+            }
+            return **this;
+        }
+
+        // Get or insert with function
+        template <typename F> constexpr T &get_or_insert_with(F &&f) {
+            if (!has_value_) {
+                emplace(std::invoke(std::forward<F>(f)));
+            }
+            return **this;
+        }
+
+        // Iterator support
+        using iterator = T *;
+        using const_iterator = T const *;
+
+        constexpr iterator begin() noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr const_iterator begin() const noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr const_iterator cbegin() const noexcept { return begin(); }
+
+        constexpr iterator end() noexcept { return has_value_ ? &**this + 1 : nullptr; }
+
+        constexpr const_iterator end() const noexcept { return has_value_ ? &**this + 1 : nullptr; }
+
+        constexpr const_iterator cend() const noexcept { return end(); }
+
+        // Slice access (returns pointer to single element or nullptr)
+        constexpr T *data() noexcept { return has_value_ ? &**this : nullptr; }
+
+        constexpr T const *data() const noexcept { return has_value_ ? &**this : nullptr; }
+
+        // Conversion methods - forward declaration of Result needed
+        template <typename E> constexpr auto ok_or(E &&err) const & -> Result<T, E>;
+        template <typename E> constexpr auto ok_or(E &&err) && -> Result<T, E>;
+        template <typename F>
+        constexpr auto ok_or_else(F &&f) const & -> Result<T, decltype(std::invoke(std::forward<F>(f)))>;
+        template <typename F>
+        constexpr auto ok_or_else(F &&f) && -> Result<T, decltype(std::invoke(std::forward<F>(f)))>;
+
         // Serialization support
         auto members() noexcept { return std::tie(has_value_, storage_); }
 
@@ -293,5 +516,23 @@ namespace datapod {
 
     // make_optional helper
     template <typename T> constexpr Optional<T> make_optional(T &&value) { return Optional<T>(std::forward<T>(value)); }
+
+    // Helper functions for Optional<T&> - copied() and cloned()
+    // For Optional<T*> or Optional<T&>, convert to Optional<T> by copying
+    template <typename T>
+    constexpr auto copied(Optional<T *> const &opt) -> std::enable_if_t<std::is_copy_constructible_v<T>, Optional<T>> {
+        if (opt.has_value()) {
+            return Optional<T>{**opt};
+        }
+        return nullopt;
+    }
+
+    template <typename T>
+    constexpr auto cloned(Optional<T *> const &opt) -> std::enable_if_t<std::is_copy_constructible_v<T>, Optional<T>> {
+        if (opt.has_value()) {
+            return Optional<T>{**opt};
+        }
+        return nullopt;
+    }
 
 } // namespace datapod

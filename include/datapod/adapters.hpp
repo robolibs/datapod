@@ -18,6 +18,9 @@
 #include "adapters/unique_ptr.hpp"
 #include "adapters/variant.hpp"
 
+// Conversions (must be after optional and result)
+#include "adapters/conversions.hpp"
+
 // Utility
 #include "core/none.hpp"
 
