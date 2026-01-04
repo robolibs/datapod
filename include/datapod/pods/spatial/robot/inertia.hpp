@@ -79,4 +79,44 @@ namespace datapod {
         }
     };
 
+    namespace inertia {
+        /// Create inertia from mass, center of mass, and inertia tensor components
+        inline Inertia make(double mass, const Point &com, double ixx, double ixy, double ixz, double iyy, double iyz,
+                            double izz) noexcept {
+            return Inertia{mass, com, ixx, ixy, ixz, iyy, iyz, izz};
+        }
+
+        /// Create inertia with diagonal tensor (no products of inertia)
+        inline Inertia diagonal(double mass, const Point &com, double ixx, double iyy, double izz) noexcept {
+            return Inertia{mass, com, ixx, 0.0, 0.0, iyy, 0.0, izz};
+        }
+
+        /// Create inertia for a point mass at center of mass
+        inline Inertia point_mass(double mass, const Point &com) noexcept {
+            return Inertia{mass, com, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        }
+
+        /// Create inertia for a uniform sphere
+        inline Inertia sphere(double mass, double radius) noexcept {
+            double i = 0.4 * mass * radius * radius; // (2/5) * m * r²
+            return Inertia{mass, Point{0.0, 0.0, 0.0}, i, 0.0, 0.0, i, 0.0, i};
+        }
+
+        /// Create inertia for a uniform box
+        inline Inertia box(double mass, double width, double height, double depth) noexcept {
+            double ixx = (mass / 12.0) * (height * height + depth * depth);
+            double iyy = (mass / 12.0) * (width * width + depth * depth);
+            double izz = (mass / 12.0) * (width * width + height * height);
+            return Inertia{mass, Point{0.0, 0.0, 0.0}, ixx, 0.0, 0.0, iyy, 0.0, izz};
+        }
+
+        /// Create inertia for a uniform cylinder (axis along z)
+        inline Inertia cylinder(double mass, double radius, double height) noexcept {
+            double ixx = (mass / 12.0) * (3.0 * radius * radius + height * height);
+            double iyy = ixx;
+            double izz = 0.5 * mass * radius * radius;
+            return Inertia{mass, Point{0.0, 0.0, 0.0}, ixx, 0.0, 0.0, iyy, 0.0, izz};
+        }
+    } // namespace inertia
+
 } // namespace datapod

@@ -74,4 +74,23 @@ namespace datapod {
         }
     };
 
+    namespace wrench {
+        /// Create a wrench from force and torque vectors
+        inline Wrench make(const Point &force, const Point &torque) noexcept { return Wrench{force, torque}; }
+
+        /// Create a wrench from force and torque components
+        inline Wrench make(double fx, double fy, double fz, double tx, double ty, double tz) noexcept {
+            return Wrench{Point{fx, fy, fz}, Point{tx, ty, tz}};
+        }
+
+        /// Create a wrench with only force (zero torque)
+        inline Wrench force(const Point &f) noexcept { return Wrench{f, Point{0.0, 0.0, 0.0}}; }
+
+        /// Create a wrench with only torque (zero force)
+        inline Wrench torque(const Point &t) noexcept { return Wrench{Point{0.0, 0.0, 0.0}, t}; }
+
+        /// Create a zero wrench
+        inline Wrench zero() noexcept { return Wrench{Point{0.0, 0.0, 0.0}, Point{0.0, 0.0, 0.0}}; }
+    } // namespace wrench
+
 } // namespace datapod

@@ -122,16 +122,16 @@ namespace datapod {
   - Namespace: `gaussian_rectangle` - Functions: `make(...)`
 
 ### Robotics (include/datapod/pods/spatial/robot/)
-- [ ] **Twist** - `include/datapod/pods/spatial/robot/twist.hpp`
-  - Namespace: `twist` - Functions: `make(linear, angular)`
-- [ ] **Wrench** - `include/datapod/pods/spatial/robot/wrench.hpp`
-  - Namespace: `wrench` - Functions: `make(force, torque)`
-- [ ] **Accel** - `include/datapod/pods/spatial/robot/accel.hpp`
-  - Namespace: `accel` - Functions: `make(linear, angular)`
-- [ ] **Odom** - `include/datapod/pods/spatial/robot/odom.hpp`
-  - Namespace: `odom` - Functions: `make(pose, twist)`
-- [ ] **Inertia** - `include/datapod/pods/spatial/robot/inertia.hpp`
-  - Namespace: `inertia` - Functions: `make(mass, center_of_mass, inertia_tensor)`
+- [x] **Twist** - `include/datapod/pods/spatial/robot/twist.hpp`
+  - Namespace: `twist` - Functions: `make(linear, angular)`, `linear()`, `angular()`, `zero()`
+- [x] **Wrench** - `include/datapod/pods/spatial/robot/wrench.hpp`
+  - Namespace: `wrench` - Functions: `make(force, torque)`, `force()`, `torque()`, `zero()`
+- [x] **Accel** - `include/datapod/pods/spatial/robot/accel.hpp`
+  - Namespace: `accel` - Functions: `make(linear, angular)`, `linear()`, `angular()`, `zero()`
+- [x] **Odom** - `include/datapod/pods/spatial/robot/odom.hpp`
+  - Namespace: `odom` - Functions: `make(pose, twist)`, `at_rest()`
+- [x] **Inertia** - `include/datapod/pods/spatial/robot/inertia.hpp`
+  - Namespace: `inertia` - Functions: `make()`, `diagonal()`, `point_mass()`, `sphere()`, `box()`, `cylinder()`
 
 ### Spatial Trees
 - [ ] **QuadTree** - `include/datapod/pods/spatial/quadtree.hpp`

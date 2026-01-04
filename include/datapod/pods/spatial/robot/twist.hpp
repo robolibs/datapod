@@ -53,4 +53,23 @@ namespace datapod {
         }
     };
 
+    namespace twist {
+        /// Create a twist from linear and angular velocities
+        inline Twist make(const Velocity &linear, const Velocity &angular) noexcept { return Twist{linear, angular}; }
+
+        /// Create a twist from velocity components
+        inline Twist make(double vx, double vy, double vz, double wx, double wy, double wz) noexcept {
+            return Twist{Velocity{vx, vy, vz}, Velocity{wx, wy, wz}};
+        }
+
+        /// Create a twist with only linear velocity (zero angular)
+        inline Twist linear(const Velocity &vel) noexcept { return Twist{vel, Velocity{0.0, 0.0, 0.0}}; }
+
+        /// Create a twist with only angular velocity (zero linear)
+        inline Twist angular(const Velocity &vel) noexcept { return Twist{Velocity{0.0, 0.0, 0.0}, vel}; }
+
+        /// Create a zero twist (stationary)
+        inline Twist zero() noexcept { return Twist{Velocity{0.0, 0.0, 0.0}, Velocity{0.0, 0.0, 0.0}}; }
+    } // namespace twist
+
 } // namespace datapod

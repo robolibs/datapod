@@ -62,4 +62,20 @@ namespace datapod {
         }
     };
 
+    namespace odom {
+        /// Create odometry from pose and twist
+        inline Odom make(const Pose &pose, const Twist &twist) noexcept { return Odom{pose, twist}; }
+
+        /// Create odometry from pose only (zero twist)
+        inline Odom make(const Pose &pose) noexcept {
+            return Odom{pose, Twist{Velocity{0.0, 0.0, 0.0}, Velocity{0.0, 0.0, 0.0}}};
+        }
+
+        /// Create odometry at rest (identity pose, zero twist)
+        inline Odom at_rest() noexcept {
+            return Odom{Pose{Point{0.0, 0.0, 0.0}, Quaternion{1.0, 0.0, 0.0, 0.0}},
+                        Twist{Velocity{0.0, 0.0, 0.0}, Velocity{0.0, 0.0, 0.0}}};
+        }
+    } // namespace odom
+
 } // namespace datapod

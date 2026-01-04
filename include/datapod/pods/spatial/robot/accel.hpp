@@ -53,4 +53,25 @@ namespace datapod {
         }
     };
 
+    namespace accel {
+        /// Create an accel from linear and angular accelerations
+        inline Accel make(const Acceleration &linear, const Acceleration &angular) noexcept {
+            return Accel{linear, angular};
+        }
+
+        /// Create an accel from acceleration components
+        inline Accel make(double ax, double ay, double az, double alpha_x, double alpha_y, double alpha_z) noexcept {
+            return Accel{Acceleration{ax, ay, az}, Acceleration{alpha_x, alpha_y, alpha_z}};
+        }
+
+        /// Create an accel with only linear acceleration (zero angular)
+        inline Accel linear(const Acceleration &acc) noexcept { return Accel{acc, Acceleration{0.0, 0.0, 0.0}}; }
+
+        /// Create an accel with only angular acceleration (zero linear)
+        inline Accel angular(const Acceleration &acc) noexcept { return Accel{Acceleration{0.0, 0.0, 0.0}, acc}; }
+
+        /// Create a zero accel
+        inline Accel zero() noexcept { return Accel{Acceleration{0.0, 0.0, 0.0}, Acceleration{0.0, 0.0, 0.0}}; }
+    } // namespace accel
+
 } // namespace datapod
