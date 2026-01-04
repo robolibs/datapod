@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.29] - 2026-01-04
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Refactor short namespace alias handling
+
+## [0.0.28] - 2026-01-04
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Refactor short namespace alias handling
+
 ## [0.0.27] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
