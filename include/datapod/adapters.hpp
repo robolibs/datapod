@@ -10,6 +10,7 @@
 
 // Core adapters
 #include "adapters/bitset.hpp"
+#include "adapters/cow.hpp"
 #include "adapters/either.hpp"
 #include "adapters/error.hpp"
 #include "adapters/lazy.hpp"
