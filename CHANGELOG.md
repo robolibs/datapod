@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.24] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Add Pin<T> to prevent moving of values
+- Add RefCell<T>, Ref<T>, and RefMut<T> for interior mutability
+- Add MaybeUninit<T> for uninitialized memory
+- Add SharedPtr<T> and WeakPtr<T>
+- Add Cow<T> for copy-on-write
+- Add NonNull<T> for null safety
+- Add Either<L,R> for binary choice
+- Add Lazy<T> for deferred computation
+- Add OnceCell<T> for one-time initialization
+- Add advanced Bitset operations
+- Add Tuple utility functions
+- Add UniquePtr array support and comparisons
+
 ## [0.0.23] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
