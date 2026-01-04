@@ -12,7 +12,7 @@ namespace datapod {
     namespace detail {
         template <typename T, std::size_t N> struct ToTupleImpl;
 
-        // Specializations for 0-20 fields (can be extended to 128 if needed)
+        // Specializations for 0-10 fields
         template <typename T> struct ToTupleImpl<T, 0> {
             static constexpr auto to_tuple(T &) { return std::tuple<>{}; }
         };
@@ -88,6 +88,18 @@ namespace datapod {
         };
 
     } // namespace detail
+
+} // namespace datapod
+
+// ============================================================================
+// EXTENDED REFLECTION: 11-64 fields (auto-generated)
+// ============================================================================
+// Datapod now supports automatic reflection for structs with up to 64 fields!
+// No need to manually write members() for most structs.
+// The arity detection (arity.hpp) supports up to 128 fields.
+#include "to_tuple_extended.hpp"
+
+namespace datapod {
 
     // ============================================================================
     // ENHANCED to_tuple - checks for members() first!
