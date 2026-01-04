@@ -217,6 +217,113 @@ namespace datapod {
             }
         }
 
+        // Count number of 1 bits (alias for count())
+        constexpr std::size_t count_ones() const noexcept { return count(); }
+
+        // Count number of 0 bits
+        constexpr std::size_t count_zeros() const noexcept { return Size - count(); }
+
+        // Count leading zeros from MSB
+        constexpr std::size_t leading_zeros() const noexcept {
+            if constexpr (Size == 0U) {
+                return 0U;
+            }
+
+            std::size_t total_lz = 0U;
+
+            // Start from the most significant block
+            for (std::size_t i = num_blocks; i-- > 0;) {
+                auto const block = (i == num_blocks - 1U) ? sanitized_last_block() : blocks_[i];
+
+                if (block != 0U) {
+                    // Found a non-zero block
+                    auto const lz = datapod::leading_zeros(block);
+
+                    // For the last block, adjust for unused bits
+                    if (i == num_blocks - 1U && (Size % bits_per_block) != 0U) {
+                        auto const unused_bits = bits_per_block - (Size % bits_per_block);
+                        return total_lz + (lz - unused_bits);
+                    }
+
+                    return total_lz + lz;
+                }
+
+                // This block is all zeros, count them
+                if (i == num_blocks - 1U && (Size % bits_per_block) != 0U) {
+                    total_lz += (Size % bits_per_block);
+                } else {
+                    total_lz += bits_per_block;
+                }
+            }
+
+            return Size; // All zeros
+        }
+
+        // Count trailing zeros from LSB
+        constexpr std::size_t trailing_zeros() const noexcept {
+            if constexpr (Size == 0U) {
+                return 0U;
+            }
+
+            // Start from the least significant block
+            for (std::size_t i = 0U; i < num_blocks; ++i) {
+                auto const block = blocks_[i];
+                if (block != 0U) {
+                    auto const tz = datapod::trailing_zeros(block);
+                    return i * bits_per_block + tz;
+                }
+            }
+            return Size; // All zeros
+        }
+
+        // Rotate bits left by n positions
+        constexpr Bitset &rotate_left(std::size_t n) noexcept {
+            if constexpr (Size == 0U) {
+                return *this;
+            }
+
+            n %= Size; // Normalize rotation amount
+            if (n == 0U) {
+                return *this;
+            }
+
+            // Save the bits that will wrap around
+            Bitset temp = (*this) >> (Size - n);
+            (*this) <<= n;
+            (*this) |= temp;
+
+            // Sanitize last block if needed
+            if constexpr ((Size % bits_per_block) != 0U) {
+                blocks_[num_blocks - 1U] = sanitized_last_block();
+            }
+
+            return *this;
+        }
+
+        // Rotate bits right by n positions
+        constexpr Bitset &rotate_right(std::size_t n) noexcept {
+            if constexpr (Size == 0U) {
+                return *this;
+            }
+
+            n %= Size; // Normalize rotation amount
+            if (n == 0U) {
+                return *this;
+            }
+
+            // Save the bits that will wrap around
+            Bitset temp = (*this) << (Size - n);
+            (*this) >>= n;
+            (*this) |= temp;
+
+            // Sanitize last block if needed
+            if constexpr ((Size % bits_per_block) != 0U) {
+                blocks_[num_blocks - 1U] = sanitized_last_block();
+            }
+
+            return *this;
+        }
+
         friend bool operator==(Bitset const &a, Bitset const &b) noexcept {
             for (std::size_t i = 0U; i != num_blocks - 1U; ++i) {
                 if (a.blocks_[i] != b.blocks_[i]) {
