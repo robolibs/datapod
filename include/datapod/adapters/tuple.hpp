@@ -108,6 +108,8 @@ namespace datapod {
 
         ~Tuple() { destruct(Indices); }
 
+        constexpr void swap(Tuple &other) noexcept { swap_impl(other, Indices); }
+
         template <std::size_t... Is> constexpr void move_construct_from_args(seq_t<Is...>, Ts &&...args) {
             (new (get_ptr<Is>()) tuple_element_t<Is, Ts...>(get_arg<Is>(std::forward<Ts>(args)...)), ...);
         }
@@ -130,6 +132,11 @@ namespace datapod {
 
         template <typename From, std::size_t... Is> constexpr void move_assign(From &&from, seq_t<Is...>) {
             ((get<Is>(*this) = std::move(get<Is>(from))), ...);
+        }
+
+        template <std::size_t... Is> constexpr void swap_impl(Tuple &other, seq_t<Is...>) noexcept {
+            using std::swap;
+            ((swap(get<Is>(*this), get<Is>(other))), ...);
         }
 
         template <typename T> constexpr void destruct(T &t) {
@@ -265,6 +272,65 @@ namespace datapod {
     template <typename Tuple>
     std::enable_if_t<is_tuple_v<decay_t<Tuple>>, bool> operator>=(Tuple const &a, Tuple const &b) {
         return !(a < b);
+    }
+
+    // swap for Tuple
+    template <typename... Ts> void swap(Tuple<Ts...> &a, Tuple<Ts...> &b) noexcept { a.swap(b); }
+
+    // tuple_cat - concatenate tuples
+    template <typename... Ts1, typename... Ts2>
+    constexpr auto tuple_cat(Tuple<Ts1...> const &t1, Tuple<Ts2...> const &t2) {
+        return [&]<std::size_t... I1, std::size_t... I2>(std::index_sequence<I1...>, std::index_sequence<I2...>) {
+            using result_type = Tuple<std::decay_t<Ts1>..., std::decay_t<Ts2>...>;
+            return result_type{std::decay_t<Ts1>(get<I1>(t1))..., std::decay_t<Ts2>(get<I2>(t2))...};
+        }(std::index_sequence_for<Ts1...>{}, std::index_sequence_for<Ts2...>{});
+    }
+
+    // tuple_cat with three or more tuples (recursive)
+    template <typename... Ts1, typename... Ts2, typename... Rest>
+    constexpr auto tuple_cat(Tuple<Ts1...> const &t1, Tuple<Ts2...> const &t2, Rest const &...rest) {
+        return tuple_cat(tuple_cat(t1, t2), rest...);
+    }
+
+    // make_from_tuple - construct object from tuple
+    template <typename T, typename... Ts, std::size_t... I>
+    constexpr T make_from_tuple_impl(Tuple<Ts...> const &t, std::index_sequence<I...>) {
+        return T{get<I>(t)...};
+    }
+
+    template <typename T, typename... Ts> constexpr T make_from_tuple(Tuple<Ts...> const &t) {
+        return make_from_tuple_impl<T>(t, std::index_sequence_for<Ts...>{});
+    }
+
+    // get by type (only if type appears exactly once)
+    namespace detail {
+        template <typename T, typename... Ts> constexpr std::size_t count_type() {
+            return ((std::is_same_v<T, Ts> ? 1 : 0) + ...);
+        }
+
+        template <typename T, typename First, typename... Rest> constexpr std::size_t find_type_index_impl() {
+            if constexpr (std::is_same_v<T, First>) {
+                return 0;
+            } else {
+                return 1 + find_type_index_impl<T, Rest...>();
+            }
+        }
+
+        template <typename T, typename... Ts> constexpr std::size_t find_type_index() {
+            return find_type_index_impl<T, Ts...>();
+        }
+    } // namespace detail
+
+    template <typename T, typename... Ts> constexpr T &get(Tuple<Ts...> &t) noexcept {
+        static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
+        constexpr std::size_t index = detail::find_type_index<T, Ts...>();
+        return get<index>(t);
+    }
+
+    template <typename T, typename... Ts> constexpr T const &get(Tuple<Ts...> const &t) noexcept {
+        static_assert(detail::count_type<T, Ts...>() == 1, "Type must appear exactly once in tuple");
+        constexpr std::size_t index = detail::find_type_index<T, Ts...>();
+        return get<index>(t);
     }
 
 } // namespace datapod
