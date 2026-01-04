@@ -392,4 +392,9 @@ namespace datapod {
         }
     };
 
+    namespace quadtree {
+        /// Placeholder for template container type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace quadtree
+
 } // namespace datapod

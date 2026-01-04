@@ -173,4 +173,9 @@ namespace datapod {
         inline bool operator!=(const Polygon &other) const noexcept { return !(*this == other); }
     };
 
+    namespace polygon {
+        /// Placeholder for container-like type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace polygon
+
 } // namespace datapod

@@ -24,4 +24,9 @@ namespace datapod {
         inline bool empty() const noexcept { return waypoints.empty(); }
     };
 
+    namespace path {
+        /// Placeholder for container-like type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace path
+
 } // namespace datapod

@@ -24,4 +24,9 @@ namespace datapod {
         inline bool empty() const noexcept { return states.empty(); }
     };
 
+    namespace trajectory {
+        /// Placeholder for container-like type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace trajectory
+
 } // namespace datapod

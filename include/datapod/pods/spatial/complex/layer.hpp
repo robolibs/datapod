@@ -221,4 +221,9 @@ namespace datapod {
         return grid;
     }
 
+    namespace layer {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace layer
+
 } // namespace datapod

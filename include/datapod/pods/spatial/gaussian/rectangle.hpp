@@ -22,5 +22,12 @@ namespace datapod {
             auto members() const noexcept { return std::tie(rectangle, uncertainty); }
         };
 
+        namespace rectangle {
+            /// Create a Gaussian rectangle from rectangle and uncertainty
+            inline Rectangle make(const datapod::Rectangle &r, double uncertainty) noexcept {
+                return Rectangle{r, uncertainty};
+            }
+        } // namespace rectangle
+
     } // namespace gaussian
 } // namespace datapod

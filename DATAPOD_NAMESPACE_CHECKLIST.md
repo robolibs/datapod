@@ -80,15 +80,15 @@ namespace datapod {
   - Namespace: `triangle` - Functions: `make(p1, p2, p3)`
 
 ### Complex Spatial (include/datapod/pods/spatial/complex/)
-- [ ] **Polygon** - `include/datapod/pods/spatial/complex/polygon.hpp`
+- [x] **Polygon** - `include/datapod/pods/spatial/complex/polygon.hpp`
   - Namespace: `polygon` - Functions: `unimplemented()` (container-like)
-- [ ] **Path** - `include/datapod/pods/spatial/complex/path.hpp`
+- [x] **Path** - `include/datapod/pods/spatial/complex/path.hpp`
   - Namespace: `path` - Functions: `unimplemented()` (container-like)
-- [ ] **Trajectory** - `include/datapod/pods/spatial/complex/trajectory.hpp`
+- [x] **Trajectory** - `include/datapod/pods/spatial/complex/trajectory.hpp`
   - Namespace: `trajectory` - Functions: `unimplemented()` (container-like)
-- [ ] **Grid** - `include/datapod/pods/spatial/complex/grid.hpp`
+- [x] **Grid** - `include/datapod/pods/spatial/complex/grid.hpp`
   - Namespace: `grid` - Functions: `unimplemented()` (template)
-- [ ] **Layer** - `include/datapod/pods/spatial/complex/layer.hpp`
+- [x] **Layer** - `include/datapod/pods/spatial/complex/layer.hpp`
   - Namespace: `layer` - Functions: `unimplemented()` (template)
 
 ### Geospatial
@@ -112,14 +112,14 @@ namespace datapod {
   - Namespace: `multi_polygon` - Functions: `unimplemented()` (container)
 
 ### Gaussian Types (include/datapod/pods/spatial/gaussian/)
-- [ ] **GaussianPoint** - `include/datapod/pods/spatial/gaussian/point.hpp`
-  - Namespace: `gaussian_point` - Functions: `make(mean, covariance)`
-- [ ] **GaussianBox** - `include/datapod/pods/spatial/gaussian/box.hpp`
-  - Namespace: `gaussian_box` - Functions: `make(...)`
-- [ ] **GaussianCircle** - `include/datapod/pods/spatial/gaussian/circle.hpp`
-  - Namespace: `gaussian_circle` - Functions: `make(...)`
-- [ ] **GaussianRectangle** - `include/datapod/pods/spatial/gaussian/rectangle.hpp`
-  - Namespace: `gaussian_rectangle` - Functions: `make(...)`
+- [x] **GaussianPoint** - `include/datapod/pods/spatial/gaussian/point.hpp`
+  - Namespace: `gaussian::point` - Functions: `make(point, uncertainty)`
+- [x] **GaussianBox** - `include/datapod/pods/spatial/gaussian/box.hpp`
+  - Namespace: `gaussian::box` - Functions: `make(box, uncertainty)`
+- [x] **GaussianCircle** - `include/datapod/pods/spatial/gaussian/circle.hpp`
+  - Namespace: `gaussian::circle` - Functions: `make(circle, uncertainty)`
+- [x] **GaussianRectangle** - `include/datapod/pods/spatial/gaussian/rectangle.hpp`
+  - Namespace: `gaussian::rectangle` - Functions: `make(rectangle, uncertainty)`
 
 ### Robotics (include/datapod/pods/spatial/robot/)
 - [x] **Twist** - `include/datapod/pods/spatial/robot/twist.hpp`
@@ -134,9 +134,9 @@ namespace datapod {
   - Namespace: `inertia` - Functions: `make()`, `diagonal()`, `point_mass()`, `sphere()`, `box()`, `cylinder()`
 
 ### Spatial Trees
-- [ ] **QuadTree** - `include/datapod/pods/spatial/quadtree.hpp`
+- [x] **QuadTree** - `include/datapod/pods/spatial/quadtree.hpp`
   - Namespace: `quadtree` - Functions: `unimplemented()` (template container)
-- [ ] **RTree** - `include/datapod/pods/spatial/rtree.hpp`
+- [x] **RTree** - `include/datapod/pods/spatial/rtree.hpp`
   - Namespace: `rtree` - Functions: `unimplemented()` (template container)
 
 ---

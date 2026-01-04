@@ -181,4 +181,9 @@ namespace datapod {
         }
     };
 
+    namespace grid {
+        /// Placeholder for template type (no useful make() function)
+        inline void unimplemented() {}
+    } // namespace grid
+
 } // namespace datapod

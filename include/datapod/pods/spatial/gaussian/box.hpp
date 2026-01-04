@@ -22,5 +22,10 @@ namespace datapod {
             auto members() const noexcept { return std::tie(box, uncertainty); }
         };
 
+        namespace box {
+            /// Create a Gaussian box from box and uncertainty
+            inline Box make(const datapod::Box &b, double uncertainty) noexcept { return Box{b, uncertainty}; }
+        } // namespace box
+
     } // namespace gaussian
 } // namespace datapod

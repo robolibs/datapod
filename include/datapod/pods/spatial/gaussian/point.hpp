@@ -22,5 +22,15 @@ namespace datapod {
             auto members() const noexcept { return std::tie(point, uncertainty); }
         };
 
+        namespace point {
+            /// Create a Gaussian point from point and uncertainty
+            inline Point make(const datapod::Point &pt, double uncertainty) noexcept { return Point{pt, uncertainty}; }
+
+            /// Create a Gaussian point from coordinates and uncertainty
+            inline Point make(double x, double y, double z, double uncertainty) noexcept {
+                return Point{datapod::Point{x, y, z}, uncertainty};
+            }
+        } // namespace point
+
     } // namespace gaussian
 } // namespace datapod

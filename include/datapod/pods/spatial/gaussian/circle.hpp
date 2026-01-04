@@ -22,5 +22,15 @@ namespace datapod {
             auto members() const noexcept { return std::tie(circle, uncertainty); }
         };
 
+        namespace circle {
+            /// Create a Gaussian circle from circle and uncertainty
+            inline Circle make(const datapod::Circle &c, double uncertainty) noexcept { return Circle{c, uncertainty}; }
+
+            /// Create a Gaussian circle from center, radius, and uncertainty
+            inline Circle make(const datapod::Point &center, double radius, double uncertainty) noexcept {
+                return Circle{datapod::Circle{center, radius}, uncertainty};
+            }
+        } // namespace circle
+
     } // namespace gaussian
 } // namespace datapod
