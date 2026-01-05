@@ -3,13 +3,12 @@
 #include <tuple>
 #include <utility>
 
+#include "datapod/core/unit.hpp"
 #include "error.hpp"
+#include "optional.hpp"
 #include "variant.hpp"
 
 namespace datapod {
-
-    // Forward declaration
-    template <typename T> class Optional;
 
     /**
      * @brief Result<T, E> - Type-safe error handling (POD when T and E are POD)
@@ -426,8 +425,282 @@ namespace datapod {
         inline bool operator!=(const Result &other) const noexcept { return !(*this == other); }
     };
 
+    /**
+     * @brief Result<void, E> - Specialization for operations with no return value
+     *
+     * Used for functions that can fail but don't return a meaningful value on success.
+     * Internally stores only the error (if any), making it more efficient than
+     * Result<Unit, E> while providing the same semantics.
+     *
+     * Example:
+     * ```cpp
+     * Result<void, Error> save_file(const String& path) {
+     *     if (failed) return Result<void, Error>::err(Error::io_error("write failed"));
+     *     return Result<void, Error>::ok();
+     * }
+     *
+     * auto result = save_file("/tmp/data.txt");
+     * if (result.is_ok()) {
+     *     // Success!
+     * } else {
+     *     std::cout << "Error: " << result.error().message.c_str() << std::endl;
+     * }
+     * ```
+     */
+    template <typename E> struct Result<void, E> {
+        Optional<E> error_;
+
+        auto members() noexcept { return std::tie(error_); }
+        auto members() const noexcept { return std::tie(error_); }
+
+        // Construction
+        Result() = default;
+
+        // Factory methods
+        static inline Result ok() noexcept {
+            Result r;
+            r.error_ = nullopt;
+            return r;
+        }
+
+        static inline Result err(const E &error) noexcept {
+            Result r;
+            r.error_ = error;
+            return r;
+        }
+
+        static inline Result err(E &&error) noexcept {
+            Result r;
+            r.error_ = std::move(error);
+            return r;
+        }
+
+        // Queries
+        inline bool is_ok() const noexcept { return !error_.has_value(); }
+
+        inline bool is_err() const noexcept { return error_.has_value(); }
+
+        inline explicit operator bool() const noexcept { return is_ok(); }
+
+        // Access - no value() for void specialization
+        inline E &error() & { return *error_; }
+
+        inline const E &error() const & { return *error_; }
+
+        inline E &&error() && { return std::move(*error_); }
+
+        // Monadic operations
+
+        // and_then: Chain operations that return Result
+        // If Ok, applies function f and returns its Result
+        // If Err(E), returns Err(E) unchanged
+        template <typename F> inline auto and_then(F &&f) & -> decltype(f()) {
+            using U = decltype(f());
+            if (is_ok()) {
+                return f();
+            }
+            return U::err(error());
+        }
+
+        template <typename F> inline auto and_then(F &&f) const & -> decltype(f()) {
+            using U = decltype(f());
+            if (is_ok()) {
+                return f();
+            }
+            return U::err(error());
+        }
+
+        template <typename F> inline auto and_then(F &&f) && -> decltype(f()) {
+            using U = decltype(f());
+            if (is_ok()) {
+                return f();
+            }
+            return U::err(std::move(*this).error());
+        }
+
+        // or_else: Recover from error
+        // If Ok, returns Ok unchanged
+        // If Err(E), applies function f and returns its Result
+        template <typename F> inline auto or_else(F &&f) & -> decltype(f(error())) {
+            if (is_err()) {
+                return f(error());
+            }
+            using U = decltype(f(error()));
+            return U::ok();
+        }
+
+        template <typename F> inline auto or_else(F &&f) const & -> decltype(f(error())) {
+            if (is_err()) {
+                return f(error());
+            }
+            using U = decltype(f(error()));
+            return U::ok();
+        }
+
+        template <typename F> inline auto or_else(F &&f) && -> decltype(f(std::move(*this).error())) {
+            if (is_err()) {
+                return f(std::move(*this).error());
+            }
+            using U = decltype(f(std::move(*this).error()));
+            return U::ok();
+        }
+
+        // map: Transform success (void -> U)
+        // If Ok, applies function f and returns Ok(U)
+        // If Err(E), returns Err(E) unchanged
+        template <typename F> inline auto map(F &&f) & -> Result<decltype(f()), E> {
+            using U = decltype(f());
+            if (is_ok()) {
+                return Result<U, E>::ok(f());
+            }
+            return Result<U, E>::err(error());
+        }
+
+        template <typename F> inline auto map(F &&f) const & -> Result<decltype(f()), E> {
+            using U = decltype(f());
+            if (is_ok()) {
+                return Result<U, E>::ok(f());
+            }
+            return Result<U, E>::err(error());
+        }
+
+        template <typename F> inline auto map(F &&f) && -> Result<decltype(f()), E> {
+            using U = decltype(f());
+            if (is_ok()) {
+                return Result<U, E>::ok(f());
+            }
+            return Result<U, E>::err(std::move(*this).error());
+        }
+
+        // map_err: Transform the error value
+        // If Ok, returns Ok unchanged
+        // If Err(E), applies function f to error and returns Err(F)
+        template <typename F> inline auto map_err(F &&f) & -> Result<void, decltype(f(error()))> {
+            using F_type = decltype(f(error()));
+            if (is_err()) {
+                return Result<void, F_type>::err(f(error()));
+            }
+            return Result<void, F_type>::ok();
+        }
+
+        template <typename F> inline auto map_err(F &&f) const & -> Result<void, decltype(f(error()))> {
+            using F_type = decltype(f(error()));
+            if (is_err()) {
+                return Result<void, F_type>::err(f(error()));
+            }
+            return Result<void, F_type>::ok();
+        }
+
+        template <typename F> inline auto map_err(F &&f) && -> Result<void, decltype(f(std::move(*this).error()))> {
+            using F_type = decltype(f(std::move(*this).error()));
+            if (is_err()) {
+                return Result<void, F_type>::err(f(std::move(*this).error()));
+            }
+            return Result<void, F_type>::ok();
+        }
+
+        // Query operations with predicates
+        template <typename F> inline bool is_ok_and(F &&predicate) const { return is_ok() && predicate(); }
+
+        template <typename F> inline bool is_err_and(F &&predicate) const { return is_err() && predicate(error()); }
+
+        // Inspect operations (for debugging/side effects)
+        template <typename F> inline const Result &inspect(F &&f) const & {
+            if (is_ok()) {
+                f();
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &inspect(F &&f) & {
+            if (is_ok()) {
+                f();
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&inspect(F &&f) && {
+            if (is_ok()) {
+                f();
+            }
+            return std::move(*this);
+        }
+
+        template <typename F> inline const Result &inspect_err(F &&f) const & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &inspect_err(F &&f) & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&inspect_err(F &&f) && {
+            if (is_err()) {
+                f(error());
+            }
+            return std::move(*this);
+        }
+
+        // Expect with custom messages
+        inline void expect(const char *msg) const {
+            if (is_err()) {
+                throw std::runtime_error(msg);
+            }
+        }
+
+        inline E &expect_err(const char *msg) & {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return error();
+        }
+
+        inline const E &expect_err(const char *msg) const & {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return error();
+        }
+
+        inline E &&expect_err(const char *msg) && {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return std::move(*this).error();
+        }
+
+        // Conversion to Optional (err only, no ok() since void has no value)
+        inline Optional<E> err() const & {
+            if (is_err()) {
+                return Optional<E>{error()};
+            }
+            return nullopt;
+        }
+
+        inline Optional<E> err() && {
+            if (is_err()) {
+                return Optional<E>{std::move(*this).error()};
+            }
+            return nullopt;
+        }
+
+        // Comparison
+        inline bool operator==(const Result &other) const noexcept { return error_ == other.error_; }
+
+        inline bool operator!=(const Result &other) const noexcept { return !(*this == other); }
+    };
+
     // Convenience type alias
     template <typename T> using Res = Result<T, Error>;
+
+    /// Convenience alias for Result<void, Error>
+    using VoidRes = Result<void, Error>;
 
     // Helper functions for copied/cloned (for Result<T*, E>)
     template <typename T, typename E>
