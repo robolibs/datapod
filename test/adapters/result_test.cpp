@@ -635,4 +635,124 @@ TEST_SUITE("Result") {
         CHECK(void_result.is_ok());
         CHECK(unit_result.is_ok());
     }
+
+    // ========================================================================
+    // result::ok() / result::Ok() and result::err() / result::Err() Tests
+    // ========================================================================
+
+    TEST_CASE("result::ok() - with value") {
+        Result<int, Error> r = result::ok(42);
+        CHECK(r.is_ok());
+        CHECK(r.value() == 42);
+    }
+
+    TEST_CASE("result::ok() - void") {
+        Result<void, Error> r = result::ok();
+        CHECK(r.is_ok());
+    }
+
+    TEST_CASE("result::err() - basic") {
+        Result<int, Error> r = result::err(Error::invalid_argument("test"));
+        CHECK(r.is_err());
+        CHECK(r.error().code == Error::INVALID_ARGUMENT);
+    }
+
+    TEST_CASE("result::err() - with void Result") {
+        Result<void, Error> r = result::err(Error::io_error("failed"));
+        CHECK(r.is_err());
+        CHECK(r.error().code == Error::IO_ERROR);
+    }
+
+    TEST_CASE("result::Ok() - PascalCase with value") {
+        Result<int, Error> r = result::Ok(42);
+        CHECK(r.is_ok());
+        CHECK(r.value() == 42);
+    }
+
+    TEST_CASE("result::Ok() - PascalCase void") {
+        Result<void, Error> r = result::Ok();
+        CHECK(r.is_ok());
+    }
+
+    TEST_CASE("result::Err() - PascalCase") {
+        Result<int, Error> r = result::Err(Error::not_found("missing"));
+        CHECK(r.is_err());
+        CHECK(r.error().code == Error::NOT_FOUND);
+    }
+
+    TEST_CASE("result::ok/err - in function return") {
+        auto divide = [](int a, int b) -> Result<int, Error> {
+            if (b == 0)
+                return result::err(Error::invalid_argument("div by zero"));
+            return result::ok(a / b);
+        };
+
+        auto r1 = divide(10, 2);
+        CHECK(r1.is_ok());
+        CHECK(r1.value() == 5);
+
+        auto r2 = divide(10, 0);
+        CHECK(r2.is_err());
+    }
+
+    TEST_CASE("result::ok/err - void function return") {
+        auto save = [](bool should_fail) -> Result<void, Error> {
+            if (should_fail)
+                return result::err(Error::io_error("write failed"));
+            return result::ok();
+        };
+
+        auto r1 = save(false);
+        CHECK(r1.is_ok());
+
+        auto r2 = save(true);
+        CHECK(r2.is_err());
+    }
+
+    TEST_CASE("result::Ok/Err - PascalCase in function return") {
+        auto parse = [](const String &s) -> Result<int, Error> {
+            if (s.empty())
+                return result::Err(Error::invalid_argument("empty"));
+            return result::Ok(42); // Simplified, just return 42
+        };
+
+        auto r1 = parse("hello");
+        CHECK(r1.is_ok());
+        CHECK(r1.value() == 42);
+
+        auto r2 = parse("");
+        CHECK(r2.is_err());
+    }
+
+    TEST_CASE("result::ok - with move-only type") {
+        struct MoveOnly {
+            int value;
+            MoveOnly(int v) : value(v) {}
+            MoveOnly(MoveOnly &&) = default;
+            MoveOnly &operator=(MoveOnly &&) = default;
+            MoveOnly(const MoveOnly &) = delete;
+            MoveOnly &operator=(const MoveOnly &) = delete;
+        };
+
+        Result<MoveOnly, Error> r = result::ok(MoveOnly{42});
+        CHECK(r.is_ok());
+        CHECK(r.value().value == 42);
+    }
+
+    TEST_CASE("result::ok - with string") {
+        Result<String, Error> r = result::ok(String{"hello"});
+        CHECK(r.is_ok());
+        CHECK(r.value() == "hello");
+    }
+
+    TEST_CASE("result::err - custom error type") {
+        struct MyError {
+            int code;
+            bool operator==(const MyError &o) const { return code == o.code; }
+        };
+
+        Result<int, MyError> r = result::err(MyError{42});
+        CHECK(r.is_err());
+        CHECK(r.error().code == 42);
+    }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.31] - 2026-01-05
+
+### <!-- 0 -->⛰️  Features
+
+- Introduce `result::ok/err` and `result::Ok/Err` factories
+
 ## [0.0.30] - 2026-01-05
 
 ### <!-- 0 -->⛰️  Features
