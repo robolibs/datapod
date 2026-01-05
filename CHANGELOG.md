@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.30] - 2026-01-05
+
+### <!-- 0 -->⛰️  Features
+
+- Add Result<void, E> specialization and Unit type
+
 ## [0.0.29] - 2026-01-04
 
 ### <!-- 1 -->🐛 Bug Fixes
