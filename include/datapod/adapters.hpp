@@ -32,6 +32,7 @@
 
 // Utility
 #include "core/none.hpp"
+#include "core/unit.hpp"
 
 // Optional short namespace alias (enabled with -DSHORT_NAMESPACE)
 #if defined(SHORT_NAMESPACE)

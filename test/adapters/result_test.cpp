@@ -387,4 +387,252 @@ TEST_SUITE("Result") {
         CHECK(err_val.is_err());
         CHECK(err_val.error().code == Error::INVALID_ARGUMENT);
     }
+
+    // ========================================================================
+    // Result<void, E> Specialization Tests
+    // ========================================================================
+
+    TEST_CASE("Result<void> - ok() construction") {
+        auto result = Result<void, Error>::ok();
+        CHECK(result.is_ok());
+        CHECK_FALSE(result.is_err());
+    }
+
+    TEST_CASE("Result<void> - err() construction") {
+        auto result = Result<void, Error>::err(Error{10, "Failed"});
+        CHECK(result.is_err());
+        CHECK_FALSE(result.is_ok());
+        CHECK(result.error().code == 10);
+        CHECK(result.error().message == "Failed");
+    }
+
+    TEST_CASE("Result<void> - operator bool") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        CHECK(static_cast<bool>(ok_result));
+        CHECK_FALSE(static_cast<bool>(err_result));
+    }
+
+    TEST_CASE("Result<void> - map") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        auto mapped_ok = ok_result.map([]() { return 42; });
+        CHECK(mapped_ok.is_ok());
+        CHECK(mapped_ok.value() == 42);
+
+        auto mapped_err = err_result.map([]() { return 42; });
+        CHECK(mapped_err.is_err());
+        CHECK(mapped_err.error().code == 1);
+    }
+
+    TEST_CASE("Result<void> - map_err") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{5, "original"});
+
+        auto mapped_ok = ok_result.map_err([](const Error &e) { return Error{e.code + 100, "Modified"}; });
+        CHECK(mapped_ok.is_ok());
+
+        auto mapped_err = err_result.map_err([](const Error &e) { return Error{e.code + 100, "Modified"}; });
+        CHECK(mapped_err.is_err());
+        CHECK(mapped_err.error().code == 105);
+    }
+
+    TEST_CASE("Result<void> - and_then") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "first error"});
+
+        auto next_op = []() -> Result<int, Error> { return Result<int, Error>::ok(42); };
+
+        auto chained_ok = ok_result.and_then(next_op);
+        CHECK(chained_ok.is_ok());
+        CHECK(chained_ok.value() == 42);
+
+        auto chained_err = err_result.and_then(next_op);
+        CHECK(chained_err.is_err());
+        CHECK(chained_err.error().message == "first error");
+    }
+
+    TEST_CASE("Result<void> - or_else") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        auto recover = [](const Error &) -> Result<void, Error> { return Result<void, Error>::ok(); };
+
+        auto recovered_ok = ok_result.or_else(recover);
+        CHECK(recovered_ok.is_ok());
+
+        auto recovered_err = err_result.or_else(recover);
+        CHECK(recovered_err.is_ok());
+    }
+
+    TEST_CASE("Result<void> - inspect") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        bool inspected = false;
+        ok_result.inspect([&]() { inspected = true; });
+        CHECK(inspected);
+
+        inspected = false;
+        err_result.inspect([&]() { inspected = true; });
+        CHECK_FALSE(inspected);
+    }
+
+    TEST_CASE("Result<void> - inspect_err") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        uint32_t inspected_code = 0;
+        err_result.inspect_err([&](const Error &e) { inspected_code = e.code; });
+        CHECK(inspected_code == 1);
+
+        inspected_code = 99;
+        ok_result.inspect_err([&](const Error &e) { inspected_code = e.code; });
+        CHECK(inspected_code == 99); // Should not be called
+    }
+
+    TEST_CASE("Result<void> - expect") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        CHECK_NOTHROW(ok_result.expect("should succeed"));
+        CHECK_THROWS_AS(err_result.expect("should fail"), std::runtime_error);
+    }
+
+    TEST_CASE("Result<void> - expect_err") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "test"});
+
+        CHECK(err_result.expect_err("should have error").code == 1);
+        CHECK_THROWS_AS(ok_result.expect_err("should fail"), std::runtime_error);
+    }
+
+    TEST_CASE("Result<void> - is_ok_and") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "error"});
+
+        CHECK(ok_result.is_ok_and([]() { return true; }));
+        CHECK_FALSE(ok_result.is_ok_and([]() { return false; }));
+        CHECK_FALSE(err_result.is_ok_and([]() { return true; }));
+    }
+
+    TEST_CASE("Result<void> - is_err_and") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "test"});
+
+        CHECK(err_result.is_err_and([](const Error &e) { return e.code == 1; }));
+        CHECK_FALSE(err_result.is_err_and([](const Error &e) { return e.code == 3; }));
+        CHECK_FALSE(ok_result.is_err_and([](const Error &) { return true; }));
+    }
+
+    TEST_CASE("Result<void> - err() to Optional") {
+        auto ok_result = Result<void, Error>::ok();
+        auto err_result = Result<void, Error>::err(Error{1, "test"});
+
+        auto opt_ok = ok_result.err();
+        CHECK_FALSE(opt_ok.has_value());
+
+        auto opt_err = err_result.err();
+        CHECK(opt_err.has_value());
+        CHECK(opt_err.value().code == 1);
+    }
+
+    TEST_CASE("Result<void> - equality") {
+        auto ok1 = Result<void, Error>::ok();
+        auto ok2 = Result<void, Error>::ok();
+        auto err1 = Result<void, Error>::err(Error{1, "msg"});
+        auto err2 = Result<void, Error>::err(Error{1, "msg"});
+        auto err3 = Result<void, Error>::err(Error{2, "other"});
+
+        CHECK(ok1 == ok2);
+        CHECK(err1 == err2);
+        CHECK(ok1 != err1);
+        CHECK(err1 != err3);
+    }
+
+    TEST_CASE("Result<void> - real-world example") {
+        auto save_file = [](const String &path) -> Result<void, Error> {
+            if (path.empty()) {
+                return Result<void, Error>::err(Error::invalid_argument("Empty path"));
+            }
+            if (path == "readonly") {
+                return Result<void, Error>::err(Error::io_error("Permission denied"));
+            }
+            // Simulate successful save
+            return Result<void, Error>::ok();
+        };
+
+        auto result1 = save_file("test.txt");
+        CHECK(result1.is_ok());
+
+        auto result2 = save_file("");
+        CHECK(result2.is_err());
+        CHECK(result2.error().code == Error::INVALID_ARGUMENT);
+
+        auto result3 = save_file("readonly");
+        CHECK(result3.is_err());
+        CHECK(result3.error().code == Error::IO_ERROR);
+    }
+
+    TEST_CASE("VoidRes alias") {
+        VoidRes result = VoidRes::ok();
+        CHECK(result.is_ok());
+
+        VoidRes err_result = VoidRes::err(Error::invalid_argument("test"));
+        CHECK(err_result.is_err());
+    }
+
+    // ========================================================================
+    // Unit Type Tests
+    // ========================================================================
+
+    TEST_CASE("Unit - basic properties") {
+        Unit u1;
+        Unit u2;
+
+        CHECK(u1 == u2);
+        CHECK_FALSE(u1 != u2);
+        CHECK_FALSE(u1 < u2);
+        CHECK(u1 <= u2);
+        CHECK_FALSE(u1 > u2);
+        CHECK(u1 >= u2);
+    }
+
+    TEST_CASE("Unit - Void alias") {
+        Void v1;
+        Unit u1;
+
+        // Void is just an alias for Unit
+        CHECK(sizeof(Void) == sizeof(Unit));
+        CHECK(v1 == u1);
+    }
+
+    TEST_CASE("Unit - global constant") { CHECK(unit == Unit{}); }
+
+    TEST_CASE("Result<Unit> - as alternative to Result<void>") {
+        auto operation = []() -> Result<Unit, Error> {
+            // Simulate some operation
+            return Result<Unit, Error>::ok(Unit{});
+        };
+
+        auto result = operation();
+        CHECK(result.is_ok());
+        CHECK(result.value() == unit);
+    }
+
+    TEST_CASE("Result<Unit> vs Result<void> - both work") {
+        // Using Result<void>
+        auto void_op = []() -> Result<void, Error> { return Result<void, Error>::ok(); };
+
+        // Using Result<Unit>
+        auto unit_op = []() -> Result<Unit, Error> { return Result<Unit, Error>::ok(unit); };
+
+        auto void_result = void_op();
+        auto unit_result = unit_op();
+
+        CHECK(void_result.is_ok());
+        CHECK(unit_result.is_ok());
+    }
 }
