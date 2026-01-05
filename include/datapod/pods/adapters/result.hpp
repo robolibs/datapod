@@ -722,8 +722,129 @@ namespace datapod {
     }
 
     namespace result {
-        /// Placeholder for template/container type (no useful make() function)
-        inline void unimplemented() {}
+
+        // ========================================================================
+        // Intermediate types for ergonomic Result construction
+        // ========================================================================
+
+        /**
+         * @brief Intermediate type for Ok values - converts to any Result<T, E>
+         *
+         * Used by ok() and Ok() to create a value that implicitly converts
+         * to the appropriate Result type based on context.
+         */
+        template <typename T> struct OkValue {
+            T value;
+
+            template <typename E> operator Result<T, E>() && { return Result<T, E>::ok(std::move(value)); }
+
+            template <typename E> operator Result<T, E>() const & { return Result<T, E>::ok(value); }
+        };
+
+        /**
+         * @brief Intermediate type for Ok<void> - converts to any Result<void, E>
+         *
+         * Used by ok() and Ok() with no arguments to create a void success
+         * that implicitly converts to Result<void, E>.
+         */
+        struct OkVoid {
+            template <typename E> operator Result<void, E>() && { return Result<void, E>::ok(); }
+
+            template <typename E> operator Result<void, E>() const & { return Result<void, E>::ok(); }
+        };
+
+        /**
+         * @brief Intermediate type for Err values - converts to any Result<T, E>
+         *
+         * Used by err() and Err() to create an error that implicitly converts
+         * to the appropriate Result type based on context.
+         */
+        template <typename E> struct ErrValue {
+            E error;
+
+            template <typename T> operator Result<T, E>() && { return Result<T, E>::err(std::move(error)); }
+
+            template <typename T> operator Result<T, E>() const & { return Result<T, E>::err(error); }
+        };
+
+        // ========================================================================
+        // Factory functions (snake_case style)
+        // ========================================================================
+
+        /**
+         * @brief Create an Ok value that converts to Result<T, E>
+         *
+         * Example:
+         * ```cpp
+         * Result<int, Error> divide(int a, int b) {
+         *     if (b == 0) return result::err(Error::invalid_argument("div by zero"));
+         *     return result::ok(a / b);
+         * }
+         * ```
+         */
+        template <typename T> inline OkValue<std::decay_t<T>> ok(T &&value) { return {std::forward<T>(value)}; }
+
+        /**
+         * @brief Create an Ok<void> value that converts to Result<void, E>
+         *
+         * Example:
+         * ```cpp
+         * Result<void, Error> save() {
+         *     if (failed) return result::err(Error::io_error("write failed"));
+         *     return result::ok();
+         * }
+         * ```
+         */
+        inline OkVoid ok() { return {}; }
+
+        /**
+         * @brief Create an Err value that converts to Result<T, E>
+         *
+         * Example:
+         * ```cpp
+         * Result<int, Error> parse(const String& s) {
+         *     if (s.empty()) return result::err(Error::invalid_argument("empty string"));
+         *     return result::ok(std::stoi(s.c_str()));
+         * }
+         * ```
+         */
+        template <typename E> inline ErrValue<std::decay_t<E>> err(E &&error) { return {std::forward<E>(error)}; }
+
+        // ========================================================================
+        // Factory functions (PascalCase style - Rust-like)
+        // ========================================================================
+
+        /**
+         * @brief Create an Ok value that converts to Result<T, E> (PascalCase variant)
+         *
+         * Example:
+         * ```cpp
+         * Result<int, Error> divide(int a, int b) {
+         *     if (b == 0) return result::Err(Error::invalid_argument("div by zero"));
+         *     return result::Ok(a / b);
+         * }
+         * ```
+         */
+        template <typename T> inline OkValue<std::decay_t<T>> Ok(T &&value) { return {std::forward<T>(value)}; }
+
+        /**
+         * @brief Create an Ok<void> value that converts to Result<void, E> (PascalCase variant)
+         */
+        inline OkVoid Ok() { return {}; }
+
+        /**
+         * @brief Create an Err value that converts to Result<T, E> (PascalCase variant)
+         *
+         * Example:
+         * ```cpp
+         * Result<int, Error> parse(const String& s) {
+         *     if (s.empty()) return result::Err(Error::invalid_argument("empty string"));
+         *     return result::Ok(std::stoi(s.c_str()));
+         * }
+         * ```
+         */
+        template <typename E> inline ErrValue<std::decay_t<E>> Err(E &&error) { return {std::forward<E>(error)}; }
+
     } // namespace result
 
 } // namespace datapod
