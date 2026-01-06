@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.32] - 2026-01-06
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Prevent buffer overflow in string operations
+
 ## [0.0.31] - 2026-01-05
 
 ### <!-- 0 -->⛰️  Features
