@@ -131,6 +131,8 @@ namespace datapod {
 
         size_type capacity() const noexcept { return is_sso_ ? SSO_SIZE : capacity_; }
 
+        size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() - 1; }
+
         // Operations
         void clear() noexcept {
             if (!is_sso_ && heap_data_ != nullptr) {
@@ -248,6 +250,10 @@ namespace datapod {
                 size_ = count;
                 data()[size_] = '\0';
             } else if (count > size_) {
+                // Check for overflow
+                if (count > max_size()) {
+                    throw std::length_error("BasicString::resize would exceed max_size()");
+                }
                 // Grow
                 reserve(count);
                 std::memset(data() + size_, ch, count - size_);
@@ -265,6 +271,11 @@ namespace datapod {
             if (count == 0)
                 return *this;
 
+            // Check for overflow
+            if (count > max_size() - size_) {
+                throw std::length_error("BasicString::append would exceed max_size()");
+            }
+
             size_type new_size = size_ + count;
             reserve(new_size);
             std::memcpy(data() + size_, s, count);
@@ -276,6 +287,11 @@ namespace datapod {
         BasicString &append(size_type count, char ch) {
             if (count == 0)
                 return *this;
+
+            // Check for overflow
+            if (count > max_size() - size_) {
+                throw std::length_error("BasicString::append would exceed max_size()");
+            }
 
             size_type new_size = size_ + count;
             reserve(new_size);
@@ -320,6 +336,11 @@ namespace datapod {
             if (count == 0)
                 return *this;
 
+            // Check for overflow
+            if (count > max_size() - size_) {
+                throw std::length_error("BasicString::insert would exceed max_size()");
+            }
+
             size_type new_size = size_ + count;
             reserve(new_size);
 
@@ -339,6 +360,11 @@ namespace datapod {
                 index = size_;
             if (count == 0)
                 return *this;
+
+            // Check for overflow
+            if (count > max_size() - size_) {
+                throw std::length_error("BasicString::insert would exceed max_size()");
+            }
 
             size_type new_size = size_ + count;
             reserve(new_size);
@@ -635,7 +661,14 @@ namespace datapod {
             if (count > size_ - pos)
                 count = size_ - pos;
 
-            // Calculate new size
+            // Calculate new size and check for overflow
+            if (count2 > count) {
+                // Growing: check if count2 - count would overflow when added to size_
+                size_type delta = count2 - count;
+                if (delta > max_size() - size_) {
+                    throw std::length_error("BasicString::replace would exceed max_size()");
+                }
+            }
             size_type new_size = size_ - count + count2;
 
             if (count2 == count) {
@@ -667,6 +700,13 @@ namespace datapod {
             if (count > size_ - pos)
                 count = size_ - pos;
 
+            // Check for overflow when growing
+            if (count2 > count) {
+                size_type delta = count2 - count;
+                if (delta > max_size() - size_) {
+                    throw std::length_error("BasicString::replace would exceed max_size()");
+                }
+            }
             size_type new_size = size_ - count + count2;
 
             if (count2 == count) {
