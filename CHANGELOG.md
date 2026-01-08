@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.34] - 2026-01-08
+
+### <!-- 0 -->⛰️  Features
+
+- Add Result monadic ternary operations
+- Add MPMC and SPMC lock-free ring buffer variants
+
 ## [0.0.33] - 2026-01-08
 
 ### <!-- 0 -->⛰️  Features
