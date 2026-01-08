@@ -262,6 +262,144 @@ namespace datapod {
             return std::move(*this);
         }
 
+        // Aliases for inspect/inspect_err (more intuitive naming)
+        template <typename F> inline const Result &if_ok(F &&f) const & { return inspect(std::forward<F>(f)); }
+
+        template <typename F> inline Result &if_ok(F &&f) & { return inspect(std::forward<F>(f)); }
+
+        template <typename F> inline Result &&if_ok(F &&f) && { return std::move(*this).inspect(std::forward<F>(f)); }
+
+        template <typename F> inline const Result &if_err(F &&f) const & { return inspect_err(std::forward<F>(f)); }
+
+        template <typename F> inline Result &if_err(F &&f) & { return inspect_err(std::forward<F>(f)); }
+
+        template <typename F> inline Result &&if_err(F &&f) && {
+            return std::move(*this).inspect_err(std::forward<F>(f));
+        }
+
+        // Match: Execute one of two callbacks based on Ok/Err (pattern matching style)
+        template <typename OkF, typename ErrF>
+        inline auto match(OkF &&ok_fn, ErrF &&err_fn) const & -> decltype(ok_fn(value())) {
+            if (is_ok()) {
+                return ok_fn(value());
+            } else {
+                return err_fn(error());
+            }
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto match(OkF &&ok_fn, ErrF &&err_fn) & -> decltype(ok_fn(value())) {
+            if (is_ok()) {
+                return ok_fn(value());
+            } else {
+                return err_fn(error());
+            }
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto match(OkF &&ok_fn, ErrF &&err_fn) && -> decltype(ok_fn(std::move(*this).value())) {
+            if (is_ok()) {
+                return ok_fn(std::move(*this).value());
+            } else {
+                return err_fn(std::move(*this).error());
+            }
+        }
+
+        // Tap: Execute callback on both Ok and Err (useful for logging/debugging)
+        template <typename F> inline const Result &tap(F &&f) const & {
+            if (is_ok()) {
+                f(value());
+            } else {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &tap(F &&f) & {
+            if (is_ok()) {
+                f(value());
+            } else {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&tap(F &&f) && {
+            if (is_ok()) {
+                f(value());
+            } else {
+                f(error());
+            }
+            return std::move(*this);
+        }
+
+        // Filter: Convert Ok to Err if predicate fails
+        template <typename F> inline Result filter(F &&predicate, const E &error_value) const & {
+            if (is_ok() && !predicate(value())) {
+                return Result::err(error_value);
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result filter(F &&predicate, E &&error_value) && {
+            if (is_ok() && !predicate(value())) {
+                return Result::err(std::move(error_value));
+            }
+            return std::move(*this);
+        }
+
+        // Zip: Combine two Results into Result<tuple<T, U>, E>
+        template <typename U> inline Result<std::tuple<T, U>, E> zip(const Result<U, E> &other) const & {
+            if (is_ok() && other.is_ok()) {
+                return Result<std::tuple<T, U>, E>::ok(std::make_tuple(value(), other.value()));
+            }
+            if (is_err()) {
+                return Result<std::tuple<T, U>, E>::err(error());
+            }
+            return Result<std::tuple<T, U>, E>::err(other.error());
+        }
+
+        template <typename U> inline Result<std::tuple<T, U>, E> zip(Result<U, E> &&other) && {
+            if (is_ok() && other.is_ok()) {
+                return Result<std::tuple<T, U>, E>::ok(
+                    std::make_tuple(std::move(*this).value(), std::move(other).value()));
+            }
+            if (is_err()) {
+                return Result<std::tuple<T, U>, E>::err(std::move(*this).error());
+            }
+            return Result<std::tuple<T, U>, E>::err(std::move(other).error());
+        }
+
+        // And: Return other if this is Ok, otherwise return this Err
+        template <typename U> inline Result<U, E> and_(const Result<U, E> &other) const & {
+            if (is_ok()) {
+                return other;
+            }
+            return Result<U, E>::err(error());
+        }
+
+        template <typename U> inline Result<U, E> and_(Result<U, E> &&other) && {
+            if (is_ok()) {
+                return std::move(other);
+            }
+            return Result<U, E>::err(std::move(*this).error());
+        }
+
+        // Or: Return this if Ok, otherwise return other
+        inline Result or_(const Result &other) const & {
+            if (is_ok()) {
+                return *this;
+            }
+            return other;
+        }
+
+        inline Result or_(Result &&other) && {
+            if (is_ok()) {
+                return std::move(*this);
+            }
+            return std::move(other);
+        }
+
         // Expect with custom messages
         inline T &expect(const char *msg) & {
             if (is_err()) {
@@ -645,6 +783,135 @@ namespace datapod {
                 f(error());
             }
             return std::move(*this);
+        }
+
+        // Aliases for inspect/inspect_err (more intuitive naming)
+        template <typename F> inline const Result &if_ok(F &&f) const & { return inspect(std::forward<F>(f)); }
+
+        template <typename F> inline Result &if_ok(F &&f) & { return inspect(std::forward<F>(f)); }
+
+        template <typename F> inline Result &&if_ok(F &&f) && { return std::move(*this).inspect(std::forward<F>(f)); }
+
+        template <typename F> inline const Result &if_err(F &&f) const & { return inspect_err(std::forward<F>(f)); }
+
+        template <typename F> inline Result &if_err(F &&f) & { return inspect_err(std::forward<F>(f)); }
+
+        template <typename F> inline Result &&if_err(F &&f) && {
+            return std::move(*this).inspect_err(std::forward<F>(f));
+        }
+
+        // Match: Execute one of two callbacks based on Ok/Err (pattern matching style)
+        template <typename OkF, typename ErrF>
+        inline auto match(OkF &&ok_fn, ErrF &&err_fn) const & -> decltype(ok_fn()) {
+            if (is_ok()) {
+                return ok_fn();
+            } else {
+                return err_fn(error());
+            }
+        }
+
+        template <typename OkF, typename ErrF> inline auto match(OkF &&ok_fn, ErrF &&err_fn) & -> decltype(ok_fn()) {
+            if (is_ok()) {
+                return ok_fn();
+            } else {
+                return err_fn(error());
+            }
+        }
+
+        template <typename OkF, typename ErrF> inline auto match(OkF &&ok_fn, ErrF &&err_fn) && -> decltype(ok_fn()) {
+            if (is_ok()) {
+                return ok_fn();
+            } else {
+                return err_fn(std::move(*this).error());
+            }
+        }
+
+        // Tap: Execute callback on Err (no value for void, so only error tapping makes sense)
+        template <typename F> inline const Result &tap(F &&f) const & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &tap(F &&f) & {
+            if (is_err()) {
+                f(error());
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result &&tap(F &&f) && {
+            if (is_err()) {
+                f(error());
+            }
+            return std::move(*this);
+        }
+
+        // Filter: Convert Ok to Err if predicate fails
+        template <typename F> inline Result filter(F &&predicate, const E &error_value) const & {
+            if (is_ok() && !predicate()) {
+                return Result::err(error_value);
+            }
+            return *this;
+        }
+
+        template <typename F> inline Result filter(F &&predicate, E &&error_value) && {
+            if (is_ok() && !predicate()) {
+                return Result::err(std::move(error_value));
+            }
+            return std::move(*this);
+        }
+
+        // Zip: Combine two Results into Result<U, E> (void doesn't contribute to tuple)
+        template <typename U> inline Result<U, E> zip(const Result<U, E> &other) const & {
+            if (is_ok() && other.is_ok()) {
+                return Result<U, E>::ok(other.value());
+            }
+            if (is_err()) {
+                return Result<U, E>::err(error());
+            }
+            return Result<U, E>::err(other.error());
+        }
+
+        template <typename U> inline Result<U, E> zip(Result<U, E> &&other) && {
+            if (is_ok() && other.is_ok()) {
+                return Result<U, E>::ok(std::move(other).value());
+            }
+            if (is_err()) {
+                return Result<U, E>::err(std::move(*this).error());
+            }
+            return Result<U, E>::err(std::move(other).error());
+        }
+
+        // And: Return other if this is Ok, otherwise return this Err
+        template <typename U> inline Result<U, E> and_(const Result<U, E> &other) const & {
+            if (is_ok()) {
+                return other;
+            }
+            return Result<U, E>::err(error());
+        }
+
+        template <typename U> inline Result<U, E> and_(Result<U, E> &&other) && {
+            if (is_ok()) {
+                return std::move(other);
+            }
+            return Result<U, E>::err(std::move(*this).error());
+        }
+
+        // Or: Return this if Ok, otherwise return other
+        inline Result or_(const Result &other) const & {
+            if (is_ok()) {
+                return *this;
+            }
+            return other;
+        }
+
+        inline Result or_(Result &&other) && {
+            if (is_ok()) {
+                return std::move(*this);
+            }
+            return std::move(other);
         }
 
         // Expect with custom messages
