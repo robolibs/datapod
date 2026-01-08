@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.33] - 2026-01-08
+
+### <!-- 0 -->⛰️  Features
+
+- Implement additional monadic Result methods
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Add internet connectivity check to Makefile
+
 ## [0.0.32] - 2026-01-06
 
 ### <!-- 1 -->🐛 Bug Fixes
