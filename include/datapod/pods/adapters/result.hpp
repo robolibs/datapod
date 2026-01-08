@@ -400,6 +400,42 @@ namespace datapod {
             return std::move(other);
         }
 
+        // Ternary-style operations
+
+        // then: Ternary operator - return ok_value if Ok, err_value if Err
+        template <typename U> inline U then(const U &ok_value, const U &err_value) const {
+            return is_ok() ? ok_value : err_value;
+        }
+
+        template <typename U> inline U then(U &&ok_value, U &&err_value) const {
+            return is_ok() ? std::forward<U>(ok_value) : std::forward<U>(err_value);
+        }
+
+        // then_with: Ternary operator with lazy evaluation (alias for match)
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) const & -> decltype(ok_fn(value())) {
+            return match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) & -> decltype(ok_fn(value())) {
+            return match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) && -> decltype(ok_fn(std::move(*this).value())) {
+            return std::move(*this).match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        // select: Another alias for ternary (more SQL-like)
+        template <typename U> inline U select(const U &ok_value, const U &err_value) const {
+            return then(ok_value, err_value);
+        }
+
+        template <typename U> inline U select(U &&ok_value, U &&err_value) const {
+            return then(std::forward<U>(ok_value), std::forward<U>(err_value));
+        }
+
         // Expect with custom messages
         inline T &expect(const char *msg) & {
             if (is_err()) {
@@ -912,6 +948,42 @@ namespace datapod {
                 return std::move(*this);
             }
             return std::move(other);
+        }
+
+        // Ternary-style operations
+
+        // then: Ternary operator - return ok_value if Ok, err_value if Err
+        template <typename U> inline U then(const U &ok_value, const U &err_value) const {
+            return is_ok() ? ok_value : err_value;
+        }
+
+        template <typename U> inline U then(U &&ok_value, U &&err_value) const {
+            return is_ok() ? std::forward<U>(ok_value) : std::forward<U>(err_value);
+        }
+
+        // then_with: Ternary operator with lazy evaluation (alias for match)
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) const & -> decltype(ok_fn()) {
+            return match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) & -> decltype(ok_fn()) {
+            return match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        template <typename OkF, typename ErrF>
+        inline auto then_with(OkF &&ok_fn, ErrF &&err_fn) && -> decltype(ok_fn()) {
+            return std::move(*this).match(std::forward<OkF>(ok_fn), std::forward<ErrF>(err_fn));
+        }
+
+        // select: Another alias for ternary (more SQL-like)
+        template <typename U> inline U select(const U &ok_value, const U &err_value) const {
+            return then(ok_value, err_value);
+        }
+
+        template <typename U> inline U select(U &&ok_value, U &&err_value) const {
+            return then(std::forward<U>(ok_value), std::forward<U>(err_value));
         }
 
         // Expect with custom messages

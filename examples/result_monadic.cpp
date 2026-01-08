@@ -236,5 +236,109 @@ int main() {
     std::cout << "\nPipeline 2: " << pipeline("NaN", "result.txt").c_str() << std::endl;
     std::cout << "\nPipeline 3: " << pipeline("42", "readonly.txt").c_str() << std::endl;
 
+    // ========================================================================
+    // Example 12: Ternary operators - then()
+    // ========================================================================
+    std::cout << "\n--- Example 12: Ternary Operator - then() ---" << std::endl;
+
+    auto r_ok = divide(20, 4);
+    auto r_err = divide(20, 0);
+
+    // Simple ternary with values
+    int value1 = r_ok.then(100, -1);
+    int value2 = r_err.then(100, -1);
+    std::cout << "Ok result: " << value1 << std::endl;  // 100
+    std::cout << "Err result: " << value2 << std::endl; // -1
+
+    // Ternary with strings
+    String msg1 = r_ok.then(String("Success!"), String("Failed!"));
+    String msg2 = r_err.then(String("Success!"), String("Failed!"));
+    std::cout << "Ok message: " << msg1.c_str() << std::endl;
+    std::cout << "Err message: " << msg2.c_str() << std::endl;
+
+    // ========================================================================
+    // Example 13: Ternary with lazy evaluation - then_with()
+    // ========================================================================
+    std::cout << "\n--- Example 13: Ternary with Lazy Evaluation - then_with() ---" << std::endl;
+
+    auto expensive_ok = []() {
+        std::cout << "  [Computing expensive Ok value...]" << std::endl;
+        return 999;
+    };
+
+    auto expensive_err = []() {
+        std::cout << "  [Computing expensive Err value...]" << std::endl;
+        return -999;
+    };
+
+    // Only the needed branch is evaluated
+    std::cout << "For Ok result:" << std::endl;
+    int lazy1 = divide(20, 4).then_with([](int x) { return x * 10; }, [](const Error &e) { return -1; });
+    std::cout << "Result: " << lazy1 << std::endl;
+
+    std::cout << "\nFor Err result:" << std::endl;
+    int lazy2 = divide(20, 0).then_with([](int x) { return x * 10; }, [](const Error &e) { return -1; });
+    std::cout << "Result: " << lazy2 << std::endl;
+
+    // ========================================================================
+    // Example 14: select() - SQL-like ternary
+    // ========================================================================
+    std::cout << "\n--- Example 14: select() - SQL-like Ternary ---" << std::endl;
+
+    auto status1 = divide(100, 10).select(String("PASS"), String("FAIL"));
+    auto status2 = divide(100, 0).select(String("PASS"), String("FAIL"));
+
+    std::cout << "Test 1: " << status1.c_str() << std::endl;
+    std::cout << "Test 2: " << status2.c_str() << std::endl;
+
+    // ========================================================================
+    // Example 15: Ternary in expressions
+    // ========================================================================
+    std::cout << "\n--- Example 15: Ternary in Expressions ---" << std::endl;
+
+    // Use ternary directly in calculations
+    int total = divide(50, 5).then(10, 0) + divide(30, 3).then(20, 0) + divide(10, 2).then(5, 0);
+    std::cout << "Total (all success): " << total << std::endl; // 10 + 20 + 5 = 35
+
+    int partial = divide(50, 5).then(10, 0) + divide(30, 0).then(20, 0) + divide(10, 2).then(5, 0);
+    std::cout << "Total (one failure): " << partial << std::endl; // 10 + 0 + 5 = 15
+
+    // ========================================================================
+    // Example 16: Ternary with Result<void, E>
+    // ========================================================================
+    std::cout << "\n--- Example 16: Ternary with Result<void, E> ---" << std::endl;
+
+    auto save_status1 = save_to_file("output.txt", 42).then(String("SAVED"), String("FAILED"));
+    auto save_status2 = save_to_file("readonly.txt", 42).then(String("SAVED"), String("FAILED"));
+
+    std::cout << "Save 1: " << save_status1.c_str() << std::endl;
+    std::cout << "Save 2: " << save_status2.c_str() << std::endl;
+
+    // ========================================================================
+    // Example 17: Comparison - ternary vs match vs if_ok/if_err
+    // ========================================================================
+    std::cout << "\n--- Example 17: Comparison of Approaches ---" << std::endl;
+
+    auto result = divide(42, 6);
+
+    // Approach 1: Classic ternary (eager evaluation)
+    String approach1 = result.then(String("OK"), String("ERROR"));
+    std::cout << "Ternary: " << approach1.c_str() << std::endl;
+
+    // Approach 2: Lazy ternary (then_with)
+    String approach2 = result.then_with([](int x) { return String("OK: ") + std::to_string(x).c_str(); },
+                                        [](const Error &e) { return String("ERROR: ") + e.message; });
+    std::cout << "Lazy ternary: " << approach2.c_str() << std::endl;
+
+    // Approach 3: Match (same as then_with)
+    String approach3 = result.match([](int x) { return String("OK: ") + std::to_string(x).c_str(); },
+                                    [](const Error &e) { return String("ERROR: ") + e.message; });
+    std::cout << "Match: " << approach3.c_str() << std::endl;
+
+    // Approach 4: if_ok/if_err (side effects only)
+    result.if_ok([](int x) { std::cout << "Side effect: OK: " << x << std::endl; }).if_err([](const Error &e) {
+        std::cout << "Side effect: ERROR: " << e.message.c_str() << std::endl;
+    });
+
     return 0;
 }
