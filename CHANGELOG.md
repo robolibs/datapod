@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.35] - 2026-01-12
+
+### <!-- 0 -->⛰️  Features
+
+- Add Bytes type for raw binary data handling
+
 ## [0.0.34] - 2026-01-08
 
 ### <!-- 0 -->⛰️  Features
