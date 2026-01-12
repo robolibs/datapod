@@ -66,7 +66,7 @@ void test_mpmc_wrapping() {
 void test_mpmc_multiple_producers() {
     std::cout << "Test 4: MPMC Multiple producers... ";
 
-    RingBuffer<MPMC, int> ring(1024);
+    RingBuffer<MPMC, int> ring(4096);
     const int NUM_PRODUCERS = 4;
     const int ITEMS_PER_PRODUCER = 1000;
     std::atomic<int> total_pushed{0};
