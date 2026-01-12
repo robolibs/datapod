@@ -18,6 +18,7 @@
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/sequential/vector.hpp"
 #include "datapod/reflection/for_each_field.hpp"
+#include "datapod/type_hash/primitive_type_id.hpp"
 #include "datapod/type_hash/type_name.hpp"
 
 namespace datapod {
@@ -36,7 +37,7 @@ namespace datapod {
         return type_hash(T{}, h, done);
     }
 
-    // Base template - handles pointers, integrals, scalars, and aggregates
+    // Base template - handles pointers, primitives, scalars, and aggregates
     template <typename T> hash_t type_hash(T const &el, hash_t h, Map<hash_t, unsigned> &done) noexcept {
         using Type = decay_t<T>;
 
@@ -54,9 +55,11 @@ namespace datapod {
             } else {
                 return type_hash(std::remove_pointer_t<Type>{}, hash_combine(h, hash("pointer")), done);
             }
-        } else if constexpr (std::is_integral_v<Type>) {
-            return hash_combine(h, hash("i"), sizeof(Type));
+        } else if constexpr (has_primitive_type_id_v<Type>) {
+            // Use stable primitive type IDs for all known primitive types
+            return hash_combine(h, primitive_type_id<Type>::id);
         } else if constexpr (std::is_scalar_v<Type>) {
+            // Fallback for unknown scalar types (e.g., enums)
             return hash_combine(h, type2str_hash<T>());
         } else {
             static_assert(to_tuple_works_v<Type>, "Please implement custom type hash.");

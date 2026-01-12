@@ -228,3 +228,89 @@ TEST_CASE("type_hash - integrals of different sizes") {
     CHECK(h2 != h3);
     CHECK(h3 != h4);
 }
+
+// ============================================================================
+// Primitive Type ID Tests
+// ============================================================================
+
+TEST_CASE("primitive_type_id - all primitives have IDs") {
+    // Signed integers
+    CHECK(has_primitive_type_id_v<i8>);
+    CHECK(has_primitive_type_id_v<i16>);
+    CHECK(has_primitive_type_id_v<i32>);
+    CHECK(has_primitive_type_id_v<i64>);
+
+    // Unsigned integers
+    CHECK(has_primitive_type_id_v<u8>);
+    CHECK(has_primitive_type_id_v<u16>);
+    CHECK(has_primitive_type_id_v<u32>);
+    CHECK(has_primitive_type_id_v<u64>);
+
+    // Size types
+    CHECK(has_primitive_type_id_v<usize>);
+    CHECK(has_primitive_type_id_v<isize>);
+
+    // Floating point
+    CHECK(has_primitive_type_id_v<f32>);
+    CHECK(has_primitive_type_id_v<f64>);
+
+    // Characters
+    CHECK(has_primitive_type_id_v<char8>);
+    CHECK(has_primitive_type_id_v<char16>);
+    CHECK(has_primitive_type_id_v<char32>);
+
+    // Boolean
+    CHECK(has_primitive_type_id_v<boolean>);
+}
+
+TEST_CASE("primitive_type_id - signed vs unsigned have different IDs") {
+    CHECK(primitive_type_id<i8>::id != primitive_type_id<u8>::id);
+    CHECK(primitive_type_id<i16>::id != primitive_type_id<u16>::id);
+    CHECK(primitive_type_id<i32>::id != primitive_type_id<u32>::id);
+    CHECK(primitive_type_id<i64>::id != primitive_type_id<u64>::id);
+}
+
+TEST_CASE("type_hash - signed vs unsigned have different hashes") {
+    // This was a bug before: signed and unsigned of same size had same hash
+    CHECK(type_hash<i8>() != type_hash<u8>());
+    CHECK(type_hash<i16>() != type_hash<u16>());
+    CHECK(type_hash<i32>() != type_hash<u32>());
+    CHECK(type_hash<i64>() != type_hash<u64>());
+}
+
+TEST_CASE("type_hash - all datapod primitives have unique hashes") {
+    Set<hash_t> hashes;
+
+    // Collect all primitive hashes
+    hashes.insert(type_hash<i8>());
+    hashes.insert(type_hash<i16>());
+    hashes.insert(type_hash<i32>());
+    hashes.insert(type_hash<i64>());
+    hashes.insert(type_hash<u8>());
+    hashes.insert(type_hash<u16>());
+    hashes.insert(type_hash<u32>());
+    hashes.insert(type_hash<u64>());
+    hashes.insert(type_hash<f32>());
+    hashes.insert(type_hash<f64>());
+    hashes.insert(type_hash<char8>());
+    hashes.insert(type_hash<char16>());
+    hashes.insert(type_hash<char32>());
+    hashes.insert(type_hash<boolean>());
+
+    // All 14 primitives should have unique hashes
+    CHECK(hashes.size() == 14);
+}
+
+TEST_CASE("primitive_type_id - names are correct") {
+    CHECK(std::string_view(primitive_type_id<i8>::name) == "i8");
+    CHECK(std::string_view(primitive_type_id<i16>::name) == "i16");
+    CHECK(std::string_view(primitive_type_id<i32>::name) == "i32");
+    CHECK(std::string_view(primitive_type_id<i64>::name) == "i64");
+    CHECK(std::string_view(primitive_type_id<u8>::name) == "u8");
+    CHECK(std::string_view(primitive_type_id<u16>::name) == "u16");
+    CHECK(std::string_view(primitive_type_id<u32>::name) == "u32");
+    CHECK(std::string_view(primitive_type_id<u64>::name) == "u64");
+    CHECK(std::string_view(primitive_type_id<f32>::name) == "f32");
+    CHECK(std::string_view(primitive_type_id<f64>::name) == "f64");
+    CHECK(std::string_view(primitive_type_id<boolean>::name) == "boolean");
+}

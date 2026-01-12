@@ -61,6 +61,7 @@
 
 // Serialization system
 #include "serialization/buf.hpp"
+#include "serialization/match.hpp"
 #include "serialization/serialize.hpp"
 #include "serialization/serialized_size.hpp"
 

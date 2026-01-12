@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.36] - 2026-01-12
+
+### <!-- 0 -->⛰️  Features
+
+- Add type-safe dispatch mechanism for serialized data
+- Introduce stable primitive type IDs for type hashing
+
 ## [0.0.35] - 2026-01-12
 
 ### <!-- 0 -->⛰️  Features

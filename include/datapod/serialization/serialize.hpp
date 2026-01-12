@@ -783,4 +783,44 @@ namespace datapod {
         return copy_from_potentially_unaligned<M, T>(std::string_view(data, size));
     }
 
+    // =============================================================================
+    // Peek Type Hash (for dynamic dispatch)
+    // =============================================================================
+
+    /// Peek at the type hash in a versioned buffer without deserializing
+    /// Use this to determine the type before calling deserialize
+    template <Mode M = Mode::WITH_VERSION> hash_t peek_type_hash(ByteBuf const &buf) {
+        static_assert(is_mode_enabled(M, Mode::WITH_VERSION), "peek_type_hash requires WITH_VERSION mode");
+
+        datapod::usize offset = 0;
+
+        // Skip integrity checksum if present
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            offset += sizeof(hash_t);
+        }
+
+        verify(buf.size() >= offset + sizeof(hash_t), "buffer too small to contain type hash");
+
+        hash_t stored;
+        std::memcpy(&stored, buf.data() + offset, sizeof(hash_t));
+        return convert_endian<M>(stored);
+    }
+
+    /// Overload for raw pointer
+    template <Mode M = Mode::WITH_VERSION> hash_t peek_type_hash(datapod::u8 const *data, datapod::usize size) {
+        static_assert(is_mode_enabled(M, Mode::WITH_VERSION), "peek_type_hash requires WITH_VERSION mode");
+
+        datapod::usize offset = 0;
+
+        if constexpr (is_mode_enabled(M, Mode::WITH_INTEGRITY)) {
+            offset += sizeof(hash_t);
+        }
+
+        verify(size >= offset + sizeof(hash_t), "buffer too small to contain type hash");
+
+        hash_t stored;
+        std::memcpy(&stored, data + offset, sizeof(hash_t));
+        return convert_endian<M>(stored);
+    }
+
 } // namespace datapod
