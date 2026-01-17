@@ -598,17 +598,16 @@ TEST_SUITE("Cstring") {
     TEST_CASE("Members") {
         SUBCASE("MembersFunction") {
             Cstring s("test");
-            auto [h, st] = s.members();
-            // Just verify it compiles and returns something
-            (void)h;
-            (void)st;
+            auto tup = s.members();
+            // members() returns empty tuple to avoid UB from exposing union members
+            // Serialization is handled by specialized serialize/deserialize functions
+            CHECK(std::tuple_size_v<decltype(tup)> == 0);
         }
 
         SUBCASE("ConstMembers") {
             const Cstring s("test");
-            auto [h, st] = s.members();
-            (void)h;
-            (void)st;
+            auto tup = s.members();
+            CHECK(std::tuple_size_v<decltype(tup)> == 0);
         }
     }
 

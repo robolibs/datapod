@@ -470,8 +470,12 @@ namespace datapod {
         template <typename F>
         constexpr auto ok_or_else(F &&f) && -> Result<T, decltype(std::invoke(std::forward<F>(f)))>;
 
-        // Serialization support
-        auto members() noexcept { return std::tie(has_value_, storage_); }
+        // Reflection support - only expose has_value_, not raw storage.
+        // When has_value_ is false, storage_ contains uninitialized data.
+        // Serialization is handled by specialized serialize/deserialize functions
+        // in datapod/serialization/serialize.hpp that properly check has_value().
+        auto members() noexcept { return std::tie(has_value_); }
+        auto members() const noexcept { return std::tie(has_value_); }
 
       private:
         // Helper trait to detect Optional types

@@ -2,6 +2,7 @@
 #include <datapod/types/types.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <ostream>
@@ -105,6 +106,18 @@ namespace datapod {
 
         const_reference operator[](size_type pos) const noexcept { return data()[pos]; }
 
+        reference at(size_type pos) {
+            if (pos >= size_)
+                throw std::out_of_range("BasicString::at");
+            return data()[pos];
+        }
+
+        const_reference at(size_type pos) const {
+            if (pos >= size_)
+                throw std::out_of_range("BasicString::at");
+            return data()[pos];
+        }
+
         reference front() noexcept { return data()[0]; }
 
         const_reference front() const noexcept { return data()[0]; }
@@ -132,6 +145,18 @@ namespace datapod {
         size_type capacity() const noexcept { return is_sso_ ? SSO_SIZE : capacity_; }
 
         size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() - 1; }
+
+        void shrink_to_fit() {
+            if (is_sso_ || size_ == capacity_)
+                return; // Already optimal
+
+            // Reallocate to exact size + 1 for null terminator
+            char *new_data = new char[size_ + 1];
+            std::memcpy(new_data, data(), size_ + 1);
+            delete[] heap_data_;
+            heap_data_ = new_data;
+            capacity_ = size_;
+        }
 
         // Operations
         void clear() noexcept {
@@ -211,17 +236,102 @@ namespace datapod {
             return 0;
         }
 
+        int compare(size_type pos1, size_type count1, BasicString const &str) const {
+            return substr(pos1, count1).compare(str);
+        }
+
+        int compare(size_type pos1, size_type count1, BasicString const &str, size_type pos2, size_type count2) const {
+            return substr(pos1, count1).compare(str.substr(pos2, count2));
+        }
+
+        int compare(char const *s) const { return compare(std::string_view(s)); }
+
+        int compare(size_type pos1, size_type count1, char const *s) const {
+            return substr(pos1, count1).compare(std::string_view(s));
+        }
+
+        int compare(size_type pos1, size_type count1, char const *s, size_type count2) const {
+            return substr(pos1, count1).compare(std::string_view(s, count2));
+        }
+
+        int compare(std::string_view sv) const noexcept {
+            size_type min_size = std::min(size_, sv.size());
+            int result = std::memcmp(data(), sv.data(), min_size);
+            if (result != 0) {
+                return result;
+            }
+            if (size_ < sv.size()) {
+                return -1;
+            }
+            if (size_ > sv.size()) {
+                return 1;
+            }
+            return 0;
+        }
+
         bool operator==(BasicString const &other) const noexcept { return compare(other) == 0; }
+        bool operator==(char const *other) const noexcept { return compare(std::string_view(other)) == 0; }
+        bool operator==(std::string_view other) const noexcept { return compare(other) == 0; }
 
         bool operator!=(BasicString const &other) const noexcept { return compare(other) != 0; }
+        bool operator!=(char const *other) const noexcept { return compare(std::string_view(other)) != 0; }
+        bool operator!=(std::string_view other) const noexcept { return compare(other) != 0; }
 
         bool operator<(BasicString const &other) const noexcept { return compare(other) < 0; }
+        bool operator<(char const *other) const noexcept { return compare(std::string_view(other)) < 0; }
+        bool operator<(std::string_view other) const noexcept { return compare(other) < 0; }
 
         bool operator<=(BasicString const &other) const noexcept { return compare(other) <= 0; }
+        bool operator<=(char const *other) const noexcept { return compare(std::string_view(other)) <= 0; }
+        bool operator<=(std::string_view other) const noexcept { return compare(other) <= 0; }
 
         bool operator>(BasicString const &other) const noexcept { return compare(other) > 0; }
+        bool operator>(char const *other) const noexcept { return compare(std::string_view(other)) > 0; }
+        bool operator>(std::string_view other) const noexcept { return compare(other) > 0; }
 
         bool operator>=(BasicString const &other) const noexcept { return compare(other) >= 0; }
+        bool operator>=(char const *other) const noexcept { return compare(std::string_view(other)) >= 0; }
+        bool operator>=(std::string_view other) const noexcept { return compare(other) >= 0; }
+
+        // Modifiers - assign
+        BasicString &assign(BasicString const &str) {
+            if (this != &str) {
+                clear();
+                append(str);
+            }
+            return *this;
+        }
+
+        BasicString &assign(BasicString const &str, size_type subpos, size_type sublen = npos) {
+            clear();
+            if (subpos > str.size_)
+                subpos = str.size_;
+            size_type count = (sublen == npos || subpos + sublen > str.size_) ? str.size_ - subpos : sublen;
+            return append(str.data() + subpos, count);
+        }
+
+        BasicString &assign(char const *s) { return assign(s, std::strlen(s)); }
+
+        BasicString &assign(char const *s, size_type count) {
+            clear();
+            return append(s, count);
+        }
+
+        BasicString &assign(std::string_view sv) { return assign(sv.data(), sv.size()); }
+
+        BasicString &assign(size_type count, char ch) {
+            clear();
+            resize(count, ch);
+            return *this;
+        }
+
+        BasicString &assign(std::initializer_list<char> ilist) {
+            clear();
+            reserve(ilist.size());
+            for (char ch : ilist)
+                push_back(ch);
+            return *this;
+        }
 
         // Modifiers - reserve and resize
         void reserve(size_type new_cap) {
@@ -740,6 +850,14 @@ namespace datapod {
             return BasicString(data() + pos, actual_count);
         }
 
+        size_type copy(char *dest, size_type count, size_type pos = 0) const {
+            if (pos > size_)
+                throw std::out_of_range("BasicString::copy");
+            size_type copy_count = std::min(count, size_ - pos);
+            std::memcpy(dest, data() + pos, copy_count);
+            return copy_count;
+        }
+
         // Formatting - string concatenation via operator+
         friend BasicString operator+(BasicString const &lhs, BasicString const &rhs) {
             BasicString result;
@@ -795,6 +913,22 @@ namespace datapod {
             BasicString result;
             result.reserve(lhs.size() + rhs.size());
             result.append(lhs);
+            result.append(rhs);
+            return result;
+        }
+
+        friend BasicString operator+(BasicString const &lhs, std::string const &rhs) {
+            BasicString result;
+            result.reserve(lhs.size() + rhs.size());
+            result.append(lhs);
+            result.append(rhs.data(), rhs.size());
+            return result;
+        }
+
+        friend BasicString operator+(std::string const &lhs, BasicString const &rhs) {
+            BasicString result;
+            result.reserve(lhs.size() + rhs.size());
+            result.append(lhs.data(), lhs.size());
             result.append(rhs);
             return result;
         }
@@ -879,13 +1013,363 @@ namespace datapod {
         const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
         const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
+        // Iterator-based insert methods
+        iterator insert(const_iterator pos, char ch) {
+            size_type index = static_cast<size_type>(pos - begin());
+            insert(index, 1, ch);
+            return begin() + index;
+        }
+
+        iterator insert(const_iterator pos, size_type count, char ch) {
+            size_type index = static_cast<size_type>(pos - begin());
+            insert(index, count, ch);
+            return begin() + index;
+        }
+
+        iterator insert(const_iterator pos, std::initializer_list<char> ilist) {
+            size_type index = static_cast<size_type>(pos - begin());
+            reserve(size_ + ilist.size());
+            std::memmove(data() + index + ilist.size(), data() + index, size_ - index + 1);
+            size_t i = 0;
+            for (char ch : ilist) {
+                data()[index + i++] = ch;
+            }
+            size_ += ilist.size();
+            return begin() + index;
+        }
+
+        template <typename InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) {
+            size_type index = static_cast<size_type>(pos - begin());
+            size_type count = 0;
+            InputIt it = first;
+            while (it != last) {
+                ++count;
+                ++it;
+            }
+            reserve(size_ + count);
+            std::memmove(data() + index + count, data() + index, size_ - index + 1);
+            size_t i = 0;
+            it = first;
+            while (it != last) {
+                data()[index + i++] = *it;
+                ++it;
+            }
+            size_ += count;
+            return begin() + index;
+        }
+
+        // Iterator-based erase methods
+        iterator erase(const_iterator pos) {
+            size_type index = static_cast<size_type>(pos - begin());
+            erase(index, 1);
+            return begin() + index;
+        }
+
+        iterator erase(const_iterator first, const_iterator last) {
+            size_type index = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            erase(index, count);
+            return begin() + index;
+        }
+
+        // Iterator-based replace methods
+        BasicString &replace(const_iterator first, const_iterator last, BasicString const &str) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            return replace(pos, count, str.data(), str.size());
+        }
+
+        BasicString &replace(const_iterator first, const_iterator last, char const *s, size_type count2) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            return replace(pos, count, s, count2);
+        }
+
+        BasicString &replace(const_iterator first, const_iterator last, char const *s) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            return replace(pos, count, s, std::strlen(s));
+        }
+
+        BasicString &replace(const_iterator first, const_iterator last, size_type count2, char ch) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            return replace(pos, count, count2, ch);
+        }
+
+        BasicString &replace(const_iterator first, const_iterator last, std::string_view sv) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            return replace(pos, count, sv.data(), sv.size());
+        }
+
+        BasicString &replace(const_iterator first, const_iterator last, std::initializer_list<char> ilist) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            erase(pos, count);
+            insert(begin() + pos, ilist);
+            return *this;
+        }
+
+        template <typename InputIt>
+        BasicString &replace(const_iterator first, const_iterator last, InputIt first2, InputIt last2) {
+            size_type pos = static_cast<size_type>(first - begin());
+            size_type count = static_cast<size_type>(last - first);
+            erase(pos, count);
+            insert(begin() + pos, first2, last2);
+            return *this;
+        }
+
+        // Convenience methods - whitespace handling
+        BasicString &trim() { return trim_right().trim_left(); }
+
+        BasicString &trim_left() {
+            size_type start = find_first_not_of(" \t\n\r\f\v");
+            if (start == npos) {
+                clear();
+            } else if (start > 0) {
+                erase(0, start);
+            }
+            return *this;
+        }
+
+        BasicString &trim_right() {
+            size_type end = find_last_not_of(" \t\n\r\f\v");
+            if (end == npos) {
+                clear();
+            } else if (end + 1 < size_) {
+                erase(end + 1);
+            }
+            return *this;
+        }
+
+        BasicString trimmed() const {
+            BasicString result(*this);
+            result.trim();
+            return result;
+        }
+
+        BasicString trimmed_left() const {
+            BasicString result(*this);
+            result.trim_left();
+            return result;
+        }
+
+        BasicString trimmed_right() const {
+            BasicString result(*this);
+            result.trim_right();
+            return result;
+        }
+
+        // Convenience methods - case conversion
+        BasicString &to_lower() {
+            for (size_type i = 0; i < size_; ++i) {
+                if (data()[i] >= 'A' && data()[i] <= 'Z') {
+                    data()[i] = static_cast<char>(data()[i] + 32);
+                }
+            }
+            return *this;
+        }
+
+        BasicString &to_upper() {
+            for (size_type i = 0; i < size_; ++i) {
+                if (data()[i] >= 'a' && data()[i] <= 'z') {
+                    data()[i] = static_cast<char>(data()[i] - 32);
+                }
+            }
+            return *this;
+        }
+
+        BasicString to_lower_copy() const {
+            BasicString result(*this);
+            result.to_lower();
+            return result;
+        }
+
+        BasicString to_upper_copy() const {
+            BasicString result(*this);
+            result.to_upper();
+            return result;
+        }
+
+        // Convenience methods - repeat and reverse
+        BasicString &repeat(size_type count) {
+            if (count <= 1)
+                return *this;
+            if (count == 0) {
+                clear();
+                return *this;
+            }
+
+            BasicString original(*this);
+            for (size_type i = 1; i < count; ++i) {
+                append(original);
+            }
+            return *this;
+        }
+
+        static BasicString repeated(BasicString const &str, size_type count) {
+            BasicString result;
+            result.reserve(str.size() * count);
+            for (size_type i = 0; i < count; ++i) {
+                result.append(str);
+            }
+            return result;
+        }
+
+        BasicString &reverse() {
+            for (size_type i = 0; i < size_ / 2; ++i) {
+                std::swap(data()[i], data()[size_ - 1 - i]);
+            }
+            return *this;
+        }
+
+        BasicString reversed() const {
+            BasicString result(*this);
+            result.reverse();
+            return result;
+        }
+
+        // Convenience methods - truncate and pad
+        BasicString &truncate(size_type max_len, char ellipsis = '\0') {
+            if (size_ > max_len) {
+                if (ellipsis != '\0' && max_len >= 3) {
+                    resize(max_len);
+                    data()[max_len - 3] = '.';
+                    data()[max_len - 2] = '.';
+                    data()[max_len - 1] = '.';
+                } else {
+                    resize(max_len);
+                }
+            }
+            return *this;
+        }
+
+        BasicString &pad_left(size_type total_width, char fill_char = ' ') {
+            if (size_ >= total_width)
+                return *this;
+            insert(0, total_width - size_, fill_char);
+            return *this;
+        }
+
+        BasicString &pad_right(size_type total_width, char fill_char = ' ') {
+            if (size_ >= total_width)
+                return *this;
+            append(total_width - size_, fill_char);
+            return *this;
+        }
+
+        // Convenience methods - capitalize and first/last char access helpers
+        BasicString &capitalize() {
+            if (!empty()) {
+                to_lower();
+                if (data()[0] >= 'a' && data()[0] <= 'z') {
+                    data()[0] = static_cast<char>(data()[0] - 32);
+                }
+            }
+            return *this;
+        }
+
+        BasicString capitalized() const {
+            BasicString result(*this);
+            result.capitalize();
+            return result;
+        }
+
+        // Convenience methods - slice (Python-style)
+        BasicString slice(int64_t start, int64_t end = std::numeric_limits<int64_t>::max()) const {
+            // Handle negative indices
+            int64_t adj_start = start;
+            int64_t adj_end = end;
+
+            if (adj_start < 0)
+                adj_start += static_cast<int64_t>(size_);
+            if (adj_end < 0)
+                adj_end += static_cast<int64_t>(size_);
+
+            // Clamp to valid range
+            if (adj_start < 0)
+                adj_start = 0;
+            if (adj_end < 0)
+                adj_end = 0;
+            if (adj_start > static_cast<int64_t>(size_))
+                adj_start = static_cast<int64_t>(size_);
+            if (adj_end > static_cast<int64_t>(size_))
+                adj_end = static_cast<int64_t>(size_);
+
+            if (adj_start >= adj_end)
+                return BasicString();
+
+            return BasicString(data() + adj_start, static_cast<size_type>(adj_end - adj_start));
+        }
+
+        // Convenience methods - chomp (remove trailing newline)
+        BasicString &chomp() {
+            while (!empty() && (back() == '\n' || back() == '\r')) {
+                pop_back();
+            }
+            return *this;
+        }
+
+        BasicString chomped() const {
+            BasicString result(*this);
+            result.chomp();
+            return result;
+        }
+
+        // Convenience methods - count occurrences
+        size_type count(std::string_view sv) const noexcept {
+            if (sv.empty())
+                return 0;
+
+            size_type result = 0;
+            size_type pos = 0;
+            while ((pos = find(sv, pos)) != npos) {
+                ++result;
+                pos += sv.size();
+            }
+            return result;
+        }
+
+        size_type count(char ch) const noexcept {
+            size_type result = 0;
+            for (size_type i = 0; i < size_; ++i) {
+                if (data()[i] == ch)
+                    ++result;
+            }
+            return result;
+        }
+
+        // Convenience methods - join static method (for arrays of strings)
+        template <typename It> static BasicString join(It first, It last, std::string_view separator = "") {
+            BasicString result;
+            if (first != last) {
+                result.append(*first);
+                ++first;
+                for (; first != last; ++first) {
+                    result.append(separator);
+                    result.append(*first);
+                }
+            }
+            return result;
+        }
+
+        // Convenience methods - split by delimiter (returns Vector<BasicString>)
+        // Note: This requires Vector to be defined. Placeholder for now.
+        // Vector<BasicString> split(std::string_view delim) const;
+
         // Stream output
         friend std::ostream &operator<<(std::ostream &os, BasicString const &str) {
             return os << std::string_view(str.data(), str.size());
         }
 
-        // Serialization support - expose all data members including union
-        auto members() noexcept { return std::tie(size_, is_sso_, sso_data_, heap_data_, capacity_); }
+        // Reflection support - expose only non-union members to avoid UB.
+        // The union-based SSO means only one of sso_data_ or heap_data_/capacity_
+        // is active at a time. Exposing inactive union members via std::tie() is UB.
+        // String content serialization is handled by specialized functions in
+        // datapod/serialization/serialize.hpp that properly use size()/data().
+        auto members() noexcept { return std::tie(size_, is_sso_); }
+        auto members() const noexcept { return std::tie(size_, is_sso_); }
 
       private:
         size_type size_;

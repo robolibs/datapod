@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.37] - 2026-01-17
+
+### <!-- 0 -->⛰️  Features
+
+- Enhance BasicString to be on par with std::string and add modern conveniences
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Improve reflection and serialization of PODs
+
 ## [0.0.36] - 2026-01-12
 
 ### <!-- 0 -->⛰️  Features
