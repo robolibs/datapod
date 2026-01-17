@@ -19,6 +19,7 @@
 #include "datapod/pods/matrix/tensor.hpp"
 #include "datapod/pods/matrix/vector.hpp"
 #include "datapod/pods/sequential/array.hpp"
+#include "datapod/pods/sequential/cstring.hpp"
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/sequential/vector.hpp"
 #include "datapod/reflection/for_each_field.hpp"
@@ -63,6 +64,7 @@ namespace datapod {
     // Helper to detect our container types
     template <typename T> struct is_container : std::false_type {};
     template <> struct is_container<String> : std::true_type {};
+    template <> struct is_container<Cstring> : std::true_type {};
     template <typename T> struct is_container<Vector<T>> : std::true_type {};
     template <typename T> struct is_container<Optional<T>> : std::true_type {};
     template <typename A, typename B> struct is_container<Pair<A, B>> : std::true_type {};
@@ -106,6 +108,18 @@ namespace datapod {
         // Write length
         auto const len = value.size();
         serialize<M>(ctx, const_cast<datapod::usize &>(len));
+
+        // Write string data
+        if (len > 0) {
+            ctx.write(value.data(), len, 1);
+        }
+    }
+
+    // Serialize Cstring (uses union-based SSO, so needs special handling to avoid UB)
+    template <Mode M, typename Ctx> void serialize(Ctx &ctx, Cstring &value) {
+        // Write length as u32 (Cstring uses u32 for size)
+        auto const len = value.size();
+        serialize<M>(ctx, const_cast<datapod::u32 &>(len));
 
         // Write string data
         if (len > 0) {
@@ -409,6 +423,23 @@ namespace datapod {
             value = String(temp.data(), len);
         } else {
             value = String();
+        }
+    }
+
+    // Deserialize Cstring (uses union-based SSO, so needs special handling to avoid UB)
+    template <Mode M, typename Ctx> void deserialize(Ctx &ctx, Cstring &value) {
+        // Read length as u32 (Cstring uses u32 for size)
+        datapod::u32 len = 0;
+        deserialize<M>(ctx, len);
+
+        // Read string data
+        if (len > 0) {
+            Vector<char> temp(len + 1);
+            ctx.read(temp.data(), len);
+            temp[len] = '\0';
+            value = Cstring(temp.data(), len);
+        } else {
+            value = Cstring();
         }
     }
 

@@ -1363,8 +1363,13 @@ namespace datapod {
             return os << std::string_view(str.data(), str.size());
         }
 
-        // Serialization support - expose all data members including union
-        auto members() noexcept { return std::tie(size_, is_sso_, sso_data_, heap_data_, capacity_); }
+        // Reflection support - expose only non-union members to avoid UB.
+        // The union-based SSO means only one of sso_data_ or heap_data_/capacity_
+        // is active at a time. Exposing inactive union members via std::tie() is UB.
+        // String content serialization is handled by specialized functions in
+        // datapod/serialization/serialize.hpp that properly use size()/data().
+        auto members() noexcept { return std::tie(size_, is_sso_); }
+        auto members() const noexcept { return std::tie(size_, is_sso_); }
 
       private:
         size_type size_;

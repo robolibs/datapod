@@ -484,9 +484,14 @@ namespace datapod {
             }
         };
 
-        // Serialization support - expose union members
-        auto members() noexcept { return std::tie(h_, s_); }
-        auto members() const noexcept { return std::tie(h_, s_); }
+        // NOTE: GenericCstring intentionally does NOT expose union members via members().
+        // The union-based SSO means only one of h_ (heap) or s_ (stack) is active at a time.
+        // Exposing both via std::tie() would be undefined behavior (reading inactive members).
+        // Serialization is handled by specialized serialize/deserialize functions in
+        // datapod/serialization/serialize.hpp that properly use size()/data().
+        // We return an empty tuple to indicate this type shouldn't be reflected field-by-field.
+        auto members() noexcept { return std::tie(); }
+        auto members() const noexcept { return std::tie(); }
 
         union {
             heap h_;
