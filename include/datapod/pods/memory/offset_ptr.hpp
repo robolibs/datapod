@@ -47,8 +47,26 @@ namespace datapod {
             return *this;
         }
 
-        OffsetPtr(OffsetPtr &&) noexcept = default;
-        OffsetPtr &operator=(OffsetPtr &&) noexcept = default;
+        OffsetPtr(OffsetPtr &&other) noexcept {
+            if (other.offset_ == NULLPTR_OFFSET) {
+                offset_ = NULLPTR_OFFSET;
+            } else {
+                set(other.get());
+                other.offset_ = NULLPTR_OFFSET;
+            }
+        }
+
+        OffsetPtr &operator=(OffsetPtr &&other) noexcept {
+            if (this != &other) {
+                if (other.offset_ == NULLPTR_OFFSET) {
+                    offset_ = NULLPTR_OFFSET;
+                } else {
+                    set(other.get());
+                    other.offset_ = NULLPTR_OFFSET;
+                }
+            }
+            return *this;
+        }
 
         OffsetPtr &operator=(std::nullptr_t) noexcept {
             offset_ = NULLPTR_OFFSET;

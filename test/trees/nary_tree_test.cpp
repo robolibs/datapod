@@ -82,7 +82,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Build multi-level tree") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|     |
         //   5 6     7
@@ -165,7 +165,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Remove subtree") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|
         //   5 6
@@ -224,7 +224,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Height calculation") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /
         //   5
@@ -244,7 +244,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Subtree size") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|
         //   5 6
@@ -264,7 +264,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Preorder traversal") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|
         //   5 6
@@ -288,7 +288,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Postorder traversal") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|
         //   5 6
@@ -312,7 +312,7 @@ TEST_SUITE("NaryTree") {
 
     TEST_CASE("Levelorder traversal") {
         //        1
-        //      / | \
+        /*      / | \\ */
         //     2  3  4
         //    /|
         //   5 6

@@ -111,8 +111,8 @@ void test_spmc_single_producer_multiple_consumers() {
 void test_spmc_multiple_consumers_concurrent() {
     std::cout << "Test 5: SPMC Multiple consumers concurrent... ";
 
-    RingBuffer<SPMC, int> ring(512);
     const int NUM_ITEMS = 10000;
+    RingBuffer<SPMC, int> ring(NUM_ITEMS);
 
     for (int i = 0; i < NUM_ITEMS; i++) {
         ring.push(i);

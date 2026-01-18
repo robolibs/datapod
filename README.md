@@ -78,31 +78,6 @@ FetchContent_MakeAvailable(datapod)
 target_link_libraries(your_robot_node PRIVATE datapod)
 ```
 
-### Recommended: XMake
-
-[XMake](https://xmake.io/) is a modern, fast, and cross-platform build system.
-
-**Install XMake:**
-```bash
-curl -fsSL https://xmake.io/shget.text | bash
-```
-
-**Add to your xmake.lua:**
-```lua
-add_requires("datapod")
-
-target("your_robot")
-    set_kind("binary")
-    add_packages("datapod")
-    add_files("src/*.cpp")
-```
-
-**Build:**
-```bash
-xmake
-xmake run
-```
-
 ### Complete Development Environment (Nix + Direnv + Devbox)
 
 For the ultimate reproducible development environment:
@@ -134,7 +109,7 @@ cd datapod
 direnv allow  # Allow .envrc (one-time)
 # Environment automatically loaded! All dependencies available.
 
-make build   # or xmake
+make build
 make test
 ```
 
@@ -375,7 +350,7 @@ Designed for real-time robotics where every microsecond counts:
 ## Requirements
 
 - **C++20** compiler (GCC 10+, Clang 12+)
-- **CMake 3.15+** or **XMake 2.5+**
+- **CMake 3.15+**
 
 ## License
 

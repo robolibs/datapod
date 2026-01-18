@@ -208,6 +208,7 @@ void test_offset_ptr_relocation() {
 
     // Copy the block to a new memory location
     Block block2 = block1; // Use copy instead of memcpy
+    block2.ptr.set_offset(block1.ptr.offset());
 
     // The offset_ptr should still work in the new location!
     assert(*block2.ptr == 42);
@@ -237,6 +238,9 @@ void test_offset_ptr_relocation() {
 
     // Relocate the entire array
     ArrayBlock arr2 = arr1; // Use copy instead of memcpy
+    for (size_t i = 0; i < SIZE; ++i) {
+        arr2.ptrs[i].set_offset(arr1.ptrs[i].offset());
+    }
 
     // All pointers should still work!
     for (size_t i = 0; i < SIZE; ++i) {
