@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.40] - 2026-01-18
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Refactor CMake file for cleaner output
+
 ## [0.0.39] - 2026-01-18
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks
