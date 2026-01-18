@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.38] - 2026-01-18
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Resolve issues with optional, string, and offset_ptr
+
 ## [0.0.37] - 2026-01-17
 
 ### <!-- 0 -->⛰️  Features

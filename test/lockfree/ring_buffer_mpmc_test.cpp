@@ -97,8 +97,8 @@ void test_mpmc_multiple_producers() {
 void test_mpmc_multiple_consumers() {
     std::cout << "Test 5: MPMC Multiple consumers... ";
 
-    RingBuffer<MPMC, int> ring(1024);
     const int NUM_ITEMS = 4000;
+    RingBuffer<MPMC, int> ring(NUM_ITEMS);
 
     for (int i = 0; i < NUM_ITEMS; i++) {
         ring.push(i);

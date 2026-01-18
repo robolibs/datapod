@@ -102,13 +102,25 @@ namespace datapod {
 
         constexpr T *operator->() noexcept { return reinterpret_cast<T *>(&storage_); }
 
-        constexpr T const &operator*() const & noexcept { return *reinterpret_cast<T const *>(&storage_); }
+        constexpr T const &operator*() const & noexcept {
+            assume_has_value();
+            return *reinterpret_cast<T const *>(&storage_);
+        }
 
-        constexpr T &operator*() & noexcept { return *reinterpret_cast<T *>(&storage_); }
+        constexpr T &operator*() & noexcept {
+            assume_has_value();
+            return *reinterpret_cast<T *>(&storage_);
+        }
 
-        constexpr T const &&operator*() const && noexcept { return std::move(*reinterpret_cast<T const *>(&storage_)); }
+        constexpr T const &&operator*() const && noexcept {
+            assume_has_value();
+            return std::move(*reinterpret_cast<T const *>(&storage_));
+        }
 
-        constexpr T &&operator*() && noexcept { return std::move(*reinterpret_cast<T *>(&storage_)); }
+        constexpr T &&operator*() && noexcept {
+            assume_has_value();
+            return std::move(*reinterpret_cast<T *>(&storage_));
+        }
 
         constexpr explicit operator bool() const noexcept { return has_value_; }
 
@@ -136,11 +148,17 @@ namespace datapod {
         }
 
         template <typename U> constexpr T value_or(U &&default_value) const & {
-            return has_value_ ? **this : static_cast<T>(std::forward<U>(default_value));
+            if (has_value_) {
+                return **this;
+            }
+            return static_cast<T>(std::forward<U>(default_value));
         }
 
         template <typename U> constexpr T value_or(U &&default_value) && {
-            return has_value_ ? std::move(**this) : static_cast<T>(std::forward<U>(default_value));
+            if (has_value_) {
+                return std::move(**this);
+            }
+            return static_cast<T>(std::forward<U>(default_value));
         }
 
         // Modifiers
@@ -482,6 +500,16 @@ namespace datapod {
         template <typename> struct is_optional_impl : std::false_type {};
         template <typename U> struct is_optional_impl<Optional<U>> : std::true_type {};
         template <typename U> static constexpr bool is_optional = is_optional_impl<std::remove_cvref_t<U>>::value;
+
+        constexpr void assume_has_value() const noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+            if (!has_value_) {
+                __builtin_unreachable();
+            }
+#else
+            (void)has_value_;
+#endif
+        }
 
         bool has_value_;
         alignas(T) unsigned char storage_[sizeof(T)];

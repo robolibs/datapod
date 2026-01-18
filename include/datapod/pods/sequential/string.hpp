@@ -38,8 +38,8 @@ namespace datapod {
                 std::memcpy(sso_data_, str, len);
                 sso_data_[len] = '\0';
             } else {
-                capacity_ = len + 1;
-                heap_data_ = new char[capacity_];
+                capacity_ = len;
+                heap_data_ = new char[capacity_ + 1]; // +1 for null terminator
                 std::memcpy(heap_data_, str, len);
                 heap_data_[len] = '\0';
             }
@@ -54,7 +54,7 @@ namespace datapod {
                 std::memcpy(sso_data_, other.sso_data_, size_ + 1);
             } else {
                 capacity_ = other.capacity_;
-                heap_data_ = new char[capacity_];
+                heap_data_ = new char[capacity_ + 1]; // +1 for null terminator
                 std::memcpy(heap_data_, other.heap_data_, size_ + 1);
             }
         }

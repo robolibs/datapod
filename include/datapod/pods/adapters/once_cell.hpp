@@ -122,10 +122,20 @@ namespace datapod {
         T get_or_default() const
         requires std::is_default_constructible_v<T>
         {
-            if (initialized_.load(std::memory_order_acquire)) {
-                return value_.value();
+            if (!initialized_.load(std::memory_order_acquire)) {
+                return T{};
             }
-            return T{};
+            if (!value_.has_value()) {
+                return T{};
+            }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+            return *value_;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
         }
 
         /// Into inner Optional

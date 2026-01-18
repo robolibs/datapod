@@ -77,9 +77,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Build complete binary tree") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \ / \
+        /*    / \\ / \\ */
         //   4  5 6  7
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -145,9 +145,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Remove subtree") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \
+        /*    / \\ */
         //   4   5
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -213,7 +213,7 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Subtree size") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
         //    /
         //   4
@@ -230,9 +230,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Preorder traversal") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \
+        /*    / \\ */
         //   4   5
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -252,9 +252,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Inorder traversal") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \
+        /*    / \\ */
         //   4   5
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -274,9 +274,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Postorder traversal") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \
+        /*    / \\ */
         //   4   5
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -296,9 +296,9 @@ TEST_SUITE("BinaryTree") {
 
     TEST_CASE("Levelorder traversal") {
         //       1
-        //      / \
+        /*      / \\ */
         //     2   3
-        //    / \
+        /*    / \\ */
         //   4   5
         BinaryTree<int> tree;
         auto n1 = tree.set_root(1);
@@ -431,9 +431,9 @@ TEST_SUITE("BinaryTree") {
     TEST_CASE("Expression tree example") {
         // Expression: (3 + 4) * 2
         //       *
-        //      / \
+        /*      / \\ */
         //     +   2
-        //    / \
+        /*    / \\ */
         //   3   4
         BinaryTree<String> expr;
         auto mult = expr.set_root(String("*"));
