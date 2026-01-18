@@ -32,8 +32,6 @@ foreach(_line IN LISTS _project_lines)
     endif()
 endforeach()
 
-message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
-
 # ==================================================================================================
 # Compiler selection (must be before project())
 # ==================================================================================================
@@ -46,7 +44,6 @@ if(COMPILER STREQUAL "clang")
     if(CLANG_C_COMPILER AND CLANG_CXX_COMPILER)
         set(CMAKE_C_COMPILER ${CLANG_C_COMPILER})
         set(CMAKE_CXX_COMPILER ${CLANG_CXX_COMPILER})
-        message(STATUS "Using Clang compiler: ${CLANG_CXX_COMPILER}")
     else()
         message(FATAL_ERROR "Clang compiler not found")
     endif()
@@ -56,7 +53,6 @@ elseif(COMPILER STREQUAL "gcc")
     if(GCC_C_COMPILER AND GCC_CXX_COMPILER)
         set(CMAKE_C_COMPILER ${GCC_C_COMPILER})
         set(CMAKE_CXX_COMPILER ${GCC_CXX_COMPILER})
-        message(STATUS "Using GCC compiler: ${GCC_CXX_COMPILER}")
     else()
         message(FATAL_ERROR "GCC compiler not found")
     endif()
@@ -75,7 +71,7 @@ cmake_policy(SET CMP0135 NEW)
 
 # Compiler-specific flags
 set(COMMON_FLAGS -Wall -Wextra -Wpedantic -Wno-reorder -Wno-narrowing -Wno-array-bounds
-    -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable)
+    -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable -Wno-gnu-line-marker)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(${COMMON_FLAGS} -Wno-stringop-overflow)
@@ -102,8 +98,7 @@ if(${PROJECT_NAME_UPPER}_ENABLE_SIMD)
     endif()
 else()
     # Define macro to disable SIMD in the code
-    add_compile_definitions(DATAPOD_SIMD_DISABLED)
-    message(STATUS "SIMD optimizations disabled")
+    add_compile_definitions(${PROJECT_NAME_UPPER}_SIMD_DISABLED)
 endif()
 option(${PROJECT_NAME_UPPER}_BUILD_EXAMPLES "Build examples" OFF)
 option(${PROJECT_NAME_UPPER}_ENABLE_TESTS "Enable tests" OFF)
@@ -115,6 +110,10 @@ include(FetchContent)
 # ==================================================================================================
 # Helper function: process dependencies
 # ==================================================================================================
+string(ASCII 27 Esc)
+set(Green "${Esc}[32m")
+set(Reset "${Esc}[0m")
+
 function(process_deps dep_list out_targets)
     set(targets)
     foreach(dep IN LISTS ${dep_list})
@@ -135,16 +134,19 @@ function(process_deps dep_list out_targets)
                 GIT_TAG "${dep_tag}"
             )
             FetchContent_MakeAvailable(${dep_name})
+            message(STATUS "${Green}${dep_name}${Reset} added")
             list(APPEND targets ${dep_name})
         elseif(is_pkg EQUAL 0)
             # pkg-config dependency: pkg::name
             string(SUBSTRING "${dep}" 5 -1 pkg_name)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(${pkg_name} REQUIRED IMPORTED_TARGET ${pkg_name})
+            message(STATUS "${Green}${pkg_name}${Reset} added")
             list(APPEND targets PkgConfig::${pkg_name})
         else()
             # Simple dependency - use find_package
             find_package(${dep} REQUIRED)
+            message(STATUS "${Green}${dep}${Reset} added")
             list(APPEND targets ${dep}::${dep})
         endif()
     endforeach()
