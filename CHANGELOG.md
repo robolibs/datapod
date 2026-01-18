@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.39] - 2026-01-18
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Consolidate project metadata into single file
+
 ## [0.0.38] - 2026-01-18
 
 ### <!-- 1 -->🐛 Bug Fixes

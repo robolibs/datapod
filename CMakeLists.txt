@@ -1,24 +1,38 @@
 cmake_minimum_required(VERSION 3.15)
 
 # ==================================================================================================
-# Project configuration
+# Parse PROJECT file
 # ==================================================================================================
-set(PROJECT_NAME datapod)
-set(PROJECT_VERSION "0.0.38")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/PROJECT" _project_lines)
+set(_line_idx 0)
+set(_section "")
+set(LIB_DEPS)
+set(EXAMPLE_DEPS)
+set(TEST_DEPS)
 
-# Dependencies formats:
-#   Git:    set(LIB_DEPS "name|https://github.com/org/repo.git|tag" ...)
-#   Find:   set(LIB_DEPS "name" ...)  # Uses find_package
-#   Pkg:    set(LIB_DEPS "pkg::name" ...)  # Uses pkg-config
-set(LIB_DEPS
-    # "datapod|https://github.com/robolibs/datapod.git|0.0.29"
-)
-set(EXAMPLE_DEPS
-    # "pkg::rerun_sdk"
-)
-set(TEST_DEPS
-    "doctest|https://github.com/doctest/doctest.git|v2.4.12"
-)
+foreach(_line IN LISTS _project_lines)
+    string(STRIP "${_line}" _line)
+    if("${_line}" STREQUAL "" OR "${_line}" MATCHES "^#")
+        continue()
+    elseif("${_line}" MATCHES "^\\[(.+)\\]$")
+        set(_section "${CMAKE_MATCH_1}")
+    elseif(_line_idx LESS 2)
+        if(_line_idx EQUAL 0)
+            set(PROJECT_NAME "${_line}")
+        else()
+            set(PROJECT_VERSION "${_line}")
+        endif()
+        math(EXPR _line_idx "${_line_idx} + 1")
+    elseif("${_section}" STREQUAL "lib")
+        list(APPEND LIB_DEPS "${_line}")
+    elseif("${_section}" STREQUAL "example")
+        list(APPEND EXAMPLE_DEPS "${_line}")
+    elseif("${_section}" STREQUAL "test")
+        list(APPEND TEST_DEPS "${_line}")
+    endif()
+endforeach()
+
+message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
 
 # ==================================================================================================
 # Compiler selection (must be before project())
