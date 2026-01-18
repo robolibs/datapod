@@ -129,12 +129,16 @@ function(process_deps dep_list out_targets)
             list(GET dep_parts 1 dep_url)
             list(GET dep_parts 2 dep_tag)
 
-            FetchContent_Declare(${dep_name}
-                GIT_REPOSITORY "${dep_url}"
-                GIT_TAG "${dep_tag}"
-            )
-            FetchContent_MakeAvailable(${dep_name})
-            message(STATUS "${Green}${dep_name}${Reset} added")
+            # Check if already fetched (by a transitive dependency)
+            FetchContent_GetProperties(${dep_name})
+            if(NOT ${dep_name}_POPULATED)
+                FetchContent_Declare(${dep_name}
+                    GIT_REPOSITORY "${dep_url}"
+                    GIT_TAG "${dep_tag}"
+                )
+                FetchContent_MakeAvailable(${dep_name})
+                message(STATUS "${Green}${dep_name}${Reset} added")
+            endif()
             list(APPEND targets ${dep_name})
         elseif(is_pkg EQUAL 0)
             # pkg-config dependency: pkg::name
