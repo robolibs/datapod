@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.42] - 2026-01-25
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Rename `size` friend function to resolve conflict
+
 ## [0.0.41] - 2026-01-18
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks

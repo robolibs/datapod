@@ -33,7 +33,7 @@ namespace datapod {
             : data_{data}, index_{index}, i_{static_cast<size_type>(to_idx(i))} {}
 
         friend data_value_type *data(ConstBucketNvec b) { return &b[0]; }
-        friend index_value_type size(ConstBucketNvec b) { return b.size(); }
+        friend index_value_type bucket_size(ConstBucketNvec b) { return b.size(); }
 
         template <typename T = std::decay_t<data_value_type>, typename = std::enable_if_t<std::is_same_v<T, char>>>
         std::string_view view() const {
