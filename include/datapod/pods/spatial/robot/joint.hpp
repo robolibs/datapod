@@ -57,18 +57,75 @@ namespace datapod {
                 inline bool operator!=(const Dynamics &other) const noexcept { return !(*this == other); }
             };
 
+            /// Joint mimic parameters (URDF <mimic>)
+            ///
+            /// Makes this joint mimic another joint: value = multiplier * other_joint + offset
+            struct Mimic {
+                String joint; // Name of joint to mimic
+                f64 multiplier = 1.0;
+                f64 offset = 0.0;
+
+                auto members() noexcept { return std::tie(joint, multiplier, offset); }
+                auto members() const noexcept { return std::tie(joint, multiplier, offset); }
+
+                inline bool operator==(const Mimic &other) const noexcept {
+                    return joint == other.joint && multiplier == other.multiplier && offset == other.offset;
+                }
+                inline bool operator!=(const Mimic &other) const noexcept { return !(*this == other); }
+            };
+
+            /// Joint safety controller parameters (URDF <safety_controller>)
+            struct SafetyController {
+                f64 soft_lower_limit = 0.0;
+                f64 soft_upper_limit = 0.0;
+                f64 k_position = 0.0;
+                f64 k_velocity = 0.0;
+
+                auto members() noexcept { return std::tie(soft_lower_limit, soft_upper_limit, k_position, k_velocity); }
+                auto members() const noexcept {
+                    return std::tie(soft_lower_limit, soft_upper_limit, k_position, k_velocity);
+                }
+
+                inline bool operator==(const SafetyController &other) const noexcept {
+                    return soft_lower_limit == other.soft_lower_limit && soft_upper_limit == other.soft_upper_limit &&
+                           k_position == other.k_position && k_velocity == other.k_velocity;
+                }
+                inline bool operator!=(const SafetyController &other) const noexcept { return !(*this == other); }
+            };
+
+            /// Joint calibration parameters (URDF <calibration>)
+            struct Calibration {
+                Optional<f64> rising;
+                Optional<f64> falling;
+
+                auto members() noexcept { return std::tie(rising, falling); }
+                auto members() const noexcept { return std::tie(rising, falling); }
+
+                inline bool operator==(const Calibration &other) const noexcept {
+                    return rising == other.rising && falling == other.falling;
+                }
+                inline bool operator!=(const Calibration &other) const noexcept { return !(*this == other); }
+            };
+
             String name;
             Type type = Type::Fixed;
             Pose origin;
             Array<f64, 3> axis{1.0, 0.0, 0.0};
             Optional<Limits> limits;
             Optional<Dynamics> dynamics;
+            Optional<Mimic> mimic;
+            Optional<SafetyController> safety_controller;
+            Optional<Calibration> calibration;
             u32 parent = kInvalidId;
             u32 child = kInvalidId;
 
-            auto members() noexcept { return std::tie(name, type, origin, axis, limits, dynamics, parent, child); }
+            auto members() noexcept {
+                return std::tie(name, type, origin, axis, limits, dynamics, mimic, safety_controller, calibration,
+                                parent, child);
+            }
             auto members() const noexcept {
-                return std::tie(name, type, origin, axis, limits, dynamics, parent, child);
+                return std::tie(name, type, origin, axis, limits, dynamics, mimic, safety_controller, calibration,
+                                parent, child);
             }
 
             inline bool is_fixed() const noexcept { return type == Type::Fixed; }
@@ -80,31 +137,51 @@ namespace datapod {
 
             inline bool operator==(const Joint &other) const noexcept {
                 return name == other.name && type == other.type && origin == other.origin && axis == other.axis &&
-                       limits == other.limits && dynamics == other.dynamics && parent == other.parent &&
-                       child == other.child;
+                       limits == other.limits && dynamics == other.dynamics && mimic == other.mimic &&
+                       safety_controller == other.safety_controller && calibration == other.calibration &&
+                       parent == other.parent && child == other.child;
             }
             inline bool operator!=(const Joint &other) const noexcept { return !(*this == other); }
         };
 
         namespace joint {
             inline Joint fixed(const String &name, const Pose &origin = pose::identity()) noexcept {
-                return Joint{name,    Joint::Type::Fixed, origin,    Array<f64, 3>{1.0, 0.0, 0.0}, nullopt,
-                             nullopt, kInvalidId,         kInvalidId};
+                return Joint{name,      Joint::Type::Fixed,
+                             origin,    Array<f64, 3>{1.0, 0.0, 0.0},
+                             nullopt,   nullopt,
+                             nullopt,   nullopt,
+                             nullopt,   kInvalidId,
+                             kInvalidId};
             }
 
             inline Joint revolute(const String &name, const Array<f64, 3> &axis, const Joint::Limits &limits,
                                   const Pose &origin = pose::identity()) noexcept {
-                return Joint{name, Joint::Type::Revolute, origin, axis, limits, nullopt, kInvalidId, kInvalidId};
+                return Joint{name,      Joint::Type::Revolute,
+                             origin,    axis,
+                             limits,    nullopt,
+                             nullopt,   nullopt,
+                             nullopt,   kInvalidId,
+                             kInvalidId};
             }
 
             inline Joint continuous(const String &name, const Array<f64, 3> &axis,
                                     const Pose &origin = pose::identity()) noexcept {
-                return Joint{name, Joint::Type::Continuous, origin, axis, nullopt, nullopt, kInvalidId, kInvalidId};
+                return Joint{name,      Joint::Type::Continuous,
+                             origin,    axis,
+                             nullopt,   nullopt,
+                             nullopt,   nullopt,
+                             nullopt,   kInvalidId,
+                             kInvalidId};
             }
 
             inline Joint prismatic(const String &name, const Array<f64, 3> &axis, const Joint::Limits &limits,
                                    const Pose &origin = pose::identity()) noexcept {
-                return Joint{name, Joint::Type::Prismatic, origin, axis, limits, nullopt, kInvalidId, kInvalidId};
+                return Joint{name,      Joint::Type::Prismatic,
+                             origin,    axis,
+                             limits,    nullopt,
+                             nullopt,   nullopt,
+                             nullopt,   kInvalidId,
+                             kInvalidId};
             }
         } // namespace joint
 

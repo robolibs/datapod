@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.45] - 2026-01-30
+
+### <!-- 0 -->⛰️  Features
+
+- Refactor Inertia to Inertial for URDF compatibility
+
 ## [0.0.44] - 2026-01-30
 
 ### <!-- 0 -->⛰️  Features
