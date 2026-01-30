@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.44] - 2026-01-30
+
+### <!-- 0 -->⛰️  Features
+
+- Add Joint::Dynamics struct for URDF dynamics
+- Migrate robot PODs to `datapod::robot` namespace
+
 ## [0.0.43] - 2026-01-30
 
 ### <!-- 0 -->⛰️  Features
