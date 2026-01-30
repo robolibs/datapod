@@ -59,9 +59,15 @@
 
 // Robot types
 #include "pods/spatial/robot/accel.hpp"
+#include "pods/spatial/robot/collision.hpp"
+#include "pods/spatial/robot/geometry.hpp"
 #include "pods/spatial/robot/inertia.hpp"
+#include "pods/spatial/robot/joint.hpp"
+#include "pods/spatial/robot/link.hpp"
+#include "pods/spatial/robot/model.hpp"
 #include "pods/spatial/robot/odom.hpp"
 #include "pods/spatial/robot/twist.hpp"
+#include "pods/spatial/robot/visual.hpp"
 #include "pods/spatial/robot/wrench.hpp"
 
 // Spatial indexing

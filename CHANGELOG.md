@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.43] - 2026-01-30
+
+### <!-- 0 -->⛰️  Features
+
+- Add initial robot model PODs
+
 ## [0.0.42] - 2026-01-25
 
 ### <!-- 1 -->🐛 Bug Fixes
