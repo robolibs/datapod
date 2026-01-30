@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.46] - 2026-01-30
+
+### <!-- 0 -->⛰️  Features
+
+- Add robot transmission PODs
+
 ## [0.0.45] - 2026-01-30
 
 ### <!-- 0 -->⛰️  Features
