@@ -66,6 +66,7 @@
 #include "pods/spatial/robot/link.hpp"
 #include "pods/spatial/robot/model.hpp"
 #include "pods/spatial/robot/odom.hpp"
+#include "pods/spatial/robot/transmission.hpp"
 #include "pods/spatial/robot/twist.hpp"
 #include "pods/spatial/robot/visual.hpp"
 #include "pods/spatial/robot/wrench.hpp"

@@ -7,6 +7,7 @@
 #include "datapod/types/types.hpp"
 #include "joint.hpp"
 #include "link.hpp"
+#include "transmission.hpp"
 
 namespace datapod {
     namespace robot {
@@ -28,14 +29,17 @@ namespace datapod {
         struct Model {
             Vector<Link> links;
             Vector<Joint> joints;
+            Vector<Transmission> transmissions;
             u32 root = kInvalidId;
             Vector<u32> parent_of;
             Vector<u32> joint_from_parent;
             Vector<Vector<u32>> children_of;
 
-            auto members() noexcept { return std::tie(links, joints, root, parent_of, joint_from_parent, children_of); }
+            auto members() noexcept {
+                return std::tie(links, joints, transmissions, root, parent_of, joint_from_parent, children_of);
+            }
             auto members() const noexcept {
-                return std::tie(links, joints, root, parent_of, joint_from_parent, children_of);
+                return std::tie(links, joints, transmissions, root, parent_of, joint_from_parent, children_of);
             }
 
             /// Add a link to the model, returns its ID
