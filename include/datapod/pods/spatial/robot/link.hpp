@@ -6,7 +6,7 @@
 #include "datapod/pods/adapters/optional.hpp"
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/sequential/vector.hpp"
-#include "inertia.hpp"
+#include "inertial.hpp"
 #include "visual.hpp"
 
 namespace datapod {
@@ -20,7 +20,7 @@ namespace datapod {
          */
         struct Link {
             String name;
-            Optional<Inertia> inertial;
+            Optional<Inertial> inertial;
             Vector<Visual> visuals;
             Vector<Collision> collisions;
 
@@ -41,7 +41,7 @@ namespace datapod {
         namespace link {
             inline Link make(const String &name) noexcept { return Link{name, nullopt, {}, {}}; }
 
-            inline Link make(const String &name, const Inertia &inertial) noexcept {
+            inline Link make(const String &name, const Inertial &inertial) noexcept {
                 return Link{name, inertial, {}, {}};
             }
         } // namespace link

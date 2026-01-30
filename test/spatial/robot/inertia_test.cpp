@@ -1,83 +1,81 @@
 #include <doctest/doctest.h>
 
-#include <datapod/pods/spatial/robot/inertia.hpp>
+#include <datapod/pods/spatial/robot/inertial.hpp>
 
 using namespace datapod;
+using namespace datapod::robot;
 
-TEST_SUITE("Inertia") {
+TEST_SUITE("Inertial") {
     TEST_CASE("Default construction") {
-        Inertia inert;
-        CHECK(inert.m == 0.0);
-        CHECK(inert.com.x == 0.0);
+        Inertial inert;
+        CHECK(inert.mass == 0.0);
+        CHECK(inert.origin.point.x == 0.0);
         CHECK(inert.ixx == 0.0);
         CHECK(inert.iyy == 0.0);
         CHECK(inert.izz == 0.0);
     }
 
     TEST_CASE("Aggregate initialization") {
-        Point com{0.1, 0.0, 0.05};
-        Inertia inert{10.0, com, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Pose origin = pose::make(Point{0.1, 0.0, 0.05});
+        Inertial inert{origin, 10.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
 
-        CHECK(inert.m == 10.0);
-        CHECK(inert.com.x == 0.1);
+        CHECK(inert.mass == 10.0);
+        CHECK(inert.origin.point.x == 0.1);
         CHECK(inert.ixx == 0.5);
         CHECK(inert.iyy == 0.6);
         CHECK(inert.izz == 0.7);
     }
 
     TEST_CASE("is_set - false for zero inertia") {
-        Inertia inert;
+        Inertial inert;
         CHECK_FALSE(inert.is_set());
     }
 
     TEST_CASE("is_set - true with mass") {
-        Inertia inert{5.0, Point{}};
+        Inertial inert{pose::identity(), 5.0};
         CHECK(inert.is_set());
     }
 
     TEST_CASE("is_set - true with inertia tensor") {
-        Inertia inert{0.0, Point{}, 0.1, 0.0, 0.0, 0.1, 0.0, 0.1};
+        Inertial inert{pose::identity(), 0.0, 0.1, 0.0, 0.0, 0.1, 0.0, 0.1};
         CHECK(inert.is_set());
     }
 
     TEST_CASE("trace calculation") {
-        Inertia inert{0.0, Point{}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Inertial inert{pose::identity(), 0.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
         CHECK(inert.trace() == doctest::Approx(1.8));
     }
 
     TEST_CASE("is_diagonal - true for diagonal tensor") {
-        Inertia inert{10.0, Point{}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Inertial inert{pose::identity(), 10.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
         CHECK(inert.is_diagonal());
     }
 
     TEST_CASE("is_diagonal - false for non-diagonal tensor") {
-        Inertia inert{10.0, Point{}, 0.5, 0.1, 0.0, 0.6, 0.0, 0.7};
+        Inertial inert{pose::identity(), 10.0, 0.5, 0.1, 0.0, 0.6, 0.0, 0.7};
         CHECK_FALSE(inert.is_diagonal());
     }
 
     TEST_CASE("operator== equality") {
-        Inertia i1{10.0, Point{0.1, 0.0, 0.0}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
-        Inertia i2{10.0, Point{0.1, 0.0, 0.0}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Pose origin = pose::make(Point{0.1, 0.0, 0.0});
+        Inertial i1{origin, 10.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Inertial i2{origin, 10.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
         CHECK(i1 == i2);
     }
 
     TEST_CASE("operator!= inequality") {
-        Inertia i1{10.0, Point{0.1, 0.0, 0.0}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
-        Inertia i2{11.0, Point{0.1, 0.0, 0.0}, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Pose origin = pose::make(Point{0.1, 0.0, 0.0});
+        Inertial i1{origin, 10.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
+        Inertial i2{origin, 11.0, 0.5, 0.0, 0.0, 0.6, 0.0, 0.7};
         CHECK(i1 != i2);
     }
 
     TEST_CASE("members() reflection") {
-        Inertia inert;
+        Inertial inert;
         auto m = inert.members();
-        CHECK(&std::get<0>(m) == &inert.m);
-        CHECK(&std::get<1>(m) == &inert.com);
+        CHECK(&std::get<0>(m) == &inert.origin);
+        CHECK(&std::get<1>(m) == &inert.mass);
         CHECK(&std::get<2>(m) == &inert.ixx);
-    }
-
-    TEST_CASE("POD properties") {
-        CHECK(std::is_standard_layout_v<Inertia>);
-        CHECK(std::is_trivially_copyable_v<Inertia>);
     }
 
     TEST_CASE("Cylinder inertia use case") {
@@ -90,9 +88,9 @@ TEST_SUITE("Inertia") {
         double ixx = (1.0 / 12.0) * m * h * h + (1.0 / 4.0) * m * r * r;
         double izz = (1.0 / 2.0) * m * r * r;
 
-        Inertia cylinder{m, Point{}, ixx, 0.0, 0.0, ixx, 0.0, izz};
+        Inertial cylinder{pose::identity(), m, ixx, 0.0, 0.0, ixx, 0.0, izz};
 
-        CHECK(cylinder.m == 5.0);
+        CHECK(cylinder.mass == 5.0);
         CHECK(cylinder.ixx == doctest::Approx(ixx));
         CHECK(cylinder.izz == doctest::Approx(izz));
         CHECK(cylinder.is_diagonal());
@@ -104,15 +102,41 @@ TEST_SUITE("Inertia") {
         Point pos{1.0, 0.0, 0.0};
 
         // I = m * r²
-        double ixx = 0.0;                    // Along x-axis
+        double ixx = 0.0;                  // Along x-axis
         double iyy = mass * (pos.x * pos.x); // About y-axis
         double izz = mass * (pos.x * pos.x); // About z-axis
 
-        Inertia point_mass{mass, pos, ixx, 0.0, 0.0, iyy, 0.0, izz};
+        Inertial point_mass{pose::make(pos), mass, ixx, 0.0, 0.0, iyy, 0.0, izz};
 
-        CHECK(point_mass.m == 2.0);
-        CHECK(point_mass.com.x == 1.0);
+        CHECK(point_mass.mass == 2.0);
+        CHECK(point_mass.origin.point.x == 1.0);
         CHECK(point_mass.iyy == doctest::Approx(2.0));
         CHECK(point_mass.izz == doctest::Approx(2.0));
+    }
+
+    TEST_CASE("Factory functions") {
+        SUBCASE("sphere") {
+            auto s = inertial::sphere(5.0, 0.1);
+            CHECK(s.mass == 5.0);
+            CHECK(s.is_diagonal());
+        }
+
+        SUBCASE("box") {
+            auto b = inertial::box(5.0, 0.2, 0.3, 0.4);
+            CHECK(b.mass == 5.0);
+            CHECK(b.is_diagonal());
+        }
+
+        SUBCASE("cylinder") {
+            auto c = inertial::cylinder(5.0, 0.1, 0.5);
+            CHECK(c.mass == 5.0);
+            CHECK(c.is_diagonal());
+        }
+
+        SUBCASE("point_mass") {
+            auto p = inertial::point_mass(2.0, Point{1.0, 0.0, 0.0});
+            CHECK(p.mass == 2.0);
+            CHECK(p.origin.point.x == 1.0);
+        }
     }
 }

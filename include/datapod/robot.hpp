@@ -17,6 +17,7 @@
 // Robot model types
 #include "pods/spatial/robot/collision.hpp"
 #include "pods/spatial/robot/geometry.hpp"
+#include "pods/spatial/robot/inertial.hpp"
 #include "pods/spatial/robot/joint.hpp"
 #include "pods/spatial/robot/link.hpp"
 #include "pods/spatial/robot/model.hpp"
