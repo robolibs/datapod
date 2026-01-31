@@ -3,6 +3,7 @@
 #include <tuple>
 #include <utility>
 
+#include "datapod/pods/associative/map.hpp"
 #include "datapod/pods/sequential/vector.hpp"
 #include "datapod/types/types.hpp"
 #include "joint.hpp"
@@ -30,16 +31,18 @@ namespace datapod {
             Vector<Link> links;
             Vector<Joint> joints;
             Vector<Transmission> transmissions;
+            /// Non-core URDF extensions flattened into key/value properties.
+            Map<String, String> props;
             u32 root = kInvalidId;
             Vector<u32> parent_of;
             Vector<u32> joint_from_parent;
             Vector<Vector<u32>> children_of;
 
             auto members() noexcept {
-                return std::tie(links, joints, transmissions, root, parent_of, joint_from_parent, children_of);
+                return std::tie(links, joints, transmissions, props, root, parent_of, joint_from_parent, children_of);
             }
             auto members() const noexcept {
-                return std::tie(links, joints, transmissions, root, parent_of, joint_from_parent, children_of);
+                return std::tie(links, joints, transmissions, props, root, parent_of, joint_from_parent, children_of);
             }
 
             /// Add a link to the model, returns its ID
