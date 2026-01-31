@@ -8,6 +8,7 @@
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/sequential/vector.hpp"
 #include "inertial.hpp"
+#include "sensor.hpp"
 #include "visual.hpp"
 
 namespace datapod {
@@ -26,9 +27,11 @@ namespace datapod {
             Vector<Collision> collisions;
             /// Non-core URDF extensions flattened into key/value properties.
             Map<String, String> props;
+            /// Optional generic sensor attached to this link.
+            Optional<Sensor> sensor;
 
-            auto members() noexcept { return std::tie(name, inertial, visuals, collisions, props); }
-            auto members() const noexcept { return std::tie(name, inertial, visuals, collisions, props); }
+            auto members() noexcept { return std::tie(name, inertial, visuals, collisions, props, sensor); }
+            auto members() const noexcept { return std::tie(name, inertial, visuals, collisions, props, sensor); }
 
             inline bool has_inertial() const noexcept { return inertial.has_value(); }
             inline bool has_visuals() const noexcept { return !visuals.empty(); }
@@ -36,16 +39,16 @@ namespace datapod {
 
             inline bool operator==(const Link &other) const noexcept {
                 return name == other.name && inertial == other.inertial && visuals == other.visuals &&
-                       collisions == other.collisions && props == other.props;
+                       collisions == other.collisions && props == other.props && sensor == other.sensor;
             }
             inline bool operator!=(const Link &other) const noexcept { return !(*this == other); }
         };
 
         namespace link {
-            inline Link make(const String &name) noexcept { return Link{name, nullopt, {}, {}, {}}; }
+            inline Link make(const String &name) noexcept { return Link{name, nullopt, {}, {}, {}, nullopt}; }
 
             inline Link make(const String &name, const Inertial &inertial) noexcept {
-                return Link{name, inertial, {}, {}, {}};
+                return Link{name, inertial, {}, {}, {}, nullopt};
             }
         } // namespace link
 
