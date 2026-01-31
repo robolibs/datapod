@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.47] - 2026-01-31
+
+### <!-- 0 -->⛰️  Features
+
+- Add URDF property extension mechanism
+
 ## [0.0.46] - 2026-01-30
 
 ### <!-- 0 -->⛰️  Features
