@@ -109,6 +109,13 @@ namespace datapod {
 
             /// Check if link is root
             inline bool is_root(u32 link_id) const noexcept { return link_id == root; }
+
+            inline bool operator==(const Model &other) const noexcept {
+                return links == other.links && joints == other.joints && transmissions == other.transmissions &&
+                       props == other.props && root == other.root && parent_of == other.parent_of &&
+                       joint_from_parent == other.joint_from_parent && children_of == other.children_of;
+            }
+            inline bool operator!=(const Model &other) const noexcept { return !(*this == other); }
         };
 
         namespace model {
