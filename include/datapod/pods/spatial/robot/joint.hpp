@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include "datapod/pods/adapters/optional.hpp"
+#include "datapod/pods/associative/map.hpp"
 #include "datapod/pods/sequential/array.hpp"
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/spatial/pose.hpp"
@@ -118,14 +119,16 @@ namespace datapod {
             Optional<Calibration> calibration;
             u32 parent = kInvalidId;
             u32 child = kInvalidId;
+            /// Non-core URDF extensions flattened into key/value properties.
+            Map<String, String> props;
 
             auto members() noexcept {
                 return std::tie(name, type, origin, axis, limits, dynamics, mimic, safety_controller, calibration,
-                                parent, child);
+                                parent, child, props);
             }
             auto members() const noexcept {
                 return std::tie(name, type, origin, axis, limits, dynamics, mimic, safety_controller, calibration,
-                                parent, child);
+                                parent, child, props);
             }
 
             inline bool is_fixed() const noexcept { return type == Type::Fixed; }
@@ -139,49 +142,49 @@ namespace datapod {
                 return name == other.name && type == other.type && origin == other.origin && axis == other.axis &&
                        limits == other.limits && dynamics == other.dynamics && mimic == other.mimic &&
                        safety_controller == other.safety_controller && calibration == other.calibration &&
-                       parent == other.parent && child == other.child;
+                       parent == other.parent && child == other.child && props == other.props;
             }
             inline bool operator!=(const Joint &other) const noexcept { return !(*this == other); }
         };
 
         namespace joint {
             inline Joint fixed(const String &name, const Pose &origin = pose::identity()) noexcept {
-                return Joint{name,      Joint::Type::Fixed,
-                             origin,    Array<f64, 3>{1.0, 0.0, 0.0},
-                             nullopt,   nullopt,
-                             nullopt,   nullopt,
-                             nullopt,   kInvalidId,
-                             kInvalidId};
+                return Joint{name,       Joint::Type::Fixed,
+                             origin,     Array<f64, 3>{1.0, 0.0, 0.0},
+                             nullopt,    nullopt,
+                             nullopt,    nullopt,
+                             nullopt,    kInvalidId,
+                             kInvalidId, {}};
             }
 
             inline Joint revolute(const String &name, const Array<f64, 3> &axis, const Joint::Limits &limits,
                                   const Pose &origin = pose::identity()) noexcept {
-                return Joint{name,      Joint::Type::Revolute,
-                             origin,    axis,
-                             limits,    nullopt,
-                             nullopt,   nullopt,
-                             nullopt,   kInvalidId,
-                             kInvalidId};
+                return Joint{name,       Joint::Type::Revolute,
+                             origin,     axis,
+                             limits,     nullopt,
+                             nullopt,    nullopt,
+                             nullopt,    kInvalidId,
+                             kInvalidId, {}};
             }
 
             inline Joint continuous(const String &name, const Array<f64, 3> &axis,
                                     const Pose &origin = pose::identity()) noexcept {
-                return Joint{name,      Joint::Type::Continuous,
-                             origin,    axis,
-                             nullopt,   nullopt,
-                             nullopt,   nullopt,
-                             nullopt,   kInvalidId,
-                             kInvalidId};
+                return Joint{name,       Joint::Type::Continuous,
+                             origin,     axis,
+                             nullopt,    nullopt,
+                             nullopt,    nullopt,
+                             nullopt,    kInvalidId,
+                             kInvalidId, {}};
             }
 
             inline Joint prismatic(const String &name, const Array<f64, 3> &axis, const Joint::Limits &limits,
                                    const Pose &origin = pose::identity()) noexcept {
-                return Joint{name,      Joint::Type::Prismatic,
-                             origin,    axis,
-                             limits,    nullopt,
-                             nullopt,   nullopt,
-                             nullopt,   kInvalidId,
-                             kInvalidId};
+                return Joint{name,       Joint::Type::Prismatic,
+                             origin,     axis,
+                             limits,     nullopt,
+                             nullopt,    nullopt,
+                             nullopt,    kInvalidId,
+                             kInvalidId, {}};
             }
         } // namespace joint
 
