@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.49] - 2026-01-31
+
+### <!-- 0 -->⛰️  Features
+
+- Add robot identity and sugar types
+
 ## [0.0.48] - 2026-01-31
 
 ### <!-- 0 -->⛰️  Features
