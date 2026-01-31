@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.48] - 2026-01-31
+
+### <!-- 0 -->⛰️  Features
+
+- Add Sensor POD and integrate into Link
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Remove URDF_PROPS.md documentation
+
 ## [0.0.47] - 2026-01-31
 
 ### <!-- 0 -->⛰️  Features
