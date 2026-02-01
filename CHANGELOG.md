@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.50] - 2026-02-01
+
+### <!-- 0 -->⛰️  Features
+
+- Add new robot model concepts and types
+
 ## [0.0.49] - 2026-01-31
 
 ### <!-- 0 -->⛰️  Features
