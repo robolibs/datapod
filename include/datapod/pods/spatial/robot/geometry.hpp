@@ -1,8 +1,8 @@
 #pragma once
 
 #include <tuple>
-#include <variant>
 
+#include "datapod/pods/adapters/variant.hpp"
 #include "datapod/pods/sequential/array.hpp"
 #include "datapod/pods/sequential/string.hpp"
 #include "datapod/pods/spatial/size.hpp"
@@ -14,7 +14,7 @@ namespace datapod {
          * @brief Geometry shapes for robot visual/collision representation (POD)
          *
          * Represents primitive shapes and meshes for URDF/SDF-style robot definitions.
-         * Uses std::variant to hold one of: BoxShape, SphereShape, CylinderShape, MeshShape.
+         * Uses Variant to hold one of: BoxShape, SphereShape, CylinderShape, MeshShape.
          */
 
         /// Box shape defined by dimensions (width, height, depth)
@@ -69,25 +69,25 @@ namespace datapod {
 
         /// Geometry variant holding one of the shape types
         struct Geometry {
-            std::variant<BoxShape, SphereShape, CylinderShape, MeshShape> shape;
+            Variant<BoxShape, SphereShape, CylinderShape, MeshShape> shape;
 
             auto members() noexcept { return std::tie(shape); }
             auto members() const noexcept { return std::tie(shape); }
 
-            inline bool is_box() const noexcept { return std::holds_alternative<BoxShape>(shape); }
-            inline bool is_sphere() const noexcept { return std::holds_alternative<SphereShape>(shape); }
-            inline bool is_cylinder() const noexcept { return std::holds_alternative<CylinderShape>(shape); }
-            inline bool is_mesh() const noexcept { return std::holds_alternative<MeshShape>(shape); }
+            inline bool is_box() const noexcept { return holds_alternative<BoxShape>(shape); }
+            inline bool is_sphere() const noexcept { return holds_alternative<SphereShape>(shape); }
+            inline bool is_cylinder() const noexcept { return holds_alternative<CylinderShape>(shape); }
+            inline bool is_mesh() const noexcept { return holds_alternative<MeshShape>(shape); }
 
-            inline const BoxShape *as_box() const noexcept { return std::get_if<BoxShape>(&shape); }
-            inline const SphereShape *as_sphere() const noexcept { return std::get_if<SphereShape>(&shape); }
-            inline const CylinderShape *as_cylinder() const noexcept { return std::get_if<CylinderShape>(&shape); }
-            inline const MeshShape *as_mesh() const noexcept { return std::get_if<MeshShape>(&shape); }
+            inline const BoxShape *as_box() const noexcept { return get_if<BoxShape>(shape); }
+            inline const SphereShape *as_sphere() const noexcept { return get_if<SphereShape>(shape); }
+            inline const CylinderShape *as_cylinder() const noexcept { return get_if<CylinderShape>(shape); }
+            inline const MeshShape *as_mesh() const noexcept { return get_if<MeshShape>(shape); }
 
-            inline BoxShape *as_box() noexcept { return std::get_if<BoxShape>(&shape); }
-            inline SphereShape *as_sphere() noexcept { return std::get_if<SphereShape>(&shape); }
-            inline CylinderShape *as_cylinder() noexcept { return std::get_if<CylinderShape>(&shape); }
-            inline MeshShape *as_mesh() noexcept { return std::get_if<MeshShape>(&shape); }
+            inline BoxShape *as_box() noexcept { return get_if<BoxShape>(shape); }
+            inline SphereShape *as_sphere() noexcept { return get_if<SphereShape>(shape); }
+            inline CylinderShape *as_cylinder() noexcept { return get_if<CylinderShape>(shape); }
+            inline MeshShape *as_mesh() noexcept { return get_if<MeshShape>(shape); }
 
             inline bool operator==(const Geometry &other) const noexcept { return shape == other.shape; }
             inline bool operator!=(const Geometry &other) const noexcept { return !(*this == other); }

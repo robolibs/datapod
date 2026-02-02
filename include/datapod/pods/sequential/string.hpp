@@ -6,6 +6,7 @@
 #include <cstring>
 #include <limits>
 #include <ostream>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -47,6 +48,9 @@ namespace datapod {
 
         // Constructor from string_view
         BasicString(std::string_view sv) : BasicString(sv.data(), sv.size()) {}
+
+        // Constructor from std::string
+        BasicString(std::string const &s) : BasicString(s.data(), s.size()) {}
 
         // Copy constructor
         BasicString(BasicString const &other) : size_(other.size_), is_sso_(other.is_sso_) {
@@ -100,6 +104,9 @@ namespace datapod {
 
         // String view conversion
         operator std::string_view() const noexcept { return {data(), size_}; }
+
+        // std::string implicit conversion
+        operator std::string() const { return std::string(data(), size_); }
 
         // Element access
         reference operator[](size_type pos) noexcept { return data()[pos]; }
