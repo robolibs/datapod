@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.51] - 2026-02-02
+
+### <!-- 0 -->⛰️  Features
+
+- Add String conversions for MAC address and UUID
+
 ## [0.0.50] - 2026-02-01
 
 ### <!-- 0 -->⛰️  Features
