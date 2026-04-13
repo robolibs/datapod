@@ -1,0 +1,13 @@
+[package]
+name = "datapod"
+version = "0.0.1"
+edition = "2024"
+description = "Rust robotics data types and POD-oriented containers"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
