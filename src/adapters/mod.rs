@@ -1,94 +1,37 @@
-use std::borrow::Cow as StdCow;
-use std::cell::{OnceCell as CellOnceCell, RefCell as StdRefCell};
-use std::marker::PhantomData;
-use std::mem::MaybeUninit as StdMaybeUninit;
-use std::pin::Pin as StdPin;
-use std::ptr::NonNull as StdNonNull;
-use std::rc::Rc;
-use std::sync::{Arc, OnceLock};
+mod bitset;
+mod conversions;
+mod cow;
+mod either;
+mod error;
+mod lazy;
+mod maybe_uninit;
+mod non_null;
+mod once_cell;
+mod optional;
+mod pair;
+mod pin;
+mod r#ref_cell;
+mod result;
+mod shared_ptr;
+mod tuple;
+mod unique_ptr;
+mod variant;
 
-pub type Optional<T> = Option<T>;
-pub type Result<T, E> = std::result::Result<T, E>;
-pub type Pair<A, B> = (A, B);
-pub type Tuple<T> = T;
-pub type SharedPtr<T> = Arc<T>;
-pub type UniquePtr<T> = Box<T>;
-pub type RefCell<T> = StdRefCell<T>;
-pub type NonNull<T> = StdNonNull<T>;
-pub type MaybeUninit<T> = StdMaybeUninit<T>;
-pub type Pin<T> = StdPin<T>;
-pub type Cow<'a, T> = StdCow<'a, T>;
-pub type OnceCell<T> = CellOnceCell<T>;
-pub type SyncOnceCell<T> = OnceLock<T>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Either<L, R> {
-    Left(L),
-    Right(R),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Error<E = String> {
-    pub message: E,
-}
-
-impl<E> Error<E> {
-    pub fn new(message: E) -> Self {
-        Self { message }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Lazy<T, F = fn() -> T> {
-    init: F,
-    value: Option<T>,
-}
-
-impl<T, F> Lazy<T, F>
-where
-    F: FnOnce() -> T + Clone,
-{
-    pub fn new(init: F) -> Self {
-        Self { init, value: None }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Bitset<const N: usize> {
-    bits: [bool; N],
-}
-
-impl<const N: usize> Default for Bitset<N> {
-    fn default() -> Self {
-        Self { bits: [false; N] }
-    }
-}
-
-impl<const N: usize> Bitset<N> {
-    pub fn set(&mut self, index: usize, value: bool) {
-        self.bits[index] = value;
-    }
-
-    pub fn get(&self, index: usize) -> bool {
-        self.bits[index]
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Variant<T>(pub T);
-
-pub fn to_pair<A, B>(left: A, right: B) -> Pair<A, B> {
-    (left, right)
-}
-
-pub fn into_rc<T>(value: T) -> Rc<T> {
-    Rc::new(value)
-}
-
-pub fn into_arc<T>(value: T) -> Arc<T> {
-    Arc::new(value)
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Conversions<T>(PhantomData<T>);
+pub use bitset::Bitset;
+pub use conversions::{Conversions, into_arc, into_rc, to_pair};
+pub use cow::Cow;
+pub use either::Either;
+pub use error::Error;
+pub use lazy::Lazy;
+pub use maybe_uninit::MaybeUninit;
+pub use non_null::NonNull;
+pub use once_cell::{OnceCell, SyncOnceCell};
+pub use optional::Optional;
+pub use pair::Pair;
+pub use pin::Pin;
+pub use r#ref_cell::RefCell;
+pub use result::Result;
+pub use shared_ptr::SharedPtr;
+pub use tuple::Tuple;
+pub use unique_ptr::UniquePtr;
+pub use variant::Variant;

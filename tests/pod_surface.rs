@@ -76,7 +76,7 @@ fn pod_surface_is_present() {
     let _vector_container: Vector<i32> = Vector::default();
 
     let point = Point::new(1.0, 2.0, 3.0);
-    let segment = Segment::new(point, Point::default());
+    let _segment = Segment::new(point, Point::default());
     let polygon = Polygon {
         vertices: Vector::from([
             Point::default(),
@@ -130,7 +130,7 @@ fn pod_surface_is_present() {
     let _utm = Utm::default();
     let _velocity = Velocity::default();
     let _accel = Accel::default();
-    let _geometry = Geometry::Segment(segment);
+    let _geometry = Geometry::Sphere(SphereShape { radius: 1.0 });
     let _point_map: PointMap<i32> = PointMap::default();
     let _point_set: PointSet = PointSet::default();
     let _point_key: PointKey = point.into();

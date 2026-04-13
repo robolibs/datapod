@@ -1,43 +1,15 @@
-use std::marker::PhantomData;
+mod allocator;
+mod arena;
+mod mmap_vec;
+mod offset_ptr;
+mod paged;
+mod pool;
+mod ptr;
 
-use crate::Vector;
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Allocator<T>(PhantomData<T>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Arena<T> {
-    pub values: Vector<T>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Pool<T> {
-    pub values: Vector<T>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct MmapVec<T> {
-    pub values: Vector<T>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Paged<T> {
-    pub pages: Vector<Vector<T>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct OffsetPtr<T> {
-    pub offset: usize,
-    marker: PhantomData<T>,
-}
-
-impl<T> OffsetPtr<T> {
-    pub fn new(offset: usize) -> Self {
-        Self {
-            offset,
-            marker: PhantomData,
-        }
-    }
-}
-
-pub type Ptr<T> = Box<T>;
+pub use allocator::Allocator;
+pub use arena::Arena;
+pub use mmap_vec::MmapVec;
+pub use offset_ptr::OffsetPtr;
+pub use paged::Paged;
+pub use pool::Pool;
+pub use ptr::Ptr;

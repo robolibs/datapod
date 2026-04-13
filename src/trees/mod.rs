@@ -1,24 +1,11 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+mod binary_tree;
+mod nary_tree;
+mod ordered_map;
+mod ordered_set;
+mod trie;
 
-use crate::Vector;
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct BinaryTree<T> {
-    pub value: Option<T>,
-    pub left: Option<Box<BinaryTree<T>>>,
-    pub right: Option<Box<BinaryTree<T>>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct NaryTree<T> {
-    pub value: Option<T>,
-    pub children: Vector<NaryTree<T>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Trie<V> {
-    pub values: HashMap<String, V>,
-}
-
-pub type OrderedMap<K, V> = BTreeMap<K, V>;
-pub type OrderedSet<T> = BTreeSet<T>;
+pub use binary_tree::BinaryTree;
+pub use nary_tree::NaryTree;
+pub use ordered_map::OrderedMap;
+pub use ordered_set::OrderedSet;
+pub use trie::Trie;

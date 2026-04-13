@@ -1,37 +1,11 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::hash::Hash;
+mod fws_multimap;
+mod hash_storage;
+mod map;
+mod mutable_fws_multimap;
+mod set;
 
-pub type Map<K, V> = HashMap<K, V>;
-pub type Set<T> = HashSet<T>;
-pub type HashStorage<K, V> = HashMap<K, V>;
-pub type OrderedMap<K, V> = BTreeMap<K, V>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct FwsMultimap<K, V> {
-    pub entries: BTreeMap<K, Vec<V>>,
-}
-
-impl<K: Ord, V> FwsMultimap<K, V> {
-    pub fn insert(&mut self, key: K, value: V) {
-        self.entries.entry(key).or_default().push(value);
-    }
-
-    pub fn get(&self, key: &K) -> Option<&[V]> {
-        self.entries.get(key).map(Vec::as_slice)
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct MutableFwsMultimap<K, V> {
-    pub entries: HashMap<K, Vec<V>>,
-}
-
-impl<K: Eq + Hash, V> MutableFwsMultimap<K, V> {
-    pub fn insert(&mut self, key: K, value: V) {
-        self.entries.entry(key).or_default().push(value);
-    }
-
-    pub fn get(&self, key: &K) -> Option<&[V]> {
-        self.entries.get(key).map(Vec::as_slice)
-    }
-}
+pub use fws_multimap::FwsMultimap;
+pub use hash_storage::HashStorage;
+pub use map::Map;
+pub use mutable_fws_multimap::MutableFwsMultimap;
+pub use set::Set;

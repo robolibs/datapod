@@ -1,36 +1,39 @@
+mod array;
+mod bitvec;
+mod bytes;
+mod cstring;
+mod deque;
+mod fixed_queue;
+mod flat_matrix;
+mod forward_list;
+mod heap;
+mod indexed_heap;
+mod list;
+mod nvec;
+mod paged_vecvec;
+mod queue;
+mod stack;
+mod string;
 mod vector;
+mod vectra;
+mod vecvec;
 
+pub use array::Array;
+pub use bitvec::BitVec;
+pub use bytes::Bytes;
+pub use cstring::CString;
+pub use deque::Deque;
+pub use fixed_queue::FixedQueue;
+pub use flat_matrix::FlatMatrix;
+pub use forward_list::ForwardList;
+pub use heap::Heap;
+pub use indexed_heap::IndexedHeap;
+pub use list::List;
+pub use nvec::NVec;
+pub use paged_vecvec::PagedVecvec;
+pub use queue::Queue;
+pub use stack::Stack;
+pub use string::String;
 pub use vector::Vector;
-
-use std::collections::{BinaryHeap, LinkedList, VecDeque};
-use std::ffi::CString as StdCString;
-
-pub type Array<T, const N: usize> = [T; N];
-pub type BitVec = Vec<bool>;
-pub type Bytes = Vec<u8>;
-pub type CString = StdCString;
-pub type Deque<T> = VecDeque<T>;
-pub type ForwardList<T> = LinkedList<T>;
-pub type Heap<T> = BinaryHeap<T>;
-pub type IndexedHeap<T> = BinaryHeap<T>;
-pub type List<T> = LinkedList<T>;
-pub type NVec<T, const N: usize> = [T; N];
-pub type Queue<T> = VecDeque<T>;
-pub type Stack<T> = Vec<T>;
-pub type String = std::string::String;
-pub type Vectra<T> = Vec<T>;
-pub type Vecvec<T> = Vec<Vec<T>>;
-pub type PagedVecvec<T> = Vec<Vec<T>>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct FixedQueue<T> {
-    pub values: VecDeque<T>,
-    pub capacity: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct FlatMatrix<T> {
-    pub rows: usize,
-    pub cols: usize,
-    pub values: Vec<T>,
-}
+pub use vectra::Vectra;
+pub use vecvec::Vecvec;
