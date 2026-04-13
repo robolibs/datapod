@@ -191,14 +191,390 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct DynamicVector<T> {
+    pub values: Vec<T>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Dynamic<T> {
+    pub rows: usize,
+    pub cols: usize,
     pub values: Vec<T>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tensor<T> {
     pub shape: Vec<usize>,
+    pub strides: Vec<usize>,
     pub values: Vec<T>,
+}
+
+pub type DynamicTensor<T> = Tensor<T>;
+
+impl<T> DynamicVector<T> {
+    pub fn from_vec(values: Vec<T>) -> Self {
+        Self { values }
+    }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn size(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn length(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.values
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.values
+    }
+
+    pub fn data(&self) -> *const T {
+        self.values.as_ptr()
+    }
+
+    pub fn data_mut(&mut self) -> *mut T {
+        self.values.as_mut_ptr()
+    }
+
+    pub fn front(&self) -> Option<&T> {
+        self.values.first()
+    }
+
+    pub fn back(&self) -> Option<&T> {
+        self.values.last()
+    }
+
+    pub fn at(&self, index: usize) -> Result<&T, &'static str> {
+        self.values.get(index).ok_or("DynamicVector::at")
+    }
+
+    pub fn at_mut(&mut self, index: usize) -> Result<&mut T, &'static str> {
+        self.values.get_mut(index).ok_or("DynamicVector::at")
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+        self.values.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+        self.values.iter_mut()
+    }
+
+    pub fn resize(&mut self, new_len: usize, value: T)
+    where
+        T: Clone,
+    {
+        self.values.resize(new_len, value);
+    }
+
+    pub fn push(&mut self, value: T) {
+        self.values.push(value);
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        self.values.pop()
+    }
+
+    pub fn fill(&mut self, value: T)
+    where
+        T: Clone,
+    {
+        self.values.fill(value);
+    }
+
+    pub fn swap(&mut self, other: &mut Self) {
+        std::mem::swap(&mut self.values, &mut other.values);
+    }
+}
+
+impl<T: Default + Clone> DynamicVector<T> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            values: vec![T::default(); size],
+        }
+    }
+}
+
+impl<T> From<Vec<T>> for DynamicVector<T> {
+    fn from(values: Vec<T>) -> Self {
+        Self::from_vec(values)
+    }
+}
+
+impl<T> Index<usize> for DynamicVector<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.values[index]
+    }
+}
+
+impl<T> IndexMut<usize> for DynamicVector<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.values[index]
+    }
+}
+
+impl<T> Dynamic<T> {
+    pub fn from_vec(rows: usize, cols: usize, values: Vec<T>) -> Result<Self, &'static str> {
+        if rows * cols != values.len() {
+            return Err("Dynamic::from_vec shape mismatch");
+        }
+        Ok(Self { rows, cols, values })
+    }
+
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    pub fn cols(&self) -> usize {
+        self.cols
+    }
+
+    pub fn size(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn empty(&self) -> bool {
+        self.rows == 0 || self.cols == 0
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.rows * self.cols == self.values.len()
+    }
+
+    pub fn data(&self) -> *const T {
+        self.values.as_ptr()
+    }
+
+    pub fn data_mut(&mut self) -> *mut T {
+        self.values.as_mut_ptr()
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.values
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.values
+    }
+
+    pub fn index_of(&self, row: usize, col: usize) -> usize {
+        row * self.cols + col
+    }
+
+    pub fn at(&self, row: usize, col: usize) -> Result<&T, &'static str> {
+        if row >= self.rows || col >= self.cols {
+            return Err("Dynamic::at");
+        }
+        Ok(&self.values[self.index_of(row, col)])
+    }
+
+    pub fn at_mut(&mut self, row: usize, col: usize) -> Result<&mut T, &'static str> {
+        if row >= self.rows || col >= self.cols {
+            return Err("Dynamic::at");
+        }
+        let index = self.index_of(row, col);
+        Ok(&mut self.values[index])
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+        self.values.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+        self.values.iter_mut()
+    }
+
+    pub fn fill(&mut self, value: T)
+    where
+        T: Clone,
+    {
+        self.values.fill(value);
+    }
+
+    pub fn swap(&mut self, other: &mut Self) {
+        std::mem::swap(self, other);
+    }
+
+    pub fn row(&self, row: usize) -> Result<&[T], &'static str> {
+        if row >= self.rows {
+            return Err("Dynamic::row");
+        }
+        let start = row * self.cols;
+        Ok(&self.values[start..start + self.cols])
+    }
+}
+
+impl<T: Default + Clone> Dynamic<T> {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self {
+            rows,
+            cols,
+            values: vec![T::default(); rows * cols],
+        }
+    }
+
+    pub fn resize(&mut self, rows: usize, cols: usize) {
+        self.rows = rows;
+        self.cols = cols;
+        self.values.resize(rows * cols, T::default());
+    }
+}
+
+impl<T> Index<(usize, usize)> for Dynamic<T> {
+    type Output = T;
+
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        &self.values[self.index_of(index.0, index.1)]
+    }
+}
+
+impl<T> IndexMut<(usize, usize)> for Dynamic<T> {
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        let flat = self.index_of(index.0, index.1);
+        &mut self.values[flat]
+    }
+}
+
+impl<T> Tensor<T> {
+    fn compute_strides(shape: &[usize]) -> Vec<usize> {
+        if shape.is_empty() {
+            return Vec::new();
+        }
+        let mut strides = vec![0; shape.len()];
+        strides[0] = 1;
+        for i in 1..shape.len() {
+            strides[i] = strides[i - 1] * shape[i - 1];
+        }
+        strides
+    }
+
+    fn compute_size(shape: &[usize]) -> usize {
+        if shape.is_empty() {
+            0
+        } else {
+            shape.iter().product()
+        }
+    }
+
+    pub fn from_vec(shape: Vec<usize>, values: Vec<T>) -> Result<Self, &'static str> {
+        let expected = Self::compute_size(&shape);
+        if expected != values.len() {
+            return Err("Tensor::from_vec shape mismatch");
+        }
+        let strides = Self::compute_strides(&shape);
+        Ok(Self {
+            shape,
+            strides,
+            values,
+        })
+    }
+
+    pub fn rank(&self) -> usize {
+        self.shape.len()
+    }
+
+    pub fn size(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn dim(&self, i: usize) -> Option<usize> {
+        self.shape.get(i).copied()
+    }
+
+    pub fn shape(&self) -> &[usize] {
+        &self.shape
+    }
+
+    pub fn strides(&self) -> &[usize] {
+        &self.strides
+    }
+
+    pub fn data(&self) -> *const T {
+        self.values.as_ptr()
+    }
+
+    pub fn data_mut(&mut self) -> *mut T {
+        self.values.as_mut_ptr()
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.values
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.values
+    }
+
+    pub fn linear_index(&self, indices: &[usize]) -> Result<usize, &'static str> {
+        if indices.len() != self.shape.len() {
+            return Err("Tensor::linear_index wrong rank");
+        }
+        let mut linear = 0;
+        for (axis, &index) in indices.iter().enumerate() {
+            if index >= self.shape[axis] {
+                return Err("Tensor::linear_index");
+            }
+            linear += index * self.strides[axis];
+        }
+        Ok(linear)
+    }
+
+    pub fn at(&self, indices: &[usize]) -> Result<&T, &'static str> {
+        Ok(&self.values[self.linear_index(indices)?])
+    }
+
+    pub fn at_mut(&mut self, indices: &[usize]) -> Result<&mut T, &'static str> {
+        let linear = self.linear_index(indices)?;
+        Ok(&mut self.values[linear])
+    }
+
+    pub fn fill(&mut self, value: T)
+    where
+        T: Clone,
+    {
+        self.values.fill(value);
+    }
+
+    pub fn swap(&mut self, other: &mut Self) {
+        std::mem::swap(self, other);
+    }
+}
+
+impl<T: Default + Clone> Tensor<T> {
+    pub fn new(shape: Vec<usize>) -> Self {
+        let size = Self::compute_size(&shape);
+        let strides = Self::compute_strides(&shape);
+        Self {
+            shape,
+            strides,
+            values: vec![T::default(); size],
+        }
+    }
+
+    pub fn resize(&mut self, shape: Vec<usize>) {
+        let size = Self::compute_size(&shape);
+        self.shape = shape;
+        self.strides = Self::compute_strides(&self.shape);
+        self.values.resize(size, T::default());
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

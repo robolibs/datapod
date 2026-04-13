@@ -1,1 +1,1 @@
-pub use super::mat::Tensor;
+pub use super::mat::{DynamicTensor, Tensor};
