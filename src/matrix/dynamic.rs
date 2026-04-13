@@ -1,1 +1,1 @@
-pub use super::mat::Dynamic;
+pub use super::mat::{DMatrix, Dynamic, DynamicMatrix};

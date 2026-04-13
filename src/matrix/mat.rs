@@ -191,27 +191,31 @@ impl<T, const R: usize, const C: usize> Matrix<T, R, C> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct DynamicVector<T> {
+pub struct DVector<T> {
     pub values: Vec<T>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Dynamic<T> {
+pub struct DMatrix<T> {
     pub rows: usize,
     pub cols: usize,
     pub values: Vec<T>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Tensor<T> {
+pub struct DTensor<T> {
     pub shape: Vec<usize>,
     pub strides: Vec<usize>,
     pub values: Vec<T>,
 }
 
-pub type DynamicTensor<T> = Tensor<T>;
+pub type DynamicVector<T> = DVector<T>;
+pub type DynamicMatrix<T> = DMatrix<T>;
+pub type Dynamic<T> = DMatrix<T>;
+pub type Tensor<T> = DTensor<T>;
+pub type DynamicTensor<T> = DTensor<T>;
 
-impl<T> DynamicVector<T> {
+impl<T> DVector<T> {
     pub fn from_vec(values: Vec<T>) -> Self {
         Self { values }
     }
@@ -257,11 +261,11 @@ impl<T> DynamicVector<T> {
     }
 
     pub fn at(&self, index: usize) -> Result<&T, &'static str> {
-        self.values.get(index).ok_or("DynamicVector::at")
+        self.values.get(index).ok_or("DVector::at")
     }
 
     pub fn at_mut(&mut self, index: usize) -> Result<&mut T, &'static str> {
-        self.values.get_mut(index).ok_or("DynamicVector::at")
+        self.values.get_mut(index).ok_or("DVector::at")
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
@@ -299,7 +303,7 @@ impl<T> DynamicVector<T> {
     }
 }
 
-impl<T: Default + Clone> DynamicVector<T> {
+impl<T: Default + Clone> DVector<T> {
     pub fn new(size: usize) -> Self {
         Self {
             values: vec![T::default(); size],
@@ -307,13 +311,13 @@ impl<T: Default + Clone> DynamicVector<T> {
     }
 }
 
-impl<T> From<Vec<T>> for DynamicVector<T> {
+impl<T> From<Vec<T>> for DVector<T> {
     fn from(values: Vec<T>) -> Self {
         Self::from_vec(values)
     }
 }
 
-impl<T> Index<usize> for DynamicVector<T> {
+impl<T> Index<usize> for DVector<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -321,16 +325,16 @@ impl<T> Index<usize> for DynamicVector<T> {
     }
 }
 
-impl<T> IndexMut<usize> for DynamicVector<T> {
+impl<T> IndexMut<usize> for DVector<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.values[index]
     }
 }
 
-impl<T> Dynamic<T> {
+impl<T> DMatrix<T> {
     pub fn from_vec(rows: usize, cols: usize, values: Vec<T>) -> Result<Self, &'static str> {
         if rows * cols != values.len() {
-            return Err("Dynamic::from_vec shape mismatch");
+            return Err("DMatrix::from_vec shape mismatch");
         }
         Ok(Self { rows, cols, values })
     }
@@ -377,14 +381,14 @@ impl<T> Dynamic<T> {
 
     pub fn at(&self, row: usize, col: usize) -> Result<&T, &'static str> {
         if row >= self.rows || col >= self.cols {
-            return Err("Dynamic::at");
+            return Err("DMatrix::at");
         }
         Ok(&self.values[self.index_of(row, col)])
     }
 
     pub fn at_mut(&mut self, row: usize, col: usize) -> Result<&mut T, &'static str> {
         if row >= self.rows || col >= self.cols {
-            return Err("Dynamic::at");
+            return Err("DMatrix::at");
         }
         let index = self.index_of(row, col);
         Ok(&mut self.values[index])
@@ -411,14 +415,14 @@ impl<T> Dynamic<T> {
 
     pub fn row(&self, row: usize) -> Result<&[T], &'static str> {
         if row >= self.rows {
-            return Err("Dynamic::row");
+            return Err("DMatrix::row");
         }
         let start = row * self.cols;
         Ok(&self.values[start..start + self.cols])
     }
 }
 
-impl<T: Default + Clone> Dynamic<T> {
+impl<T: Default + Clone> DMatrix<T> {
     pub fn new(rows: usize, cols: usize) -> Self {
         Self {
             rows,
@@ -434,7 +438,7 @@ impl<T: Default + Clone> Dynamic<T> {
     }
 }
 
-impl<T> Index<(usize, usize)> for Dynamic<T> {
+impl<T> Index<(usize, usize)> for DMatrix<T> {
     type Output = T;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output {
@@ -442,14 +446,14 @@ impl<T> Index<(usize, usize)> for Dynamic<T> {
     }
 }
 
-impl<T> IndexMut<(usize, usize)> for Dynamic<T> {
+impl<T> IndexMut<(usize, usize)> for DMatrix<T> {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
         let flat = self.index_of(index.0, index.1);
         &mut self.values[flat]
     }
 }
 
-impl<T> Tensor<T> {
+impl<T> DTensor<T> {
     fn compute_strides(shape: &[usize]) -> Vec<usize> {
         if shape.is_empty() {
             return Vec::new();
@@ -473,7 +477,7 @@ impl<T> Tensor<T> {
     pub fn from_vec(shape: Vec<usize>, values: Vec<T>) -> Result<Self, &'static str> {
         let expected = Self::compute_size(&shape);
         if expected != values.len() {
-            return Err("Tensor::from_vec shape mismatch");
+            return Err("DTensor::from_vec shape mismatch");
         }
         let strides = Self::compute_strides(&shape);
         Ok(Self {
@@ -525,12 +529,12 @@ impl<T> Tensor<T> {
 
     pub fn linear_index(&self, indices: &[usize]) -> Result<usize, &'static str> {
         if indices.len() != self.shape.len() {
-            return Err("Tensor::linear_index wrong rank");
+            return Err("DTensor::linear_index wrong rank");
         }
         let mut linear = 0;
         for (axis, &index) in indices.iter().enumerate() {
             if index >= self.shape[axis] {
-                return Err("Tensor::linear_index");
+                return Err("DTensor::linear_index");
             }
             linear += index * self.strides[axis];
         }
@@ -558,7 +562,7 @@ impl<T> Tensor<T> {
     }
 }
 
-impl<T: Default + Clone> Tensor<T> {
+impl<T: Default + Clone> DTensor<T> {
     pub fn new(shape: Vec<usize>) -> Self {
         let size = Self::compute_size(&shape);
         let strides = Self::compute_strides(&shape);

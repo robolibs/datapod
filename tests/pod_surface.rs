@@ -35,8 +35,8 @@ fn pod_surface_is_present() {
     let _scalar = mat::Scalar::new(1.0_f64);
     let _vector = mat::Vector3d::from([1.0, 2.0, 3.0]);
     let _matrix = mat::Matrix::<f64, 2, 2>::default();
-    let _tensor: mat::Tensor<f64> = mat::Tensor::default();
-    let _dynamic: mat::Dynamic<f64> = mat::Dynamic::default();
+    let _tensor: mat::DTensor<f64> = mat::DTensor::default();
+    let _dynamic: mat::DMatrix<f64> = mat::DMatrix::default();
     let _complex = mat::Complex { re: 1.0, im: 2.0 };
     let _fraction = mat::Fraction {
         numerator: 1_i32,

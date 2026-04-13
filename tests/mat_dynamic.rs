@@ -2,7 +2,7 @@ use datapod::mat;
 
 #[test]
 fn dynamic_vector_supports_runtime_shape_and_mutation() {
-    let mut vector = mat::DynamicVector::<f64>::new(3);
+    let mut vector = mat::DVector::<f64>::new(3);
     assert_eq!(vector.size(), 3);
     assert!(!vector.empty());
     vector[0] = 1.0;
@@ -19,7 +19,7 @@ fn dynamic_vector_supports_runtime_shape_and_mutation() {
 
 #[test]
 fn dynamic_matrix_supports_rows_cols_and_indexing() {
-    let mut matrix = mat::Dynamic::<f64>::new(2, 3);
+    let mut matrix = mat::DMatrix::<f64>::new(2, 3);
     assert_eq!(matrix.rows(), 2);
     assert_eq!(matrix.cols(), 3);
     assert!(matrix.is_valid());
@@ -39,17 +39,17 @@ fn dynamic_matrix_supports_rows_cols_and_indexing() {
 
 #[test]
 fn dynamic_matrix_can_be_constructed_from_flat_storage() {
-    let matrix = mat::Dynamic::from_vec(2, 2, vec![1_i32, 2, 3, 4]).unwrap();
+    let matrix = mat::DMatrix::from_vec(2, 2, vec![1_i32, 2, 3, 4]).unwrap();
     assert_eq!(matrix[(0, 0)], 1);
     assert_eq!(matrix[(0, 1)], 2);
     assert_eq!(matrix[(1, 0)], 3);
     assert_eq!(matrix[(1, 1)], 4);
-    assert!(mat::Dynamic::<i32>::from_vec(2, 3, vec![1, 2]).is_err());
+    assert!(mat::DMatrix::<i32>::from_vec(2, 3, vec![1, 2]).is_err());
 }
 
 #[test]
 fn dynamic_tensor_supports_runtime_rank_and_indexing() {
-    let mut tensor = mat::Tensor::<i32>::new(vec![2, 3, 2]);
+    let mut tensor = mat::DTensor::<i32>::new(vec![2, 3, 2]);
     assert_eq!(tensor.rank(), 3);
     assert_eq!(tensor.shape(), &[2, 3, 2]);
     assert_eq!(tensor.strides(), &[1, 2, 6]);
@@ -67,7 +67,7 @@ fn dynamic_tensor_supports_runtime_rank_and_indexing() {
 
 #[test]
 fn dynamic_tensor_validates_shape_mismatch() {
-    assert!(mat::Tensor::<i32>::from_vec(vec![2, 2, 2], vec![1, 2, 3]).is_err());
-    let tensor = mat::Tensor::<i32>::from_vec(vec![2, 2], vec![1, 2, 3, 4]).unwrap();
+    assert!(mat::DTensor::<i32>::from_vec(vec![2, 2, 2], vec![1, 2, 3]).is_err());
+    let tensor = mat::DTensor::<i32>::from_vec(vec![2, 2], vec![1, 2, 3, 4]).unwrap();
     assert_eq!(*tensor.at(&[1, 1]).unwrap(), 4);
 }
