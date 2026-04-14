@@ -18,3 +18,21 @@ pub type isize = std::primitive::isize;
 
 pub type boolean = bool;
 pub type byte = u8;
+
+pub type char8 = u8;
+pub type char16 = u16;
+pub type char32 = std::primitive::char;
+
+const _: () = {
+    assert!(std::mem::size_of::<i8>() == 1);
+    assert!(std::mem::size_of::<i16>() == 2);
+    assert!(std::mem::size_of::<i32>() == 4);
+    assert!(std::mem::size_of::<i64>() == 8);
+    assert!(std::mem::size_of::<u8>() == 1);
+    assert!(std::mem::size_of::<u16>() == 2);
+    assert!(std::mem::size_of::<u32>() == 4);
+    assert!(std::mem::size_of::<u64>() == 8);
+    assert!(std::mem::size_of::<f32>() == 4);
+    assert!(std::mem::size_of::<f64>() == 8);
+    assert!(std::mem::size_of::<byte>() == 1);
+};

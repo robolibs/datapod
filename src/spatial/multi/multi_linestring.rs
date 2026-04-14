@@ -1,1 +1,4 @@
-pub use crate::spatial::extras::MultiLinestring;
+use crate::Vector;
+use crate::spatial::Linestring;
+
+pub type MultiLinestring = Vector<Linestring>;

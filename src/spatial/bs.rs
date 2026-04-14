@@ -1,1 +1,1 @@
-pub use super::extras::Bs;
+pub type Bs = super::BoundingSphere;

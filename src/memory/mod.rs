@@ -6,10 +6,10 @@ mod paged;
 mod pool;
 mod ptr;
 
-pub use allocator::Allocator;
-pub use arena::Arena;
+pub use allocator::{Allocate, Allocator};
+pub use arena::{Arena, ArenaHandle, DEFAULT_ARENA_BLOCK_SIZE};
 pub use mmap_vec::MmapVec;
-pub use offset_ptr::OffsetPtr;
-pub use paged::Paged;
-pub use pool::Pool;
-pub use ptr::Ptr;
+pub use offset_ptr::{NULL_OFFSET, OffsetPtr};
+pub use paged::{MAX_PAGE_SIZE, MIN_PAGE_SIZE, Page, Paged};
+pub use pool::{DEFAULT_POOL_CHUNK_SIZE, Pool, PoolHandle};
+pub use ptr::{IsPtrType, OffsetMode, Ptr, PtrMode, RawMode, offset, raw};
