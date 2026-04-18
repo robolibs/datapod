@@ -6,6 +6,6 @@ mod set;
 
 pub use fws_multimap::FwsMultimap;
 pub use hash_storage::HashStorage;
-pub use map::Map;
+pub use map::{Map, MapExt, OMap, OMapExt};
 pub use mutable_fws_multimap::MutableFwsMultimap;
-pub use set::Set;
+pub use set::{OSet, OSetExt, Set, SetExt};

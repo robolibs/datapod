@@ -15,6 +15,7 @@ pub mod temporal;
 pub mod trees;
 pub mod types;
 
+pub use associative::{Map, MapExt, OMap, OMapExt, OSet, OSetExt, Set, SetExt};
 pub use matrix::mat;
 pub use sequential::Vector;
 pub use spatial::{
