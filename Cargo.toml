@@ -10,4 +10,11 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+# Many adapter helpers live in the crate as a staging ground for future
+# consumers — silence `unused` / `dead_code` lint spam so downstream
+# crates don't drown in noise when they `cargo build`.
+[lints.rust]
+dead_code = "allow"
+unused = "allow"
+
 [dependencies]
