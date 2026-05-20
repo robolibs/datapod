@@ -1,7 +1,8 @@
 use crate::matrix::mat;
 use crate::spatial::Point;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Wrench {
     pub force: Point,
     pub torque: Point,
@@ -20,11 +21,17 @@ impl Wrench {
     }
 
     pub fn force_only(force: Point) -> Self {
-        Self { force, torque: Point::new(0.0, 0.0, 0.0) }
+        Self {
+            force,
+            torque: Point::new(0.0, 0.0, 0.0),
+        }
     }
 
     pub fn torque_only(torque: Point) -> Self {
-        Self { force: Point::new(0.0, 0.0, 0.0), torque }
+        Self {
+            force: Point::new(0.0, 0.0, 0.0),
+            torque,
+        }
     }
 
     pub fn zero() -> Self {
@@ -65,27 +72,39 @@ impl Wrench {
 impl std::ops::Add for Wrench {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        Self { force: self.force + rhs.force, torque: self.torque + rhs.torque }
+        Self {
+            force: self.force + rhs.force,
+            torque: self.torque + rhs.torque,
+        }
     }
 }
 
 impl std::ops::Sub for Wrench {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        Self { force: self.force - rhs.force, torque: self.torque - rhs.torque }
+        Self {
+            force: self.force - rhs.force,
+            torque: self.torque - rhs.torque,
+        }
     }
 }
 
 impl std::ops::Mul<f64> for Wrench {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
-        Self { force: self.force * rhs, torque: self.torque * rhs }
+        Self {
+            force: self.force * rhs,
+            torque: self.torque * rhs,
+        }
     }
 }
 
 impl std::ops::Div<f64> for Wrench {
     type Output = Self;
     fn div(self, rhs: f64) -> Self::Output {
-        Self { force: self.force / rhs, torque: self.torque / rhs }
+        Self {
+            force: self.force / rhs,
+            torque: self.torque / rhs,
+        }
     }
 }

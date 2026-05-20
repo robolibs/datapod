@@ -1,6 +1,7 @@
 use super::Euler;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Quaternion {
     pub w: f64,
     pub x: f64,

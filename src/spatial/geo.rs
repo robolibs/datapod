@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Geo {
     pub latitude: f64,
     pub longitude: f64,

@@ -3,7 +3,8 @@ use crate::spatial::{Point, Pose, Quaternion, Velocity};
 
 use super::Twist;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Odom {
     pub pose: Pose,
     pub twist: Twist,
@@ -15,7 +16,10 @@ impl Odom {
     }
 
     pub fn from_pose(pose: Pose) -> Self {
-        Self { pose, twist: Twist::default() }
+        Self {
+            pose,
+            twist: Twist::default(),
+        }
     }
 
     pub fn at_rest() -> Self {
@@ -57,8 +61,16 @@ impl Odom {
                 rotation: Quaternion::new(v[3], v[4], v[5], v[6]),
             },
             twist: Twist {
-                linear: Velocity { vx: v[7], vy: v[8], vz: v[9] },
-                angular: Velocity { vx: v[10], vy: v[11], vz: v[12] },
+                linear: Velocity {
+                    vx: v[7],
+                    vy: v[8],
+                    vz: v[9],
+                },
+                angular: Velocity {
+                    vx: v[10],
+                    vy: v[11],
+                    vz: v[12],
+                },
             },
         }
     }

@@ -1,6 +1,7 @@
 use super::{Point, Quaternion};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Transform {
     pub rw: f64,
     pub rx: f64,

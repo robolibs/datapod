@@ -2,7 +2,11 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[repr(C)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
+    bytemuck::Pod, bytemuck::Zeroable,
+)]
 pub struct Uuid {
     pub bytes: [u8; 16],
 }

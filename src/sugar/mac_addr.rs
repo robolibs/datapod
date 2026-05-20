@@ -1,7 +1,11 @@
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[repr(C)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
+    bytemuck::Pod, bytemuck::Zeroable,
+)]
 pub struct MacAddr {
     pub bytes: [u8; 6],
 }

@@ -5,7 +5,8 @@ use crate::mat;
 
 use super::Quaternion;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Euler {
     pub roll: f64,
     pub pitch: f64,

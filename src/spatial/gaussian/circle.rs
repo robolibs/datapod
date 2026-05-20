@@ -1,6 +1,7 @@
 use crate::spatial::Circle;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GaussianCircle {
     pub circle: Circle,
     pub uncertainty: f64,

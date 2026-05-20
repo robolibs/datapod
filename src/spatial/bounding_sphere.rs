@@ -2,7 +2,8 @@ use crate::matrix::mat;
 
 use super::{Aabb, Point};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct BoundingSphere {
     pub center: Point,
     pub radius: f64,

@@ -1,6 +1,7 @@
 use crate::spatial::{Point, Pose};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Inertial {
     pub origin: Pose,
     pub mass: f64,
@@ -23,7 +24,16 @@ impl Inertial {
         iyz: f64,
         izz: f64,
     ) -> Self {
-        Self { origin, mass, ixx, ixy, ixz, iyy, iyz, izz }
+        Self {
+            origin,
+            mass,
+            ixx,
+            ixy,
+            ixz,
+            iyy,
+            iyz,
+            izz,
+        }
     }
 
     /// Create inertial with only position (identity rotation)
@@ -38,7 +48,10 @@ impl Inertial {
         izz: f64,
     ) -> Self {
         Self {
-            origin: Pose { point: com, rotation: Default::default() },
+            origin: Pose {
+                point: com,
+                rotation: Default::default(),
+            },
             mass,
             ixx,
             ixy,
@@ -51,13 +64,25 @@ impl Inertial {
 
     /// Create inertial with diagonal tensor (no products of inertia)
     pub fn diagonal(origin: Pose, mass: f64, ixx: f64, iyy: f64, izz: f64) -> Self {
-        Self { origin, mass, ixx, ixy: 0.0, ixz: 0.0, iyy, iyz: 0.0, izz }
+        Self {
+            origin,
+            mass,
+            ixx,
+            ixy: 0.0,
+            ixz: 0.0,
+            iyy,
+            iyz: 0.0,
+            izz,
+        }
     }
 
     /// Create inertial for a point mass
     pub fn point_mass(mass: f64, com: Point) -> Self {
         Self {
-            origin: Pose { point: com, rotation: Default::default() },
+            origin: Pose {
+                point: com,
+                rotation: Default::default(),
+            },
             mass,
             ixx: 0.0,
             ixy: 0.0,
@@ -88,7 +113,16 @@ impl Inertial {
         let ixx = (mass / 12.0) * (height * height + depth * depth);
         let iyy = (mass / 12.0) * (width * width + depth * depth);
         let izz = (mass / 12.0) * (width * width + height * height);
-        Self { origin: Pose::default(), mass, ixx, ixy: 0.0, ixz: 0.0, iyy, iyz: 0.0, izz }
+        Self {
+            origin: Pose::default(),
+            mass,
+            ixx,
+            ixy: 0.0,
+            ixz: 0.0,
+            iyy,
+            iyz: 0.0,
+            izz,
+        }
     }
 
     /// Create inertial for a uniform cylinder at origin (axis along z)
@@ -96,7 +130,16 @@ impl Inertial {
         let ixx = (mass / 12.0) * (3.0 * radius * radius + height * height);
         let iyy = ixx;
         let izz = 0.5 * mass * radius * radius;
-        Self { origin: Pose::default(), mass, ixx, ixy: 0.0, ixz: 0.0, iyy, iyz: 0.0, izz }
+        Self {
+            origin: Pose::default(),
+            mass,
+            ixx,
+            ixy: 0.0,
+            ixz: 0.0,
+            iyy,
+            iyz: 0.0,
+            izz,
+        }
     }
 
     pub fn is_set(&self) -> bool {

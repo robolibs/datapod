@@ -1,6 +1,7 @@
 use crate::spatial::Box;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GaussianBox {
     pub r#box: Box,
     pub uncertainty: f64,

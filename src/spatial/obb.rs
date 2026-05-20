@@ -1,6 +1,7 @@
 use super::{Euler, Point, Size};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Obb {
     pub center: Point,
     pub half_extents: Size,

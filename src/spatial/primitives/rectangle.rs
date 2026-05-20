@@ -1,7 +1,8 @@
 use crate::matrix::mat;
 use crate::spatial::Point;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Rectangle {
     pub top_left: Point,
     pub top_right: Point,

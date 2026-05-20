@@ -2,7 +2,8 @@ use crate::matrix::mat;
 
 use super::{Point, Pose, Size};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Box {
     pub pose: Pose,
     pub size: Size,

@@ -18,3 +18,8 @@ dead_code = "allow"
 unused = "allow"
 
 [dependencies]
+# bytemuck powers the POD derive on the fixed-layout types
+# (spatial primitives, matrix vectors, temporal stamps, scalar
+# wrappers). Heap-backed types (multi-geometries, trees, sequence
+# containers) keep their natural Rust layout and are NOT Pod.
+bytemuck = { version = "1", features = ["derive"] }

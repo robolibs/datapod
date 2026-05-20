@@ -2,7 +2,8 @@ use crate::matrix::mat;
 
 use super::{Point, Quaternion};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Pose {
     pub point: Point,
     pub rotation: Quaternion,

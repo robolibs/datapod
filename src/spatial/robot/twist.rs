@@ -1,7 +1,8 @@
 use crate::matrix::mat;
 use crate::spatial::Velocity;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Twist {
     pub linear: Velocity,
     pub angular: Velocity,
@@ -15,16 +16,26 @@ impl Twist {
     pub fn from_components(vx: f64, vy: f64, vz: f64, wx: f64, wy: f64, wz: f64) -> Self {
         Self {
             linear: Velocity { vx, vy, vz },
-            angular: Velocity { vx: wx, vy: wy, vz: wz },
+            angular: Velocity {
+                vx: wx,
+                vy: wy,
+                vz: wz,
+            },
         }
     }
 
     pub fn linear_only(linear: Velocity) -> Self {
-        Self { linear, angular: Velocity::default() }
+        Self {
+            linear,
+            angular: Velocity::default(),
+        }
     }
 
     pub fn angular_only(angular: Velocity) -> Self {
-        Self { linear: Velocity::default(), angular }
+        Self {
+            linear: Velocity::default(),
+            angular,
+        }
     }
 
     pub fn zero() -> Self {
@@ -48,8 +59,16 @@ impl Twist {
 
     pub fn from_mat(v: mat::Vector<f64, 6>) -> Self {
         Self {
-            linear: Velocity { vx: v[0], vy: v[1], vz: v[2] },
-            angular: Velocity { vx: v[3], vy: v[4], vz: v[5] },
+            linear: Velocity {
+                vx: v[0],
+                vy: v[1],
+                vz: v[2],
+            },
+            angular: Velocity {
+                vx: v[3],
+                vy: v[4],
+                vz: v[5],
+            },
         }
     }
 }

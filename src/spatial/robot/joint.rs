@@ -14,7 +14,8 @@ pub enum JointType {
     Planar,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct JointLimits {
     pub lower: f64,
     pub upper: f64,
@@ -22,7 +23,8 @@ pub struct JointLimits {
     pub velocity: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct JointDynamics {
     pub damping: f64,
     pub friction: f64,
@@ -37,11 +39,16 @@ pub struct JointMimic {
 
 impl Default for JointMimic {
     fn default() -> Self {
-        Self { joint: String::new(), multiplier: 1.0, offset: 0.0 }
+        Self {
+            joint: String::new(),
+            multiplier: 1.0,
+            offset: 0.0,
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct JointSafetyController {
     pub soft_lower_limit: f64,
     pub soft_upper_limit: f64,
@@ -92,7 +99,11 @@ impl Default for Joint {
 
 impl Joint {
     pub fn fixed(name: impl Into<String>, origin: Pose) -> Self {
-        Self { name: name.into(), origin, ..Self::default() }
+        Self {
+            name: name.into(),
+            origin,
+            ..Self::default()
+        }
     }
 
     pub fn revolute(
@@ -137,10 +148,22 @@ impl Joint {
         }
     }
 
-    pub fn is_fixed(&self) -> bool { self.r#type == JointType::Fixed }
-    pub fn is_revolute(&self) -> bool { self.r#type == JointType::Revolute }
-    pub fn is_continuous(&self) -> bool { self.r#type == JointType::Continuous }
-    pub fn is_prismatic(&self) -> bool { self.r#type == JointType::Prismatic }
-    pub fn is_floating(&self) -> bool { self.r#type == JointType::Floating }
-    pub fn is_planar(&self) -> bool { self.r#type == JointType::Planar }
+    pub fn is_fixed(&self) -> bool {
+        self.r#type == JointType::Fixed
+    }
+    pub fn is_revolute(&self) -> bool {
+        self.r#type == JointType::Revolute
+    }
+    pub fn is_continuous(&self) -> bool {
+        self.r#type == JointType::Continuous
+    }
+    pub fn is_prismatic(&self) -> bool {
+        self.r#type == JointType::Prismatic
+    }
+    pub fn is_floating(&self) -> bool {
+        self.r#type == JointType::Floating
+    }
+    pub fn is_planar(&self) -> bool {
+        self.r#type == JointType::Planar
+    }
 }

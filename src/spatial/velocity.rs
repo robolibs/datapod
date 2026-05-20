@@ -1,6 +1,7 @@
 use crate::matrix::mat;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Velocity {
     pub vx: f64,
     pub vy: f64,

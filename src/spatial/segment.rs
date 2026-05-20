@@ -2,7 +2,8 @@ use crate::mat;
 
 use super::Point;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Segment {
     pub start: Point,
     pub end: Point,

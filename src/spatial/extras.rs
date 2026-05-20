@@ -5,7 +5,8 @@ use super::{Aabb, Geo, Obb, Point};
 pub type PointMap<V> = Map<PointKey, V>;
 pub type PointSet = Set<PointKey>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PointKey {
     pub x_bits: u64,
     pub y_bits: u64,

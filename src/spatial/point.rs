@@ -2,7 +2,8 @@ use std::ops::{Add, Div, Mul, Sub};
 
 use crate::mat;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Point {
     pub x: f64,
     pub y: f64,

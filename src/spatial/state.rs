@@ -2,7 +2,8 @@ use crate::matrix::mat;
 
 use super::{Point, Pose, Quaternion, Velocity};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct State {
     pub pose: Pose,
     pub linear_velocity: Velocity,

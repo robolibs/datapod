@@ -1,7 +1,11 @@
 use std::cmp::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[repr(C)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+    bytemuck::Pod, bytemuck::Zeroable,
+)]
 pub struct Stamp {
     pub nanos: i64,
 }
