@@ -33,7 +33,7 @@ fn mac_addr_formats_and_parses_round_trip() {
 fn ip_formats_and_parses_v4_and_v6() {
     let v4 = Ip::from_v4_bytes([192, 168, 0, 1]);
     assert!(v4.is_v4());
-    assert_eq!(v4.v4_bytes(), Some(&[192, 168, 0, 1]));
+    assert_eq!(v4.v4_bytes(), Some([192, 168, 0, 1]));
     assert_eq!(v4.to_string(), "192.168.0.1");
     assert_eq!(Ip::from_string("192.168.0.1").unwrap(), v4);
 

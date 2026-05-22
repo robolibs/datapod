@@ -1,4 +1,4 @@
-use datapod::spatial::robot::{
+use datapod::robot::{
     Accel, Collision, Geometry, Identity, Inertial, Joint, Link, Model, Odom, Robot, Sensor,
     Transmission, Twist, Visual, Wrench,
 };

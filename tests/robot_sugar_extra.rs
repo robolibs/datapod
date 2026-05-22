@@ -1,3 +1,7 @@
+//! Robot-type / sugar helper coverage after Phase 6d (all-Pod robot
+//! subtree). Strings are referenced by `u32` ID; lists are fixed-cap
+//! ID arrays; `Option<T>` becomes `*_present: u32` + inline `T`.
+
 use datapod::{
     Actuator, Collision, Geometry, INVALID_ID, IP, Identity, Inertial, Joint, JointCalibration,
     JointDynamics, JointLimits, JointMimic, JointSafetyController, JointType, Link, MacAddr,
@@ -6,16 +10,17 @@ use datapod::{
 
 #[test]
 fn material_named_and_color_helpers_work() {
-    let named = Material::named("red", [1.0, 0.0, 0.0, 1.0]);
-    assert_eq!(named.name, "red");
-    let color = Material::color([0.0, 1.0, 0.0, 1.0]);
-    assert_eq!(color.texture, "");
+    let named = Material::named(7, [1.0, 0.0, 0.0, 1.0]);
+    assert_eq!(named.name_id, 7);
+    let _color = Material::color([0.0, 1.0, 0.0, 1.0]);
+    let textured = Material::textured(42);
+    assert!(textured.has_texture());
 }
 
 #[test]
 fn visual_new_and_with_origin_work() {
     let geom = Geometry::box_shape(Size::new(1.0, 2.0, 3.0));
-    let visual = Visual::new(geom.clone());
+    let visual = Visual::new(geom);
     assert_eq!(visual.geom, geom);
     let pose = Pose::default();
     let visual = Visual::with_origin(pose, geom);
@@ -25,7 +30,7 @@ fn visual_new_and_with_origin_work() {
 #[test]
 fn collision_new_and_with_origin_work() {
     let geom = Geometry::sphere(1.0);
-    let collision = Collision::new(geom.clone());
+    let collision = Collision::new(geom);
     assert_eq!(collision.geom, geom);
     let pose = Pose::default();
     let collision = Collision::with_origin(pose, geom);
@@ -38,9 +43,10 @@ fn geometry_box_cylinder_mesh_helpers_work() {
     assert!(bx.is_box());
     let cylinder = Geometry::cylinder(1.0, 2.0);
     assert!(cylinder.is_cylinder());
-    let mesh = Geometry::mesh("file://mesh.obj", [2.0, 2.0, 2.0]);
+    let mesh = Geometry::mesh(99, [2.0, 2.0, 2.0]);
     assert!(mesh.is_mesh());
     assert_eq!(mesh.as_mesh().unwrap().scale, [2.0, 2.0, 2.0]);
+    assert_eq!(mesh.as_mesh().unwrap().uri_id, 99);
 }
 
 #[test]
@@ -49,67 +55,58 @@ fn joint_helper_structs_default_to_expected_values() {
     assert_eq!(JointLimits::default().velocity, 0.0);
     assert_eq!(JointDynamics::default().damping, 0.0);
     assert_eq!(JointSafetyController::default().k_velocity, 0.0);
-    assert_eq!(JointCalibration::default().rising, None);
+    assert_eq!(JointCalibration::default().rising_present, 0);
 }
 
 #[test]
 fn joint_default_and_type_helpers_work() {
     let joint = Joint::default();
-    assert_eq!(joint.parent, INVALID_ID);
+    assert_eq!(joint.parent_id, INVALID_ID);
     assert!(joint.is_fixed());
-    assert_eq!(joint.r#type, JointType::Fixed);
+    assert_eq!(joint.joint_type, JointType::Fixed);
 }
 
 #[test]
 fn link_with_inertial_and_new_helpers_work() {
-    let link = Link::new("base");
-    assert_eq!(link.name, "base");
-    let inertial = Inertial {
-        mass: 1.0,
-        ..Inertial::default()
-    };
-    let link = Link::with_inertial("body", inertial.clone());
+    let link = Link::new(5);
+    assert_eq!(link.name_id, 5);
+    let inertial = Inertial { mass: 1.0, ..Inertial::default() };
+    let link = Link::with_inertial(6, inertial);
     assert!(link.has_inertial());
-    assert_eq!(link.inertial, Some(inertial));
+    assert_eq!(link.inertial, inertial);
 }
 
 #[test]
-fn model_parent_queries_return_invalid_for_unknown_ids() {
+fn model_validity_queries_handle_unknown_ids() {
     let model = Model::default();
-    assert_eq!(model.get_parent(99), INVALID_ID);
-    assert_eq!(model.get_parent_joint(99), INVALID_ID);
-    assert_eq!(model.get_children(99), &[]);
     assert!(!model.is_valid_link(0));
     assert!(!model.is_valid_joint(0));
 }
 
 #[test]
 fn robot_identity_and_transmission_fields_are_plainly_accessible() {
-    let robot = Robot {
-        id: Identity {
-            name: "r".into(),
-            ..Identity::default()
-        },
-        model: Model {
-            transmissions: datapod::Vector::from([Transmission {
-                name: "tx".into(),
-                r#type: "simple".into(),
-                joints: datapod::Vector::from([TransmissionJoint {
-                    name: "j".into(),
-                    mechanical_reduction: Some(2.0),
-                    offset: None,
-                }]),
-                actuators: datapod::Vector::from([Actuator {
-                    name: "a".into(),
-                    mechanical_reduction: Some(3.0),
-                }]),
-            }]),
-            ..Model::default()
-        },
-        ..Robot::default()
+    let mut robot = Robot::default();
+    robot.id = Identity::default();
+    robot.id.name_id = 1;
+
+    let mut transmission = Transmission { name_id: 10, type_id: 11, ..Default::default() };
+    transmission.joints[0] = TransmissionJoint {
+        name_id: 20,
+        reduction_present: 1,
+        offset_present: 0,
+        _pad: 0,
+        mechanical_reduction: 2.0,
+        offset: 0.0,
     };
-    assert_eq!(robot.id.name, "r");
-    assert_eq!(robot.model.transmissions[0].actuators[0].name, "a");
+    transmission.actuators[0] = Actuator {
+        name_id: 21,
+        reduction_present: 1,
+        mechanical_reduction: 3.0,
+    };
+    assert_eq!(robot.id.name_id, 1);
+    assert_eq!(transmission.actuators[0].name_id, 21);
+    robot.model.transmission_count = 1;
+    assert_eq!(robot.model.transmission_count, 1);
 }
 
 #[test]

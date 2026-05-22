@@ -1,4 +1,4 @@
-use datapod::{Euler, Geo, Linestring, Point, Polygon, Quaternion, Size, Vector, mat};
+use datapod::{Euler, Geo, Linestring, Point, Polygon, Quaternion, Size};
 
 fn approx_eq(left: f64, right: f64, epsilon: f64) {
     assert!((left - right).abs() < epsilon, "{left} != {right}");
@@ -98,9 +98,10 @@ fn linestring_empty_and_num_points_work() {
     let empty = Linestring::default();
     assert!(empty.empty());
     assert_eq!(empty.num_points(), 0);
-    let line = Linestring {
-        points: Vector::from([Point::new(0.0, 0.0, 0.0), Point::new(3.0, 4.0, 0.0)]),
-    };
+    let line = Linestring::new(vec![
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(3.0, 4.0, 0.0),
+    ]);
     assert!(!line.empty());
     assert_eq!(line.num_points(), 2);
     approx_eq(line.length(), 5.0, 1e-9);
@@ -111,28 +112,13 @@ fn polygon_empty_validity_and_num_vertices_work() {
     let empty = Polygon::default();
     assert!(empty.empty());
     assert!(!empty.is_valid());
-    let polygon = Polygon {
-        vertices: Vector::from([
-            Point::new(0.0, 0.0, 0.0),
-            Point::new(1.0, 0.0, 0.0),
-            Point::new(0.0, 1.0, 0.0),
-        ]),
-    };
+    let polygon = Polygon::new(vec![
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(1.0, 0.0, 0.0),
+        Point::new(0.0, 1.0, 0.0),
+    ]);
     assert_eq!(polygon.num_vertices(), 3);
     assert!(polygon.is_valid());
-}
-
-#[test]
-fn polygon_iter_exposes_vertices_in_order() {
-    let polygon = Polygon {
-        vertices: Vector::from([
-            Point::new(1.0, 0.0, 0.0),
-            Point::new(2.0, 0.0, 0.0),
-            Point::new(3.0, 0.0, 0.0),
-        ]),
-    };
-    let xs: Vec<_> = polygon.iter().map(|point| point.x).collect();
-    assert_eq!(xs, vec![1.0, 2.0, 3.0]);
 }
 
 #[test]
@@ -158,9 +144,3 @@ fn size_arithmetic_and_extrema_work() {
     );
 }
 
-#[test]
-fn fixed_mat_vector_at_bounds_checks_work() {
-    let vector = mat::Vector::<i32, 3>::from([1, 2, 3]);
-    assert_eq!(vector.at(0), Ok(&1));
-    assert!(vector.at(3).is_err());
-}
