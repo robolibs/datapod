@@ -1,32 +1,62 @@
-//! Rust port of the `datapod` base library.
+//! Datapod — the wire contract for the stack.
 //!
-//! The initial focus is the foundational type and geometry layers that
-//! downstream crates such as `vectkit` depend on.
+//! Everything that travels between processes or hosts implements [`DataPod`].
+//! Fixed-Pod types are their own header (`type Header = Self`). Heap-bearing
+//! types own a `Vec<...>` inside, and the macro generates a sibling
+//! `<T>Header` Pod struct that rides the wire.
+//!
+//! Top-level domains:
+//! - [`geom`]   — geometric types (points, polygons, shapes, rings, ...)
+//! - [`motion`] — pose, transforms, motion state
+//! - [`world`]  — earth-frame / geodetic (Geo, Loc, Utm)
+//! - [`raster`] — gridded raster data (Grid, Layer)
+//! - [`robot`]  — robotics / URDF (Joint, Link, Robot, ...)
+//! - [`id`]     — identifier primitives (Uuid, Ip, MacAddr, DpString)
+//! - [`wire`]   — the [`DataPod`] trait + transport envelope
 
-pub mod adapters;
-pub mod associative;
-pub mod lockfree;
-pub mod matrix;
-pub mod memory;
-pub mod sequential;
-pub mod spatial;
-pub mod sugar;
-pub mod temporal;
-pub mod trees;
-pub mod types;
+// `#[datapod]` and `#[derive(DataPod)]` expansions emit absolute paths
+// like `::datapod::DataPod`. Make those paths resolve when the macro is
+// invoked from inside this crate itself.
+extern crate self as datapod;
 
-pub use associative::{Map, MapExt, OMap, OMapExt, OSet, OSetExt, Set, SetExt};
-pub use matrix::mat;
-pub use sequential::Vector;
-pub use spatial::{
-    Aabb, Accel, Acceleration, Actuator, BoundingSphere, Box, BoxShape, Bs, Circle, Collision,
-    CylinderShape, Euler, GaussianBox, GaussianCircle, GaussianPoint, GaussianRectangle, Geo,
-    Geometry, Grid, INVALID_ID, Identity, Inertial, Joint, JointCalibration, JointDynamics,
-    JointLimits, JointMimic, JointSafetyController, JointType, Layer, Linestring, Link, Loc,
-    Material, MeshShape, Model, MultiLinestring, MultiPoint, MultiPolygon, Obb, Odom, Path, Point,
-    PointKey, PointMap, PointSet, Polygon, Pose, Quadtree, Quaternion, RTree, Rectangle, Ring,
-    Robot, Segment, Sensor, Size, SphereShape, Square, State, Trajectory, Transform, Transmission,
-    TransmissionJoint, Triangle, Twist, Utm, Velocity, Visual, Wrench,
+pub use datapod_macros::{DataPod, datapod};
+pub use iceoryx2::prelude::ZeroCopySend;
+
+pub mod wire;
+pub use wire::{DataPod, Encoding, Envelope};
+
+pub mod geom;
+pub mod id;
+pub mod motion;
+pub mod raster;
+pub mod robot;
+pub mod world;
+
+// ---------------------------------------------------------------------------
+// Top-level re-exports — common types accessible as `datapod::X`.
+// ---------------------------------------------------------------------------
+
+pub use geom::{
+    Linestring, LinestringHeader, MultiPoint, MultiPointHeader, Path, PathHeader, Point, PointKey,
+    PointMap, PointSet, Polygon, PolygonHeader, Ring, RingHeader, Segment, Trajectory,
+    TrajectoryHeader,
 };
-pub use sugar::{IP, Ip, MacAddr, UUID, Uuid};
-pub use types::{boolean, byte, f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
+pub use geom::shapes::{
+    Aabb, BoundingSphere, Box, Bs, Circle, GaussianBox, GaussianCircle, GaussianPoint,
+    GaussianRectangle, Line, Obb, Rectangle, Size, Square, Triangle,
+};
+
+pub use motion::{Acceleration, Euler, Pose, Quaternion, State, Transform, Velocity};
+
+pub use world::{Geo, Loc, Utm};
+
+pub use raster::{Grid, GridHeader, Layer, LayerHeader};
+
+pub use id::{DpString, IP, Ip, MacAddr, STRING_NONE, UUID, Uuid};
+
+pub use robot::{
+    Accel, Actuator, BoxShape, Collision, CylinderShape, Geometry, GeometryKind, INVALID_ID,
+    Identity, Inertial, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
+    JointSafetyController, JointType, KV, Link, Material, MeshShape, Model, Odom, Robot, Sensor,
+    SphereShape, Transmission, TransmissionJoint, Twist, Visual, Wrench,
+};

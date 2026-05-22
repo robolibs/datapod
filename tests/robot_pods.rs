@@ -1,26 +1,29 @@
+//! Pod-shape verification for the `spatial::robot::*` types post-Phase-6d.
+//!
+//! All robot types are now Pod: strings are referenced by `u32` ID
+//! (`STRING_NONE` for unset), lists of related entities are referenced by
+//! `u32` ID arrays (`INVALID_ID` for unset slots), and `Option<T>` is
+//! flattened to a `*_present: u32` flag with the inline `T`.
+
 use datapod::{
-    Actuator, Collision, Geometry, INVALID_ID, Identity, Inertial, Joint, JointLimits, Link,
-    Material, Model, Odom, Point, Pose, Quaternion, Robot, Sensor, Size, Transmission,
-    TransmissionJoint, Twist, Velocity, Visual, Wrench,
+    Actuator, Collision, Geometry, GeometryKind, INVALID_ID, Identity, Inertial, Joint,
+    JointLimits, Link, Material, Model, Odom, Point, Pose, Quaternion, Robot, Sensor, Size,
+    Transmission, TransmissionJoint, Twist, Velocity, Visual, Wrench,
 };
 
 fn approx_eq(left: f64, right: f64, epsilon: f64) {
     assert!((left - right).abs() < epsilon, "{left} != {right}");
 }
 
+// ---------------------------------------------------------------------------
+// Already-Pod types — preserved behavior
+// ---------------------------------------------------------------------------
+
 #[test]
 fn twist_round_trips_through_mat() {
     let twist = Twist {
-        linear: Velocity {
-            vx: 1.0,
-            vy: 2.0,
-            vz: 3.0,
-        },
-        angular: Velocity {
-            vx: 0.1,
-            vy: 0.2,
-            vz: 0.3,
-        },
+        linear: Velocity { vx: 1.0, vy: 2.0, vz: 3.0 },
+        angular: Velocity { vx: 0.1, vy: 0.2, vz: 0.3 },
     };
     assert_eq!(Twist::from_mat(twist.to_mat()), twist);
     assert!(twist.is_set());
@@ -41,21 +44,10 @@ fn wrench_supports_math_and_round_trip() {
 #[test]
 fn odom_round_trips_through_mat() {
     let odom = Odom {
-        pose: Pose {
-            point: Point::new(1.0, 2.0, 3.0),
-            rotation: Quaternion::identity(),
-        },
+        pose: Pose { point: Point::new(1.0, 2.0, 3.0), rotation: Quaternion::identity() },
         twist: Twist {
-            linear: Velocity {
-                vx: 1.0,
-                vy: 2.0,
-                vz: 3.0,
-            },
-            angular: Velocity {
-                vx: 0.1,
-                vy: 0.2,
-                vz: 0.3,
-            },
+            linear: Velocity { vx: 1.0, vy: 2.0, vz: 3.0 },
+            angular: Velocity { vx: 0.1, vy: 0.2, vz: 0.3 },
         },
     };
     assert_eq!(Odom::from_mat(odom.to_mat()), odom);
@@ -79,131 +71,141 @@ fn inertial_reports_basic_properties() {
     assert!(inertial.is_diagonal());
 }
 
+// ---------------------------------------------------------------------------
+// Geometry / Material / Visual / Collision — Pod variants
+// ---------------------------------------------------------------------------
+
 #[test]
-fn robot_geometry_visual_and_collision_match_urdf_style_layout() {
-    let mut sphere = Geometry::sphere(0.5);
+fn geometry_tag_and_variant_accessors_work() {
+    let sphere = Geometry::sphere(0.5);
+    assert_eq!(sphere.kind, GeometryKind::Sphere);
     assert!(sphere.is_sphere());
     assert_eq!(sphere.as_sphere().unwrap().radius, 0.5);
-    sphere.as_sphere_mut().unwrap().radius = 0.75;
-    assert_eq!(sphere.as_sphere().unwrap().radius, 0.75);
 
-    let visual = Visual {
-        name: "mesh".into(),
-        ..Visual::with_material(
-            Geometry::box_shape(Size::new(1.0, 2.0, 3.0)),
-            Material::textured("package://robot/mesh.png"),
-        )
-    };
-    assert!(visual.is_set());
-    assert!(visual.material.as_ref().unwrap().has_texture());
+    let box_geom = Geometry::box_shape(Size::new(1.0, 2.0, 3.0));
+    assert_eq!(box_geom.kind, GeometryKind::Box);
+    assert_eq!(box_geom.as_box().unwrap().size, Size::new(1.0, 2.0, 3.0));
 
-    let collision = Collision::new(sphere);
-    assert!(!collision.is_set());
-    let collision = Collision {
-        name: "hitbox".into(),
-        ..collision
-    };
-    assert!(collision.is_set());
+    let cyl = Geometry::cylinder(0.1, 1.0);
+    assert!(cyl.is_cylinder());
+
+    let mesh = Geometry::mesh(7, [1.0, 1.0, 1.0]);
+    assert!(mesh.is_mesh());
+    assert_eq!(mesh.as_mesh().unwrap().uri_id, 7);
 }
 
 #[test]
-fn robot_joint_link_and_model_follow_cpp_structure() {
-    let mut model = Model::default();
-    let base_id = model.add_link(Link::new("base"));
-    let tool_id = model.add_link(Link {
-        name: Link::new("tool").name,
-        visuals: datapod::Vector::from([Visual {
-            name: "tool_vis".into(),
-            origin: Pose::default(),
-            geom: Geometry::box_shape(Size::new(0.1, 0.2, 0.3)),
-            material: None,
-        }]),
-        collisions: datapod::Vector::from([Collision {
-            name: "tool_col".into(),
-            origin: Pose::default(),
-            geom: Geometry::sphere(0.2),
-        }]),
-        sensor: Some(Sensor {
-            name: "camera".into(),
-            r#type: "rgb".into(),
-            origin: Pose::default(),
-            props: Default::default(),
-        }),
-        ..Link::default()
-    });
+fn visual_and_collision_carry_geometry_and_optional_material() {
+    let visual = Visual::with_material(
+        Geometry::box_shape(Size::new(1.0, 2.0, 3.0)),
+        Material::textured(42),
+    );
+    assert!(visual.has_material());
+    assert!(visual.material.has_texture());
+    assert_eq!(visual.material.texture_id, 42);
 
-    let joint_id = model.add_joint(Joint::revolute(
-        "joint0",
+    let collision = Collision::new(Geometry::sphere(0.5));
+    assert!(!collision.is_set());
+    let collision = Collision::named(99, Pose::default(), Geometry::sphere(0.5));
+    assert_eq!(collision.name_id, 99);
+}
+
+// ---------------------------------------------------------------------------
+// Joint, Link, Sensor — ID-based references
+// ---------------------------------------------------------------------------
+
+#[test]
+fn joint_constructors_set_type_and_axis() {
+    let revolute = Joint::revolute(
+        7,
         [0.0, 0.0, 1.0],
-        JointLimits {
-            lower: -1.0,
-            upper: 1.0,
-            effort: 10.0,
-            velocity: 5.0,
-        },
+        JointLimits { lower: -1.0, upper: 1.0, effort: 10.0, velocity: 5.0 },
         Pose::default(),
-    ));
-    model.connect(base_id, tool_id, joint_id);
+    );
+    assert!(revolute.is_revolute());
+    assert_eq!(revolute.name_id, 7);
+    assert!(revolute.has_limits());
+    assert_eq!(revolute.limits.upper, 1.0);
 
-    assert_eq!(model.root, base_id);
-    assert_eq!(model.num_links(), 2);
-    assert_eq!(model.num_joints(), 1);
-    assert!(model.is_valid_link(tool_id));
-    assert!(model.is_valid_joint(joint_id));
-    assert_eq!(model.get_parent(tool_id), base_id);
-    assert_eq!(model.get_parent_joint(tool_id), joint_id);
-    assert_eq!(model.get_children(base_id), &[tool_id]);
-    assert!(model.is_root(base_id));
-    assert!(model.is_leaf(tool_id));
-    assert!(model.joints[0].is_revolute());
-    assert_eq!(model.joints[0].parent, base_id);
-    assert_eq!(model.joints[0].child, tool_id);
-    assert_eq!(model.joints[0].parent, 0);
-    assert_ne!(INVALID_ID, tool_id);
-    assert!(model.links[1].has_visuals());
-    assert!(model.links[1].has_collisions());
-    assert!(model.links[1].sensor.is_some());
-    assert!(Joint::fixed("fixed", Pose::default()).is_fixed());
-    assert!(Joint::continuous("wheel", [1.0, 0.0, 0.0], Pose::default()).is_continuous());
+    assert!(Joint::fixed(0, Pose::default()).is_fixed());
+    assert!(Joint::continuous(0, [1.0, 0.0, 0.0], Pose::default()).is_continuous());
     assert!(
-        Joint::prismatic(
-            "slide",
-            [1.0, 0.0, 0.0],
-            JointLimits::default(),
-            Pose::default()
-        )
-        .is_prismatic()
+        Joint::prismatic(0, [1.0, 0.0, 0.0], JointLimits::default(), Pose::default())
+            .is_prismatic()
     );
 }
 
 #[test]
-fn robot_identity_transmission_and_wrapper_are_present() {
-    let transmission = Transmission {
-        name: "drive".into(),
-        r#type: "SimpleTransmission".into(),
-        joints: datapod::Vector::from([TransmissionJoint {
-            name: "joint0".into(),
-            mechanical_reduction: Some(2.0),
-            offset: Some(0.1),
-        }]),
-        actuators: datapod::Vector::from([Actuator {
-            name: "motor0".into(),
-            mechanical_reduction: Some(50.0),
-        }]),
-    };
-    assert_eq!(transmission.joints[0].offset, Some(0.1));
+fn link_tracks_inertial_visuals_collisions_sensor_by_id() {
+    let mut link = Link::new(5);
+    assert_eq!(link.name_id, 5);
+    assert!(!link.has_inertial());
+    assert!(!link.has_visuals());
+    assert!(!link.has_collisions());
+    assert!(!link.has_sensor());
 
-    let robot = Robot {
-        id: Identity {
-            name: "demo".into(),
-            ..Identity::default()
-        },
-        model: Model {
-            transmissions: datapod::Vector::from([transmission]),
-            ..Model::default()
-        },
-        ..Robot::default()
+    link.inertial_present = 1;
+    link.inertial.mass = 2.0;
+    link.visual_ids[0] = 11;
+    link.collision_ids[0] = 22;
+    link.sensor_id = 33;
+
+    assert!(link.has_inertial());
+    assert!(link.has_visuals());
+    assert!(link.has_collisions());
+    assert!(link.has_sensor());
+}
+
+#[test]
+fn sensor_carries_id_and_origin() {
+    let s = Sensor::new(1, 2, Pose::default());
+    assert_eq!(s.name_id, 1);
+    assert_eq!(s.type_id, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Model & Robot — aggregate headers (records are application-side)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn model_tracks_counts_and_root() {
+    let model = Model { link_count: 3, joint_count: 2, ..Default::default() };
+    assert_eq!(model.num_links(), 3);
+    assert_eq!(model.num_joints(), 2);
+    assert!(model.is_valid_link(0));
+    assert!(!model.is_valid_link(3));
+    assert!(model.is_valid_joint(1));
+    assert!(!model.is_valid_joint(2));
+}
+
+#[test]
+fn transmission_holds_fixed_cap_joints_and_actuators() {
+    let mut t = Transmission { name_id: 1, type_id: 2, ..Default::default() };
+    t.joints[0] = TransmissionJoint {
+        name_id: 7,
+        reduction_present: 1,
+        offset_present: 1,
+        _pad: 0,
+        mechanical_reduction: 2.0,
+        offset: 0.1,
     };
-    assert_eq!(robot.id.name, "demo");
-    assert_eq!(robot.model.transmissions.len(), 1);
+    t.actuators[0] = Actuator {
+        name_id: 8,
+        reduction_present: 1,
+        mechanical_reduction: 50.0,
+    };
+    assert_eq!(t.joints[0].offset, 0.1);
+    assert_eq!(t.actuators[0].mechanical_reduction, 50.0);
+}
+
+#[test]
+fn robot_aggregates_identity_and_model() {
+    let mut robot = Robot::default();
+    robot.id.name_id = 100;
+    robot.model.link_count = 4;
+    assert_eq!(robot.id.name_id, 100);
+    assert_eq!(robot.model.num_links(), 4);
+
+    // INVALID_ID is the sentinel for unset relationships.
+    let _: u32 = INVALID_ID;
 }
