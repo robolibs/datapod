@@ -25,11 +25,13 @@ pub use iceoryx2::prelude::ZeroCopySend;
 pub mod wire;
 pub use wire::{DataPod, Encoding, Envelope};
 
+pub mod assoc;
 pub mod geom;
 pub mod id;
 pub mod motion;
 pub mod raster;
 pub mod robot;
+pub mod seq;
 pub mod world;
 
 // ---------------------------------------------------------------------------
@@ -51,6 +53,13 @@ pub use motion::{Acceleration, Euler, Pose, Quaternion, State, Transform, Veloci
 pub use world::{Geo, Loc, Utm};
 
 pub use raster::{Grid, GridHeader, Layer, LayerHeader};
+
+pub use seq::{
+    BitVec, Bytes, Deque, DpStr, Fifo, ForwardList, Heap, HeapOrder, IndexedHeap, List, Matrix,
+    MaxHeap, MinHeap, PagedVecvec, PriorityQueue, Queue, Stack, Tensor, Vecvec, Vector,
+};
+
+pub use assoc::{Map, MapEntry, OMap, OSet, Set, SetEntry};
 
 pub use id::{DpString, IP, Ip, MacAddr, STRING_NONE, UUID, Uuid};
 
