@@ -279,6 +279,27 @@ pub fn derive_data_pod(input: TokenStream) -> TokenStream {
         .into()
 }
 
+// ---------------------------------------------------------------------------
+// #[derive(ZeroCopySend)] — emits the marker impl for datapod's own trait.
+//
+// Stands in for iceoryx2's old `#[derive(ZeroCopySend)]` so the explicit
+// `#[derive(..., ZeroCopySend, DataPod)]` form keeps working without an
+// iceoryx2 dependency. `ZeroCopySend` is an empty `unsafe` marker, so the
+// impl body is empty; the `Pod + Zeroable` bounds on `DataPod::Header`
+// are what actually enforce the wire-shippable contract.
+// ---------------------------------------------------------------------------
+
+#[proc_macro_derive(ZeroCopySend)]
+pub fn derive_zero_copy_send(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    quote! {
+        unsafe impl #impl_generics ::datapod::ZeroCopySend for #name #ty_generics #where_clause {}
+    }
+    .into()
+}
+
 fn expand_derive(input: &DeriveInput) -> Result<TokenStream2, Error> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();

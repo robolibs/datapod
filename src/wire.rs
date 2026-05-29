@@ -19,7 +19,22 @@
 use core::fmt::Debug;
 
 use bytemuck::{Pod, Zeroable};
-use iceoryx2::prelude::ZeroCopySend;
+
+/// Marker for types that are safe to ship by zero-copy: self-contained PODs
+/// with no pointers, references, or heap-allocated interior. Owned by datapod
+/// so the crate has **no** transport dependency — geometry/robotics consumers
+/// never pull in a messaging runtime.
+///
+/// A messaging layer that needs iceoryx2's own `ZeroCopySend` does not impl it
+/// on datapod types directly (the orphan rule forbids that). Instead it wraps a
+/// datapod header in a newtype it owns and derives iceoryx2's marker there; this
+/// trait is the datapod-side contract guaranteeing such a wrap is sound.
+///
+/// # Safety
+/// Implementors must be `#[repr(C)]`/`#[repr(transparent)]` PODs with a fixed
+/// layout and no indirection — identical to the contract a shared-memory
+/// transport assumes.
+pub unsafe trait ZeroCopySend {}
 
 /// The wire contract. Implemented by both fixed-Pod types (header = Self)
 /// and heap-bearing types (header is a generated companion struct).
