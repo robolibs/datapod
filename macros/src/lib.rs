@@ -73,10 +73,18 @@ fn expand_fixed(mut input: ItemStruct) -> Result<TokenStream2, Error> {
             ::core::clone::Clone,
             ::core::marker::Copy,
             ::core::cmp::PartialEq,
-            ::datapod::bytemuck::Pod,
-            ::datapod::bytemuck::Zeroable,
         )]
         #input
+
+        // Marker traits are hand-implemented through datapod's re-export
+        // rather than `#[derive(bytemuck::Pod)]`. bytemuck's derive expands
+        // to code referencing a bare `::bytemuck`, which would force every
+        // downstream crate to depend on bytemuck directly. These impls only
+        // name `::datapod::bytemuck`, so `datapod` as a dependency suffices.
+        // Safety: the macro keeps the type `#[repr(C)]` and all-Pod-fields,
+        // so it is a valid plain-old-data type with no padding.
+        unsafe impl #impl_generics ::datapod::bytemuck::Zeroable for #name #ty_generics #where_clause {}
+        unsafe impl #impl_generics ::datapod::bytemuck::Pod for #name #ty_generics #where_clause {}
 
         unsafe impl #impl_generics ::datapod::ZeroCopySend for #name #ty_generics #where_clause {}
 
@@ -166,12 +174,17 @@ fn expand_heap(
             ::core::marker::Copy,
             ::core::cmp::PartialEq,
             ::core::default::Default,
-            ::datapod::bytemuck::Pod,
-            ::datapod::bytemuck::Zeroable,
         )]
         #vis struct #header_name {
             #(#header_field_defs),*
         }
+
+        // Hand-implemented through datapod's re-export (see the fixed-Pod
+        // case for the rationale): the header is a generated `#[repr(C)]`
+        // all-Pod-fields struct, so these marker impls are sound and avoid
+        // forcing a downstream `bytemuck` dependency.
+        unsafe impl ::datapod::bytemuck::Zeroable for #header_name {}
+        unsafe impl ::datapod::bytemuck::Pod for #header_name {}
 
         unsafe impl ::datapod::ZeroCopySend for #header_name {}
 
