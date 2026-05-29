@@ -27,11 +27,6 @@ unused = "allow"
 # containers) keep their natural Rust layout and are NOT Pod.
 bytemuck = { version = "1", features = ["derive"] }
 
-# iceoryx2 supplies the `ZeroCopySend` marker required by the DataPod
-# contract. Datapod itself does not run any iceoryx2 runtime — it only
-# needs the trait. Downstream messaging (quicbit) reuses the same dep.
-iceoryx2 = "0.7"
-
 # datapod-macros provides #[derive(DataPod)] and #[dp(bytes)]. Re-exported
 # from the crate root so users write `use datapod::DataPod;`.
 datapod-macros = { path = "macros", version = "0.0.1" }
