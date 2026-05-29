@@ -73,8 +73,8 @@ fn expand_fixed(mut input: ItemStruct) -> Result<TokenStream2, Error> {
             ::core::clone::Clone,
             ::core::marker::Copy,
             ::core::cmp::PartialEq,
-            ::bytemuck::Pod,
-            ::bytemuck::Zeroable,
+            ::datapod::bytemuck::Pod,
+            ::datapod::bytemuck::Zeroable,
         )]
         #input
 
@@ -166,8 +166,8 @@ fn expand_heap(
             ::core::marker::Copy,
             ::core::cmp::PartialEq,
             ::core::default::Default,
-            ::bytemuck::Pod,
-            ::bytemuck::Zeroable,
+            ::datapod::bytemuck::Pod,
+            ::datapod::bytemuck::Zeroable,
         )]
         #vis struct #header_name {
             #(#header_field_defs),*
@@ -184,7 +184,7 @@ fn expand_heap(
                 }
             }
             fn payload_bytes(&self) -> &[u8] {
-                ::bytemuck::cast_slice(&self.#bytes_field_ident)
+                ::datapod::bytemuck::cast_slice(&self.#bytes_field_ident)
             }
         }
     })

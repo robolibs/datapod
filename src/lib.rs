@@ -22,6 +22,12 @@ extern crate self as datapod;
 pub use datapod_macros::{DataPod, datapod};
 pub use iceoryx2::prelude::ZeroCopySend;
 
+// Re-exported so the `#[datapod]` / `#[derive(DataPod)]` expansions can
+// reference `::datapod::bytemuck::{Pod, Zeroable, ...}` instead of a bare
+// `::bytemuck`. That means a downstream crate using the macro only needs
+// `datapod` as a dependency — not `bytemuck` too.
+pub use bytemuck;
+
 pub mod wire;
 pub use wire::{DataPod, Encoding, Envelope};
 
