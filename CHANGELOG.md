@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0] - 2026-05-29
+
+### <!-- 0 -->⛰️  Features
+
+- Remove iceoryx2 from datapod crate dependencies
+
 ## [0.1.1] - 2026-05-29
 
 ### <!-- 1 -->🐛 Bug Fixes
