@@ -38,7 +38,8 @@ impl Triangle {
         [
             self.a.x, self.a.y, self.a.z, self.b.x, self.b.y, self.b.z, self.c.x, self.c.y,
             self.c.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 9]) -> Self {
         Self {

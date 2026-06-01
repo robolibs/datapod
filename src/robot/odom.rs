@@ -51,7 +51,8 @@ impl Odom {
             self.twist.angular.vx,
             self.twist.angular.vy,
             self.twist.angular.vz,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 13]) -> Self {
         Self {

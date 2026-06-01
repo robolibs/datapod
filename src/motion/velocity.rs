@@ -1,4 +1,3 @@
-
 #[datapod::datapod]
 #[derive(Default)]
 pub struct Velocity {

@@ -1,4 +1,3 @@
-
 use super::Point;
 
 #[datapod::datapod]
@@ -59,7 +58,8 @@ impl Segment {
             self.end.x,
             self.end.y,
             self.end.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(value: [f64; 6]) -> Self {
         Self::new(

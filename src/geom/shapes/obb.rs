@@ -72,7 +72,8 @@ impl Obb {
             self.rotation.roll,
             self.rotation.pitch,
             self.rotation.yaw,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 9]) -> Self {
         Self::new(

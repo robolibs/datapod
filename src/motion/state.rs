@@ -1,6 +1,5 @@
-
-use crate::geom::Point;
 use super::{Pose, Quaternion, Velocity};
+use crate::geom::Point;
 
 #[datapod::datapod]
 #[derive(Default)]
@@ -30,7 +29,8 @@ impl State {
             self.angular_velocity.vx,
             self.angular_velocity.vy,
             self.angular_velocity.vz,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 13]) -> Self {
         Self {

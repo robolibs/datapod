@@ -1,5 +1,5 @@
-use crate::motion::Pose;
 use crate::id::STRING_NONE;
+use crate::motion::Pose;
 
 use super::Geometry;
 
@@ -24,15 +24,27 @@ impl Default for Collision {
 
 impl Collision {
     pub fn new(geom: Geometry) -> Self {
-        Self { geom, ..Self::default() }
+        Self {
+            geom,
+            ..Self::default()
+        }
     }
 
     pub fn with_origin(origin: Pose, geom: Geometry) -> Self {
-        Self { origin, geom, ..Self::default() }
+        Self {
+            origin,
+            geom,
+            ..Self::default()
+        }
     }
 
     pub fn named(name_id: u32, origin: Pose, geom: Geometry) -> Self {
-        Self { name_id, origin, geom, ..Self::default() }
+        Self {
+            name_id,
+            origin,
+            geom,
+            ..Self::default()
+        }
     }
 
     pub fn is_set(&self) -> bool {

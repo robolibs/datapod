@@ -58,7 +58,8 @@ impl Rectangle {
             self.bottom_right.x,
             self.bottom_right.y,
             self.bottom_right.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 12]) -> Self {
         Self {

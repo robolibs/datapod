@@ -51,7 +51,9 @@ pub type OMap = Map;
 impl Default for Map {
     fn default() -> Self {
         // Bootstrap with count = 0 and no entries / no blob.
-        Self { data: 0u32.to_le_bytes().to_vec() }
+        Self {
+            data: 0u32.to_le_bytes().to_vec(),
+        }
     }
 }
 
@@ -186,7 +188,10 @@ impl Map {
 
     /// Iterate `(key_bytes, value_bytes)` in sorted-key order.
     pub fn iter(&self) -> MapIter<'_> {
-        MapIter { map: self, cursor: 0 }
+        MapIter {
+            map: self,
+            cursor: 0,
+        }
     }
 
     pub fn clear(&mut self) {
@@ -229,7 +234,11 @@ impl Map {
         let old_count = self.count() as usize;
         let mut entries: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(old_count);
         for i in 0..old_count {
-            let v = if i == pos { value.to_vec() } else { self.value_at(i).to_vec() };
+            let v = if i == pos {
+                value.to_vec()
+            } else {
+                self.value_at(i).to_vec()
+            };
             entries.push((self.key_at(i).to_vec(), v));
         }
         self.rebuild(&entries);

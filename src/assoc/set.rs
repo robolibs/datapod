@@ -31,7 +31,9 @@ pub type OSet = Set;
 
 impl Default for Set {
     fn default() -> Self {
-        Self { data: 0u32.to_le_bytes().to_vec() }
+        Self {
+            data: 0u32.to_le_bytes().to_vec(),
+        }
     }
 }
 
@@ -134,7 +136,10 @@ impl Set {
     }
 
     pub fn iter(&self) -> SetIter<'_> {
-        SetIter { set: self, cursor: 0 }
+        SetIter {
+            set: self,
+            cursor: 0,
+        }
     }
 
     pub fn clear(&mut self) {
@@ -181,7 +186,10 @@ impl Set {
             let key_off = blob_cursor;
             new_data.extend_from_slice(k);
             blob_cursor += k.len() as u32;
-            table.push(SetEntry { key_off, key_len: k.len() as u32 });
+            table.push(SetEntry {
+                key_off,
+                key_len: k.len() as u32,
+            });
         }
 
         let table_bytes: &[u8] = bytemuck::cast_slice(&table);

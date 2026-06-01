@@ -20,7 +20,9 @@ impl Bytes {
     }
 
     pub fn from_slice(slice: &[u8]) -> Self {
-        Self { data: slice.to_vec() }
+        Self {
+            data: slice.to_vec(),
+        }
     }
 
     pub fn size(&self) -> usize {

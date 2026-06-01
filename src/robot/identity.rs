@@ -16,11 +16,21 @@ pub struct Identity {
 
 impl Identity {
     pub fn new(name_id: u32, uuid: Uuid) -> Self {
-        Self { name_id, rci: 0, uuid, ip: Ip::default() }
+        Self {
+            name_id,
+            rci: 0,
+            uuid,
+            ip: Ip::default(),
+        }
     }
 
     pub fn with_ip(name_id: u32, uuid: Uuid, ip: Ip) -> Self {
-        Self { name_id, rci: 0, uuid, ip }
+        Self {
+            name_id,
+            rci: 0,
+            uuid,
+            ip,
+        }
     }
 
     pub fn has_name(&self) -> bool {

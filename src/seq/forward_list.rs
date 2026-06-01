@@ -143,7 +143,11 @@ impl ForwardList {
 
     pub fn iter<T: bytemuck::Pod>(&self) -> ForwardListIter<'_, T> {
         assert_element_size::<T>(self.element_size);
-        ForwardListIter { list: self, cursor: self.head, _marker: std::marker::PhantomData }
+        ForwardListIter {
+            list: self,
+            cursor: self.head,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 

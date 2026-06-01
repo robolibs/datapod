@@ -90,7 +90,8 @@ impl Aabb {
             self.max_point.x,
             self.max_point.y,
             self.max_point.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 6]) -> Self {
         Self::new(Point::new(v[0], v[1], v[2]), Point::new(v[3], v[4], v[5]))

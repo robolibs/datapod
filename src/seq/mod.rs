@@ -34,24 +34,24 @@ mod queue;
 mod stack;
 mod string;
 mod tensor;
-mod vecvec;
 mod vector;
+mod vecvec;
 
 pub use bitvec::BitVec;
 pub use bytes::Bytes;
 pub use deque::Deque;
-pub use forward_list::{ForwardList, FORWARD_LIST_NIL};
+pub use forward_list::{FORWARD_LIST_NIL, ForwardList};
 pub use heap::{Heap, HeapOrder, MaxHeap, MinHeap, PriorityQueue};
 pub use indexed_heap::IndexedHeap;
-pub use list::{List, LIST_NIL};
+pub use list::{LIST_NIL, List};
 pub use matrix::Matrix;
 pub use paged_vecvec::PagedVecvec;
 pub use queue::{Fifo, Queue};
 pub use stack::Stack;
 pub use string::DpStr;
 pub use tensor::Tensor;
-pub use vecvec::Vecvec;
 pub use vector::Vector;
+pub use vecvec::Vecvec;
 
 /// Assert at runtime (debug builds) that `T`'s size matches the container's
 /// stored element_size. Use in every typed accessor / mutator.

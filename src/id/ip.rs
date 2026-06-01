@@ -31,11 +31,19 @@ impl Ip {
         storage[1] = bytes[1];
         storage[2] = bytes[2];
         storage[3] = bytes[3];
-        Self { family: 4, _pad: 0, bytes: storage }
+        Self {
+            family: 4,
+            _pad: 0,
+            bytes: storage,
+        }
     }
 
     pub const fn from_v6_bytes(bytes: [u8; 16]) -> Self {
-        Self { family: 6, _pad: 0, bytes }
+        Self {
+            family: 6,
+            _pad: 0,
+            bytes,
+        }
     }
 
     pub fn is_v4(&self) -> bool {
@@ -74,7 +82,11 @@ impl Ip {
 impl fmt::Display for Ip {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_v4() {
-            write!(f, "{}.{}.{}.{}", self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3])
+            write!(
+                f,
+                "{}.{}.{}.{}",
+                self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]
+            )
         } else {
             for group in 0..8 {
                 if group > 0 {

@@ -53,7 +53,8 @@ impl Twist {
             self.angular.vx,
             self.angular.vy,
             self.angular.vz,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 6]) -> Self {
         Self {

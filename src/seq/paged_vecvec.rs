@@ -19,7 +19,11 @@ impl Default for PagedVecvec {
         let mut data = Vec::with_capacity(8);
         data.extend_from_slice(&0u32.to_le_bytes());
         data.extend_from_slice(&0u32.to_le_bytes());
-        Self { element_size: 0, _pad: 0, data }
+        Self {
+            element_size: 0,
+            _pad: 0,
+            data,
+        }
     }
 }
 

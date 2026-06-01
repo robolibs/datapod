@@ -1,4 +1,3 @@
-
 use super::Aabb;
 use crate::geom::Point;
 

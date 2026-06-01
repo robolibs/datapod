@@ -1,5 +1,5 @@
-use crate::motion::Pose;
 use crate::id::STRING_NONE;
+use crate::motion::Pose;
 
 use super::Geometry;
 
@@ -24,15 +24,27 @@ impl Default for Material {
 
 impl Material {
     pub fn named(name_id: u32, rgba: [f64; 4]) -> Self {
-        Self { name_id, texture_id: STRING_NONE, rgba }
+        Self {
+            name_id,
+            texture_id: STRING_NONE,
+            rgba,
+        }
     }
 
     pub fn color(rgba: [f64; 4]) -> Self {
-        Self { name_id: STRING_NONE, texture_id: STRING_NONE, rgba }
+        Self {
+            name_id: STRING_NONE,
+            texture_id: STRING_NONE,
+            rgba,
+        }
     }
 
     pub fn textured(texture_id: u32) -> Self {
-        Self { name_id: STRING_NONE, texture_id, rgba: [1.0, 1.0, 1.0, 1.0] }
+        Self {
+            name_id: STRING_NONE,
+            texture_id,
+            rgba: [1.0, 1.0, 1.0, 1.0],
+        }
     }
 
     pub fn has_texture(&self) -> bool {
@@ -64,11 +76,18 @@ impl Default for Visual {
 
 impl Visual {
     pub fn new(geom: Geometry) -> Self {
-        Self { geom, ..Self::default() }
+        Self {
+            geom,
+            ..Self::default()
+        }
     }
 
     pub fn with_origin(origin: Pose, geom: Geometry) -> Self {
-        Self { origin, geom, ..Self::default() }
+        Self {
+            origin,
+            geom,
+            ..Self::default()
+        }
     }
 
     pub fn with_material(geom: Geometry, material: Material) -> Self {
@@ -85,7 +104,13 @@ impl Visual {
             Some(m) => (1, m),
             None => (0, Material::default()),
         };
-        Self { name_id, material_present, origin, geom, material }
+        Self {
+            name_id,
+            material_present,
+            origin,
+            geom,
+            material,
+        }
     }
 
     pub fn has_material(&self) -> bool {

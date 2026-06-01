@@ -15,7 +15,11 @@ pub struct Pose2 {
 
 #[test]
 fn fixed_datapod_attr_emits_pod_and_trait() {
-    let p = Pose2 { x: 1.0, y: 2.0, yaw: 0.5 };
+    let p = Pose2 {
+        x: 1.0,
+        y: 2.0,
+        yaw: 0.5,
+    };
     let bytes = bytemuck::bytes_of(&p);
     let q: &Pose2 = bytemuck::from_bytes(bytes);
     assert_eq!(*q, p);
@@ -76,14 +80,7 @@ use datapod::ZeroCopySend;
 
 #[repr(C)]
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    bytemuck::Pod,
-    bytemuck::Zeroable,
-    ZeroCopySend,
-    datapod::DataPod,
+    Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ZeroCopySend, datapod::DataPod,
 )]
 pub struct ManualPoint {
     pub x: f64,
@@ -93,7 +90,11 @@ pub struct ManualPoint {
 
 #[test]
 fn explicit_derive_form_emits_only_impl() {
-    let p = ManualPoint { x: 1.0, y: 2.0, z: 3.0 };
+    let p = ManualPoint {
+        x: 1.0,
+        y: 2.0,
+        z: 3.0,
+    };
     let bytes = bytemuck::bytes_of(&p);
     let back: &ManualPoint = bytemuck::from_bytes(bytes);
     assert_eq!(*back, p);

@@ -28,7 +28,11 @@ impl Default for Vecvec {
         let mut data = Vec::with_capacity(8);
         data.extend_from_slice(&0u32.to_le_bytes());
         data.extend_from_slice(&0u32.to_le_bytes());
-        Self { element_size: 0, _pad: 0, data }
+        Self {
+            element_size: 0,
+            _pad: 0,
+            data,
+        }
     }
 }
 
@@ -99,8 +103,7 @@ impl Vecvec {
         let old_header = self.header_bytes();
         let payload = self.data[old_header..].to_vec();
 
-        let mut new_offsets: Vec<u32> =
-            (0..=count as usize).map(|i| self.offset(i)).collect();
+        let mut new_offsets: Vec<u32> = (0..=count as usize).map(|i| self.offset(i)).collect();
         new_offsets.push(end_off + bytes.len() as u32);
 
         self.data.clear();

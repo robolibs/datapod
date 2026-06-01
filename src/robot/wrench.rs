@@ -57,7 +57,8 @@ impl Wrench {
             self.torque.x,
             self.torque.y,
             self.torque.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 6]) -> Self {
         Self {

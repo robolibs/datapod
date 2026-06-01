@@ -1,7 +1,6 @@
 use std::f64::consts::PI;
 use std::ops::{Add, Mul, Sub};
 
-
 use super::Quaternion;
 
 #[datapod::datapod]

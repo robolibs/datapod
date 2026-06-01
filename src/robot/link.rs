@@ -41,7 +41,10 @@ impl Default for Link {
 
 impl Link {
     pub fn new(name_id: u32) -> Self {
-        Self { name_id, ..Self::default() }
+        Self {
+            name_id,
+            ..Self::default()
+        }
     }
 
     pub fn with_inertial(name_id: u32, inertial: Inertial) -> Self {

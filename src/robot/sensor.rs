@@ -1,5 +1,5 @@
-use crate::motion::Pose;
 use crate::id::STRING_NONE;
+use crate::motion::Pose;
 
 use super::kv::KV;
 

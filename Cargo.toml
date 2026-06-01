@@ -12,6 +12,11 @@ publish = false
 
 [lib]
 path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[features]
+default = []
+python = ["dep:pyo3"]
 
 # Many adapter helpers live in the crate as a staging ground for future
 # consumers — silence `unused` / `dead_code` lint spam so downstream
@@ -30,3 +35,7 @@ bytemuck = { version = "1", features = ["derive"] }
 # datapod-macros provides #[derive(DataPod)] and #[dp(bytes)]. Re-exported
 # from the crate root so users write `use datapod::DataPod;`.
 datapod-macros = { path = "macros", version = "0.0.1" }
+pyo3 = { version = "0.23", optional = true, features = [
+    "abi3-py39",
+    "extension-module",
+] }

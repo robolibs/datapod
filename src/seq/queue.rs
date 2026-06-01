@@ -29,7 +29,11 @@ impl Queue {
     }
 
     fn raw_len(&self) -> usize {
-        if self.element_size == 0 { 0 } else { self.data.len() / self.element_size as usize }
+        if self.element_size == 0 {
+            0
+        } else {
+            self.data.len() / self.element_size as usize
+        }
     }
 
     pub fn size(&self) -> usize {
@@ -70,7 +74,9 @@ impl Queue {
         assert_element_size::<T>(self.element_size);
         let es = self.element_size as usize;
         let byte_start = self.front as usize * es;
-        Some(*bytemuck::from_bytes(&self.data[byte_start..byte_start + es]))
+        Some(*bytemuck::from_bytes(
+            &self.data[byte_start..byte_start + es],
+        ))
     }
 
     pub fn back_elem<T: bytemuck::Pod>(&self) -> Option<T> {

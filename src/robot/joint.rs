@@ -1,5 +1,5 @@
-use crate::motion::Pose;
 use crate::id::STRING_NONE;
+use crate::motion::Pose;
 
 use super::kv::KV;
 
@@ -34,8 +34,12 @@ unsafe impl crate::ZeroCopySend for JointType {}
 impl crate::DataPod for JointType {
     type Header = JointType;
     type Payload = ();
-    fn header(&self) -> JointType { *self }
-    fn payload_bytes(&self) -> &[u8] { &[] }
+    fn header(&self) -> JointType {
+        *self
+    }
+    fn payload_bytes(&self) -> &[u8] {
+        &[]
+    }
 }
 
 #[datapod::datapod]
@@ -66,7 +70,12 @@ pub struct JointMimic {
 
 impl Default for JointMimic {
     fn default() -> Self {
-        Self { mimicked_id: INVALID_ID, _pad: 0, multiplier: 1.0, offset: 0.0 }
+        Self {
+            mimicked_id: INVALID_ID,
+            _pad: 0,
+            multiplier: 1.0,
+            offset: 0.0,
+        }
     }
 }
 
@@ -143,7 +152,11 @@ impl Default for Joint {
 
 impl Joint {
     pub fn fixed(name_id: u32, origin: Pose) -> Self {
-        Self { name_id, origin, ..Self::default() }
+        Self {
+            name_id,
+            origin,
+            ..Self::default()
+        }
     }
 
     pub fn revolute(name_id: u32, axis: [f64; 3], limits: JointLimits, origin: Pose) -> Self {
@@ -180,16 +193,38 @@ impl Joint {
         }
     }
 
-    pub fn is_fixed(&self) -> bool { self.joint_type == JointType::Fixed }
-    pub fn is_revolute(&self) -> bool { self.joint_type == JointType::Revolute }
-    pub fn is_continuous(&self) -> bool { self.joint_type == JointType::Continuous }
-    pub fn is_prismatic(&self) -> bool { self.joint_type == JointType::Prismatic }
-    pub fn is_floating(&self) -> bool { self.joint_type == JointType::Floating }
-    pub fn is_planar(&self) -> bool { self.joint_type == JointType::Planar }
+    pub fn is_fixed(&self) -> bool {
+        self.joint_type == JointType::Fixed
+    }
+    pub fn is_revolute(&self) -> bool {
+        self.joint_type == JointType::Revolute
+    }
+    pub fn is_continuous(&self) -> bool {
+        self.joint_type == JointType::Continuous
+    }
+    pub fn is_prismatic(&self) -> bool {
+        self.joint_type == JointType::Prismatic
+    }
+    pub fn is_floating(&self) -> bool {
+        self.joint_type == JointType::Floating
+    }
+    pub fn is_planar(&self) -> bool {
+        self.joint_type == JointType::Planar
+    }
 
-    pub fn has_limits(&self) -> bool { self.limits_present != 0 }
-    pub fn has_dynamics(&self) -> bool { self.dynamics_present != 0 }
-    pub fn has_mimic(&self) -> bool { self.mimic_present != 0 }
-    pub fn has_safety_controller(&self) -> bool { self.safety_present != 0 }
-    pub fn has_calibration(&self) -> bool { self.calibration_present != 0 }
+    pub fn has_limits(&self) -> bool {
+        self.limits_present != 0
+    }
+    pub fn has_dynamics(&self) -> bool {
+        self.dynamics_present != 0
+    }
+    pub fn has_mimic(&self) -> bool {
+        self.mimic_present != 0
+    }
+    pub fn has_safety_controller(&self) -> bool {
+        self.safety_present != 0
+    }
+    pub fn has_calibration(&self) -> bool {
+        self.calibration_present != 0
+    }
 }
