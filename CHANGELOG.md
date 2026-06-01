@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0] - 2026-06-01
+
+### <!-- 0 -->⛰️  Features
+
+- Add FFI for all fixed-size, Python for fixed-size and collections
+- Add ffi and Python bindings for core geometry types
+
 ## [0.2.0] - 2026-05-29
 
 ### <!-- 0 -->⛰️  Features

@@ -98,10 +98,7 @@ fn linestring_empty_and_num_points_work() {
     let empty = Linestring::default();
     assert!(empty.empty());
     assert_eq!(empty.num_points(), 0);
-    let line = Linestring::new(vec![
-        Point::new(0.0, 0.0, 0.0),
-        Point::new(3.0, 4.0, 0.0),
-    ]);
+    let line = Linestring::new(vec![Point::new(0.0, 0.0, 0.0), Point::new(3.0, 4.0, 0.0)]);
     assert!(!line.empty());
     assert_eq!(line.num_points(), 2);
     approx_eq(line.length(), 5.0, 1e-9);
@@ -143,4 +140,3 @@ fn size_arithmetic_and_extrema_work() {
         Size::new(10.0, 18.0, 28.0)
     );
 }
-

@@ -150,8 +150,14 @@ fn map_pod_keys_and_values() {
     let k2 = Point::new(0.0, 1.0, 0.0);
     m.insert_pod(&k1, &Point::new(10.0, 10.0, 10.0));
     m.insert_pod(&k2, &Point::new(20.0, 20.0, 20.0));
-    assert_eq!(m.get_pod::<Point, Point>(&k1), Some(Point::new(10.0, 10.0, 10.0)));
-    assert_eq!(m.get_pod::<Point, Point>(&k2), Some(Point::new(20.0, 20.0, 20.0)));
+    assert_eq!(
+        m.get_pod::<Point, Point>(&k1),
+        Some(Point::new(10.0, 10.0, 10.0))
+    );
+    assert_eq!(
+        m.get_pod::<Point, Point>(&k2),
+        Some(Point::new(20.0, 20.0, 20.0))
+    );
 }
 
 #[test]

@@ -28,7 +28,10 @@ impl Tensor {
 
     pub fn from_bytes<T: bytemuck::Pod>(rows: u32, cols: u32, layers: u32, data: Vec<u8>) -> Self {
         let es = std::mem::size_of::<T>();
-        debug_assert_eq!(data.len(), rows as usize * cols as usize * layers as usize * es);
+        debug_assert_eq!(
+            data.len(),
+            rows as usize * cols as usize * layers as usize * es
+        );
         Self {
             rows,
             cols,
@@ -47,9 +50,7 @@ impl Tensor {
     }
 
     pub fn flat_index(&self, row: usize, col: usize, layer: usize) -> usize {
-        layer * (self.rows as usize * self.cols as usize)
-            + row * self.cols as usize
-            + col
+        layer * (self.rows as usize * self.cols as usize) + row * self.cols as usize + col
     }
 
     pub fn is_valid(&self) -> bool {

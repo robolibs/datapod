@@ -10,7 +10,10 @@ pub struct MacAddr {
 
 impl MacAddr {
     pub const fn new(bytes: [u8; 6]) -> Self {
-        Self { bytes, _pad: [0; 2] }
+        Self {
+            bytes,
+            _pad: [0; 2],
+        }
     }
 
     pub fn to_colon_string(&self) -> String {
@@ -63,6 +66,9 @@ impl FromStr for MacAddr {
                 .map_err(|_| "MacAddr parse error: invalid hex digit".to_string())?;
         }
 
-        Ok(Self { bytes, _pad: [0; 2] })
+        Ok(Self {
+            bytes,
+            _pad: [0; 2],
+        })
     }
 }

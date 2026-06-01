@@ -20,7 +20,9 @@ impl DpString {
     }
 
     pub fn from_str(s: &str) -> Self {
-        Self { bytes: s.as_bytes().to_vec() }
+        Self {
+            bytes: s.as_bytes().to_vec(),
+        }
     }
 
     pub fn byte_len(&self) -> usize {

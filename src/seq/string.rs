@@ -20,7 +20,9 @@ impl DpStr {
     }
 
     pub fn from_str(s: &str) -> Self {
-        Self { data: s.as_bytes().to_vec() }
+        Self {
+            data: s.as_bytes().to_vec(),
+        }
     }
 
     /// Try to view the payload as UTF-8.
@@ -83,6 +85,8 @@ impl From<&str> for DpStr {
 
 impl From<String> for DpStr {
     fn from(s: String) -> Self {
-        Self { data: s.into_bytes() }
+        Self {
+            data: s.into_bytes(),
+        }
     }
 }

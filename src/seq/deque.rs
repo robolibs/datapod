@@ -28,7 +28,11 @@ impl Deque {
     }
 
     pub fn size(&self) -> usize {
-        if self.element_size == 0 { 0 } else { self.data.len() / self.element_size as usize }
+        if self.element_size == 0 {
+            0
+        } else {
+            self.data.len() / self.element_size as usize
+        }
     }
 
     pub fn empty(&self) -> bool {

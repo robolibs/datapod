@@ -39,13 +39,25 @@ impl Vector {
     /// `data.len() % size_of::<T>() == 0`.
     pub fn from_bytes<T: bytemuck::Pod>(data: Vec<u8>) -> Self {
         let es = std::mem::size_of::<T>();
-        debug_assert_eq!(data.len() % es, 0, "Vector::from_bytes data not aligned to T");
-        Self { element_size: es as u32, _pad: 0, data }
+        debug_assert_eq!(
+            data.len() % es,
+            0,
+            "Vector::from_bytes data not aligned to T"
+        );
+        Self {
+            element_size: es as u32,
+            _pad: 0,
+            data,
+        }
     }
 
     /// Number of logical elements.
     pub fn size(&self) -> usize {
-        if self.element_size == 0 { 0 } else { self.data.len() / self.element_size as usize }
+        if self.element_size == 0 {
+            0
+        } else {
+            self.data.len() / self.element_size as usize
+        }
     }
 
     pub fn empty(&self) -> bool {

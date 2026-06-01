@@ -235,7 +235,11 @@ impl List {
     /// Iterate values from head to tail.
     pub fn iter<T: bytemuck::Pod>(&self) -> ListIter<'_, T> {
         assert_element_size::<T>(self.element_size);
-        ListIter { list: self, cursor: self.head, _marker: std::marker::PhantomData }
+        ListIter {
+            list: self,
+            cursor: self.head,
+            _marker: std::marker::PhantomData,
+        }
     }
 
     /// Slot count tracked separately from logical size — exposed for

@@ -51,7 +51,8 @@ impl Line {
             self.direction.x,
             self.direction.y,
             self.direction.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 6]) -> Self {
         Self {

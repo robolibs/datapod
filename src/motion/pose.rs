@@ -1,6 +1,5 @@
-
-use crate::geom::Point;
 use super::Quaternion;
+use crate::geom::Point;
 
 #[datapod::datapod]
 #[derive(Default)]
@@ -55,7 +54,8 @@ impl Pose {
             self.rotation.x,
             self.rotation.y,
             self.rotation.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 7]) -> Self {
         Self {

@@ -70,7 +70,10 @@ fn joint_default_and_type_helpers_work() {
 fn link_with_inertial_and_new_helpers_work() {
     let link = Link::new(5);
     assert_eq!(link.name_id, 5);
-    let inertial = Inertial { mass: 1.0, ..Inertial::default() };
+    let inertial = Inertial {
+        mass: 1.0,
+        ..Inertial::default()
+    };
     let link = Link::with_inertial(6, inertial);
     assert!(link.has_inertial());
     assert_eq!(link.inertial, inertial);
@@ -85,11 +88,17 @@ fn model_validity_queries_handle_unknown_ids() {
 
 #[test]
 fn robot_identity_and_transmission_fields_are_plainly_accessible() {
-    let mut robot = Robot::default();
-    robot.id = Identity::default();
+    let mut robot = Robot {
+        id: Identity::default(),
+        ..Robot::default()
+    };
     robot.id.name_id = 1;
 
-    let mut transmission = Transmission { name_id: 10, type_id: 11, ..Default::default() };
+    let mut transmission = Transmission {
+        name_id: 10,
+        type_id: 11,
+        ..Default::default()
+    };
     transmission.joints[0] = TransmissionJoint {
         name_id: 20,
         reduction_present: 1,

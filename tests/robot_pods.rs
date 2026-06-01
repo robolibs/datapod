@@ -22,8 +22,16 @@ fn approx_eq(left: f64, right: f64, epsilon: f64) {
 #[test]
 fn twist_round_trips_through_mat() {
     let twist = Twist {
-        linear: Velocity { vx: 1.0, vy: 2.0, vz: 3.0 },
-        angular: Velocity { vx: 0.1, vy: 0.2, vz: 0.3 },
+        linear: Velocity {
+            vx: 1.0,
+            vy: 2.0,
+            vz: 3.0,
+        },
+        angular: Velocity {
+            vx: 0.1,
+            vy: 0.2,
+            vz: 0.3,
+        },
     };
     assert_eq!(Twist::from_mat(twist.to_mat()), twist);
     assert!(twist.is_set());
@@ -44,10 +52,21 @@ fn wrench_supports_math_and_round_trip() {
 #[test]
 fn odom_round_trips_through_mat() {
     let odom = Odom {
-        pose: Pose { point: Point::new(1.0, 2.0, 3.0), rotation: Quaternion::identity() },
+        pose: Pose {
+            point: Point::new(1.0, 2.0, 3.0),
+            rotation: Quaternion::identity(),
+        },
         twist: Twist {
-            linear: Velocity { vx: 1.0, vy: 2.0, vz: 3.0 },
-            angular: Velocity { vx: 0.1, vy: 0.2, vz: 0.3 },
+            linear: Velocity {
+                vx: 1.0,
+                vy: 2.0,
+                vz: 3.0,
+            },
+            angular: Velocity {
+                vx: 0.1,
+                vy: 0.2,
+                vz: 0.3,
+            },
         },
     };
     assert_eq!(Odom::from_mat(odom.to_mat()), odom);
@@ -119,7 +138,12 @@ fn joint_constructors_set_type_and_axis() {
     let revolute = Joint::revolute(
         7,
         [0.0, 0.0, 1.0],
-        JointLimits { lower: -1.0, upper: 1.0, effort: 10.0, velocity: 5.0 },
+        JointLimits {
+            lower: -1.0,
+            upper: 1.0,
+            effort: 10.0,
+            velocity: 5.0,
+        },
         Pose::default(),
     );
     assert!(revolute.is_revolute());
@@ -169,7 +193,11 @@ fn sensor_carries_id_and_origin() {
 
 #[test]
 fn model_tracks_counts_and_root() {
-    let model = Model { link_count: 3, joint_count: 2, ..Default::default() };
+    let model = Model {
+        link_count: 3,
+        joint_count: 2,
+        ..Default::default()
+    };
     assert_eq!(model.num_links(), 3);
     assert_eq!(model.num_joints(), 2);
     assert!(model.is_valid_link(0));
@@ -180,7 +208,11 @@ fn model_tracks_counts_and_root() {
 
 #[test]
 fn transmission_holds_fixed_cap_joints_and_actuators() {
-    let mut t = Transmission { name_id: 1, type_id: 2, ..Default::default() };
+    let mut t = Transmission {
+        name_id: 1,
+        type_id: 2,
+        ..Default::default()
+    };
     t.joints[0] = TransmissionJoint {
         name_id: 7,
         reduction_present: 1,

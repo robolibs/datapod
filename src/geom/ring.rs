@@ -23,10 +23,7 @@ impl Ring {
     }
 
     pub fn length(&self) -> f64 {
-        self.points
-            .windows(2)
-            .map(|s| s[0].distance_to(s[1]))
-            .sum()
+        self.points.windows(2).map(|s| s[0].distance_to(s[1])).sum()
     }
 
     pub fn area(&self) -> f64 {
@@ -35,8 +32,8 @@ impl Ring {
         }
         let mut sum = 0.0;
         for i in 0..self.points.len() - 1 {
-            sum += self.points[i].x * self.points[i + 1].y
-                - self.points[i + 1].x * self.points[i].y;
+            sum +=
+                self.points[i].x * self.points[i + 1].y - self.points[i + 1].x * self.points[i].y;
         }
         sum.abs() * 0.5
     }

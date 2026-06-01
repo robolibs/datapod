@@ -67,4 +67,3 @@ impl GaussianBox {
         Self { r#box, uncertainty }
     }
 }
-

@@ -1,6 +1,5 @@
-
-use crate::geom::Point;
 use super::Size;
+use crate::geom::Point;
 use crate::motion::Pose;
 
 #[datapod::datapod]
@@ -93,7 +92,8 @@ impl Box {
             self.size.x,
             self.size.y,
             self.size.z,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 10]) -> Self {
         Self {

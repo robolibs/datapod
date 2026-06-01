@@ -21,7 +21,10 @@ impl BitVec {
 
     pub fn with_len(bits: usize) -> Self {
         let bytes = (bits + 7) / 8;
-        Self { bits: bits as u64, data: vec![0u8; bytes] }
+        Self {
+            bits: bits as u64,
+            data: vec![0u8; bytes],
+        }
     }
 
     pub fn size(&self) -> usize {

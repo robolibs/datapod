@@ -31,7 +31,11 @@ pub struct MeshShape {
 
 impl Default for MeshShape {
     fn default() -> Self {
-        Self { uri_id: STRING_NONE, _pad: 0, scale: [1.0, 1.0, 1.0] }
+        Self {
+            uri_id: STRING_NONE,
+            _pad: 0,
+            scale: [1.0, 1.0, 1.0],
+        }
     }
 }
 
@@ -57,8 +61,12 @@ unsafe impl crate::ZeroCopySend for GeometryKind {}
 impl crate::DataPod for GeometryKind {
     type Header = GeometryKind;
     type Payload = ();
-    fn header(&self) -> GeometryKind { *self }
-    fn payload_bytes(&self) -> &[u8] { &[] }
+    fn header(&self) -> GeometryKind {
+        *self
+    }
+    fn payload_bytes(&self) -> &[u8] {
+        &[]
+    }
 }
 
 /// Geometry record — a tag plus all four variant payloads inline.
@@ -103,18 +111,38 @@ impl Geometry {
     pub fn mesh(uri_id: u32, scale: [f64; 3]) -> Self {
         Self {
             kind: GeometryKind::Mesh,
-            mesh: MeshShape { uri_id, _pad: 0, scale },
+            mesh: MeshShape {
+                uri_id,
+                _pad: 0,
+                scale,
+            },
             ..Self::default()
         }
     }
 
-    pub fn is_box(&self) -> bool { self.kind == GeometryKind::Box }
-    pub fn is_sphere(&self) -> bool { self.kind == GeometryKind::Sphere }
-    pub fn is_cylinder(&self) -> bool { self.kind == GeometryKind::Cylinder }
-    pub fn is_mesh(&self) -> bool { self.kind == GeometryKind::Mesh }
+    pub fn is_box(&self) -> bool {
+        self.kind == GeometryKind::Box
+    }
+    pub fn is_sphere(&self) -> bool {
+        self.kind == GeometryKind::Sphere
+    }
+    pub fn is_cylinder(&self) -> bool {
+        self.kind == GeometryKind::Cylinder
+    }
+    pub fn is_mesh(&self) -> bool {
+        self.kind == GeometryKind::Mesh
+    }
 
-    pub fn as_box(&self) -> Option<&BoxShape> { self.is_box().then_some(&self.box_shape) }
-    pub fn as_sphere(&self) -> Option<&SphereShape> { self.is_sphere().then_some(&self.sphere) }
-    pub fn as_cylinder(&self) -> Option<&CylinderShape> { self.is_cylinder().then_some(&self.cylinder) }
-    pub fn as_mesh(&self) -> Option<&MeshShape> { self.is_mesh().then_some(&self.mesh) }
+    pub fn as_box(&self) -> Option<&BoxShape> {
+        self.is_box().then_some(&self.box_shape)
+    }
+    pub fn as_sphere(&self) -> Option<&SphereShape> {
+        self.is_sphere().then_some(&self.sphere)
+    }
+    pub fn as_cylinder(&self) -> Option<&CylinderShape> {
+        self.is_cylinder().then_some(&self.cylinder)
+    }
+    pub fn as_mesh(&self) -> Option<&MeshShape> {
+        self.is_mesh().then_some(&self.mesh)
+    }
 }

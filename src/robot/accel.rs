@@ -60,7 +60,8 @@ impl Accel {
             self.angular.ax,
             self.angular.ay,
             self.angular.az,
-        ]    }
+        ]
+    }
 
     pub fn from_mat(v: [f64; 6]) -> Self {
         Self {

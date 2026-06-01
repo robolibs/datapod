@@ -1,5 +1,5 @@
-use crate::geom::Point;
 use super::Quaternion;
+use crate::geom::Point;
 
 #[datapod::datapod]
 pub struct Transform {

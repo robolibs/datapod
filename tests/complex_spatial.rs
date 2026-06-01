@@ -30,17 +30,22 @@ fn ring_reports_length_area_and_closedness() {
 
 #[test]
 fn linestring_length_works_on_inside_buffer() {
-    let ls = Linestring::new(vec![
-        Point::new(0.0, 0.0, 0.0),
-        Point::new(3.0, 4.0, 0.0),
-    ]);
+    let ls = Linestring::new(vec![Point::new(0.0, 0.0, 0.0), Point::new(3.0, 4.0, 0.0)]);
     assert_eq!(ls.num_points(), 2);
     approx_eq(ls.length(), 5.0, 1e-9);
 }
 
 #[test]
 fn grid_geometry_methods_use_self_data() {
-    let g = Grid::new(2, 3, Encoding::I32, 1.0, true, Pose::default(), vec![0u8; 2 * 3 * 4]);
+    let g = Grid::new(
+        2,
+        3,
+        Encoding::I32,
+        1.0,
+        true,
+        Pose::default(),
+        vec![0u8; 2 * 3 * 4],
+    );
     assert_eq!(g.size(), 6);
     // 6 cells × 4 bytes/i32 = 24 bytes
     assert!(g.is_valid(4));

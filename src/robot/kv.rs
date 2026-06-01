@@ -13,7 +13,10 @@ pub struct KV {
 
 impl Default for KV {
     fn default() -> Self {
-        Self { key: [0; 32], value: [0; 64] }
+        Self {
+            key: [0; 32],
+            value: [0; 64],
+        }
     }
 }
 
@@ -23,12 +26,20 @@ impl KV {
     }
 
     pub fn key_str(&self) -> &str {
-        let end = self.key.iter().position(|&b| b == 0).unwrap_or(self.key.len());
+        let end = self
+            .key
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.key.len());
         std::str::from_utf8(&self.key[..end]).unwrap_or("")
     }
 
     pub fn value_str(&self) -> &str {
-        let end = self.value.iter().position(|&b| b == 0).unwrap_or(self.value.len());
+        let end = self
+            .value
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.value.len());
         std::str::from_utf8(&self.value[..end]).unwrap_or("")
     }
 
