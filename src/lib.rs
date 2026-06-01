@@ -47,6 +47,7 @@ pub use bytemuck;
 pub mod wire;
 pub use wire::{DataPod, Encoding, Envelope};
 
+pub mod bind;
 pub mod ffi;
 #[cfg(feature = "python")]
 pub mod python;

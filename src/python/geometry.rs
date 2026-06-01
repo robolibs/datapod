@@ -1,8 +1,10 @@
-use pyo3::exceptions::PyIndexError;
+#![allow(non_snake_case, clippy::wrong_self_convention)]
+
+use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
-use crate::{Geo, Point, Polygon, Segment};
+use crate::{DataPod, Geo, Point, Polygon, Segment};
 
 #[pyclass(name = "Point")]
 #[derive(Clone, Copy)]
@@ -53,6 +55,35 @@ impl PyPoint {
 
     fn is_set(&self) -> bool {
         Point::from(*self).is_set()
+    }
+
+    #[classattr]
+    fn TYPE_HASH() -> u64 {
+        crate::bind::type_hash::<Point>()
+    }
+
+    fn to_header_bytes(&self) -> PyResult<Vec<u8>> {
+        let mut out = vec![0_u8; crate::bind::header_size::<Point>()];
+        crate::bind::write_header(&Point::from(*self), &mut out).map_err(PyValueError::new_err)?;
+        Ok(out)
+    }
+
+    fn payload_bytes(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        if !payload.is_empty() {
+            return Err(PyValueError::new_err("Point payload must be empty"));
+        }
+        crate::bind::read_fixed_header::<Point>(&header)
+            .map(PyPoint::from)
+            .map_err(PyValueError::new_err)
+    }
+
+    fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
+        Ok((crate::bind::type_hash::<Point>(), self.to_header_bytes()?))
     }
 
     fn __repr__(&self) -> String {
@@ -119,6 +150,35 @@ impl PyGeo {
         Geo::from(*self).bearing_to(Geo::from(*other))
     }
 
+    #[classattr]
+    fn TYPE_HASH() -> u64 {
+        crate::bind::type_hash::<Geo>()
+    }
+
+    fn to_header_bytes(&self) -> PyResult<Vec<u8>> {
+        let mut out = vec![0_u8; crate::bind::header_size::<Geo>()];
+        crate::bind::write_header(&Geo::from(*self), &mut out).map_err(PyValueError::new_err)?;
+        Ok(out)
+    }
+
+    fn payload_bytes(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        if !payload.is_empty() {
+            return Err(PyValueError::new_err("Geo payload must be empty"));
+        }
+        crate::bind::read_fixed_header::<Geo>(&header)
+            .map(PyGeo::from)
+            .map_err(PyValueError::new_err)
+    }
+
+    fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
+        Ok((crate::bind::type_hash::<Geo>(), self.to_header_bytes()?))
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Geo(latitude={}, longitude={}, altitude={})",
@@ -166,6 +226,35 @@ impl PySegment {
 
     fn distance_to(&self, point: PyRef<'_, PyPoint>) -> f64 {
         self.inner.distance_to(Point::from(*point))
+    }
+
+    #[classattr]
+    fn TYPE_HASH() -> u64 {
+        crate::bind::type_hash::<Segment>()
+    }
+
+    fn to_header_bytes(&self) -> PyResult<Vec<u8>> {
+        let mut out = vec![0_u8; crate::bind::header_size::<Segment>()];
+        crate::bind::write_header(&self.inner, &mut out).map_err(PyValueError::new_err)?;
+        Ok(out)
+    }
+
+    fn payload_bytes(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        if !payload.is_empty() {
+            return Err(PyValueError::new_err("Segment payload must be empty"));
+        }
+        crate::bind::read_fixed_header::<Segment>(&header)
+            .map(|inner| Self { inner })
+            .map_err(PyValueError::new_err)
+    }
+
+    fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
+        Ok((crate::bind::type_hash::<Segment>(), self.to_header_bytes()?))
     }
 
     fn __repr__(&self) -> String {
@@ -252,6 +341,53 @@ impl PyPolygon {
             .copied()
             .map(PyPoint::from)
             .collect()
+    }
+
+    #[classattr]
+    fn TYPE_HASH() -> u64 {
+        crate::bind::type_hash::<Polygon>()
+    }
+
+    fn to_header_bytes(&self) -> PyResult<Vec<u8>> {
+        let mut out = vec![0_u8; crate::bind::header_size::<Polygon>()];
+        crate::bind::write_header(&self.inner, &mut out).map_err(PyValueError::new_err)?;
+        Ok(out)
+    }
+
+    fn payload_bytes(&self) -> Vec<u8> {
+        self.inner.payload_bytes().to_vec()
+    }
+
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        if header.len() < crate::bind::header_size::<Polygon>() {
+            return Err(PyValueError::new_err(format!(
+                "Polygon header too small: need {}, got {}",
+                crate::bind::header_size::<Polygon>(),
+                header.len()
+            )));
+        }
+        let point_size = std::mem::size_of::<Point>();
+        if payload.len() % point_size != 0 {
+            return Err(PyValueError::new_err(format!(
+                "Polygon payload length {} is not a multiple of Point size {}",
+                payload.len(),
+                point_size
+            )));
+        }
+        let vertices = payload
+            .chunks_exact(point_size)
+            .map(bytemuck::pod_read_unaligned::<Point>)
+            .collect();
+        Ok(Self {
+            inner: Polygon::new(vertices),
+        })
+    }
+
+    fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
+        let mut data = self.to_header_bytes()?;
+        data.extend_from_slice(self.inner.payload_bytes());
+        Ok((crate::bind::type_hash::<Polygon>(), data))
     }
 
     fn __len__(&self) -> usize {
