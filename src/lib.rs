@@ -45,7 +45,10 @@ pub use wire::ZeroCopySend;
 pub use bytemuck;
 
 pub mod wire;
-pub use wire::{DataPod, Encoding, Envelope};
+pub use wire::{
+    DataPod, DataPodDecode, Encoding, Envelope, WireError, WireMessage, decode_payload_vec,
+    from_wire_message, to_wire_message,
+};
 
 pub mod bind;
 pub mod ffi;
@@ -57,6 +60,7 @@ pub mod geom;
 pub mod id;
 pub mod motion;
 pub mod raster;
+pub mod registry;
 pub mod robot;
 pub mod seq;
 pub mod world;
@@ -83,7 +87,8 @@ pub use raster::{Grid, GridHeader, Layer, LayerHeader};
 
 pub use seq::{
     BitVec, Bytes, Deque, DpStr, Fifo, ForwardList, Heap, HeapOrder, IndexedHeap, List, Matrix,
-    MaxHeap, MinHeap, PagedVecvec, PriorityQueue, Queue, Stack, Tensor, Vector, Vecvec,
+    MatrixHeader, MaxHeap, MinHeap, PagedVecvec, PriorityQueue, Queue, Stack, Tensor, Vector,
+    Vecvec,
 };
 
 pub use assoc::{Map, MapEntry, OMap, OSet, Set, SetEntry};

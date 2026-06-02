@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1] - 2026-06-02
+
+### <!-- 0 -->⛰️  Features
+
+- Implement generic wire message encoding/decoding
+
 ## [0.3.0] - 2026-06-01
 
 ### <!-- 0 -->⛰️  Features

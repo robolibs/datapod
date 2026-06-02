@@ -11,7 +11,8 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::cell::RefCell;
-use std::ffi::{CString, c_char};
+use std::ffi::{CStr, CString, c_char};
+use std::mem::ManuallyDrop;
 use std::ptr;
 
 use crate::wire::{Encoding, Envelope};
@@ -30,6 +31,7 @@ use crate::{
 
 thread_local! {
     static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
+    static TYPE_NAME_RESULT: RefCell<Option<CString>> = const { RefCell::new(None) };
 }
 
 fn clear_last_error() {
@@ -68,6 +70,418 @@ impl DatapodBytes {
         Self {
             ptr: ptr::null(),
             len: 0,
+        }
+    }
+}
+
+/// Generic borrowed datapod wire message: `data = header || payload`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct DatapodWireMessage {
+    pub type_hash: u64,
+    pub data: *const u8,
+    pub len: usize,
+}
+
+/// Owned bytes returned by Rust to C. Free with `datapod_owned_bytes_free`.
+#[repr(C)]
+#[derive(Debug)]
+pub struct DatapodOwnedBytes {
+    pub ptr: *mut u8,
+    pub len: usize,
+    pub capacity: usize,
+}
+
+impl DatapodOwnedBytes {
+    fn empty() -> Self {
+        Self {
+            ptr: ptr::null_mut(),
+            len: 0,
+            capacity: 0,
+        }
+    }
+}
+
+fn owned_bytes(bytes: Vec<u8>) -> DatapodOwnedBytes {
+    let mut bytes = ManuallyDrop::new(bytes);
+    DatapodOwnedBytes {
+        ptr: bytes.as_mut_ptr(),
+        len: bytes.len(),
+        capacity: bytes.capacity(),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_owned_bytes_free(bytes: DatapodOwnedBytes) {
+    if bytes.ptr.is_null() {
+        return;
+    }
+    unsafe {
+        drop(Vec::from_raw_parts(bytes.ptr, bytes.len, bytes.capacity));
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_borrow(
+    type_hash: u64,
+    data: *const u8,
+    len: usize,
+) -> DatapodWireMessage {
+    DatapodWireMessage {
+        type_hash,
+        data,
+        len,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_copy(
+    message: DatapodWireMessage,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    let Some(bytes) = clone_bytes(message.data, message.len) else {
+        return false;
+    };
+    unsafe {
+        *out = owned_bytes(bytes);
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_join(
+    type_hash: u64,
+    header: *const u8,
+    header_len: usize,
+    payload: *const u8,
+    payload_len: usize,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    if !crate::registry::type_exists(type_hash) {
+        set_last_error("unknown datapod type hash");
+        return false;
+    }
+    let expected_header_len = datapod_header_size(type_hash);
+    if header_len != expected_header_len {
+        set_last_error(format!(
+            "wrong header length: got {header_len}, expected {expected_header_len}"
+        ));
+        return false;
+    }
+    let Ok(header) = (unsafe { bytes_in(header, header_len) }) else {
+        return false;
+    };
+    let Ok(payload) = (unsafe { bytes_in(payload, payload_len) }) else {
+        return false;
+    };
+    let mut bytes = Vec::with_capacity(header.len() + payload.len());
+    bytes.extend_from_slice(header);
+    bytes.extend_from_slice(payload);
+    unsafe {
+        *out = owned_bytes(bytes);
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_is_valid(message: DatapodWireMessage) -> bool {
+    clear_last_error();
+    if !crate::registry::type_exists(message.type_hash) {
+        set_last_error("unknown datapod type hash");
+        return false;
+    }
+    let header_len = datapod_header_size(message.type_hash);
+    if message.len < header_len {
+        set_last_error(format!(
+            "wire message too short: got {}, need at least {header_len}",
+            message.len
+        ));
+        return false;
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_header(message: DatapodWireMessage) -> DatapodBytes {
+    clear_last_error();
+    if !datapod_wire_message_is_valid(message) {
+        return DatapodBytes::empty();
+    }
+    DatapodBytes {
+        ptr: message.data,
+        len: datapod_header_size(message.type_hash),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_payload(message: DatapodWireMessage) -> DatapodBytes {
+    clear_last_error();
+    if !datapod_wire_message_is_valid(message) {
+        return DatapodBytes::empty();
+    }
+    let header_len = datapod_header_size(message.type_hash);
+    DatapodBytes {
+        ptr: unsafe { message.data.add(header_len) },
+        len: message.len - header_len,
+    }
+}
+
+/// Copy any fixed-size datapod C value into canonical wire bytes.
+///
+/// `value` must point at the concrete C struct bytes for a registered fixed
+/// datapod whose type hash is `type_hash`. The returned owned bytes are the
+/// complete datapod wire body for fixed values: just the header bytes.
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_fixed_value_to_wire(
+    type_hash: u64,
+    value: *const u8,
+    value_len: usize,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if datapod_payload_kind(type_hash) != 0 {
+        set_last_error("datapod type is not fixed-size");
+        return false;
+    }
+    datapod_wire_message_join(type_hash, value, value_len, ptr::null(), 0, out)
+}
+
+/// Decode canonical fixed-size datapod wire bytes into a caller-owned C value.
+///
+/// `out` must point at writable storage for the concrete C struct identified by
+/// `type_hash`; `out_len` must be at least that type's header size.
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_fixed_value_from_wire(
+    type_hash: u64,
+    data: *const u8,
+    data_len: usize,
+    out: *mut u8,
+    out_len: usize,
+) -> bool {
+    clear_last_error();
+    if datapod_payload_kind(type_hash) != 0 {
+        set_last_error("datapod type is not fixed-size");
+        return false;
+    }
+    let message = datapod_wire_message_borrow(type_hash, data, data_len);
+    if !datapod_wire_message_is_valid(message) {
+        return false;
+    }
+    let header_len = datapod_header_size(type_hash);
+    if data_len != header_len {
+        set_last_error(format!(
+            "fixed-size wire message has payload bytes: got {data_len}, expected {header_len}"
+        ));
+        return false;
+    }
+    let Ok(input) = (unsafe { bytes_in(data, header_len) }) else {
+        return false;
+    };
+    let Ok(output) = (unsafe { bytes_out(out, out_len) }) else {
+        return false;
+    };
+    if output.len() < header_len {
+        set_last_error(format!(
+            "output buffer too small: need {header_len}, got {}",
+            output.len()
+        ));
+        return false;
+    }
+    output[..header_len].copy_from_slice(input);
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_type_exists(type_hash: u64) -> bool {
+    crate::registry::type_exists(type_hash)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_type_hash_name(name: *const c_char) -> u64 {
+    clear_last_error();
+    if name.is_null() {
+        set_last_error("null datapod canonical type name");
+        return 0;
+    }
+    let Ok(name) = (unsafe { CStr::from_ptr(name) }).to_str() else {
+        set_last_error("datapod canonical type name is not utf-8");
+        return 0;
+    };
+    crate::registry::type_hash_name(name)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_payload_kind_fixed() -> u32 {
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_payload_kind_bytes() -> u32 {
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_register_type(
+    type_hash: u64,
+    canonical_name: *const c_char,
+    header_size: usize,
+    payload_kind: u32,
+) -> bool {
+    clear_last_error();
+    if canonical_name.is_null() {
+        set_last_error("null datapod canonical type name");
+        return false;
+    }
+    let Ok(canonical_name) = (unsafe { CStr::from_ptr(canonical_name) }).to_str() else {
+        set_last_error("datapod canonical type name is not utf-8");
+        return false;
+    };
+    let payload_kind = match payload_kind {
+        0 => crate::registry::PayloadKind::Fixed,
+        1 => crate::registry::PayloadKind::Bytes,
+        _ => {
+            set_last_error("invalid datapod payload kind; expected 0=fixed or 1=bytes");
+            return false;
+        }
+    };
+    match crate::registry::register_type(type_hash, canonical_name, header_size, payload_kind) {
+        Ok(()) => true,
+        Err(error) => {
+            set_last_error(error.to_string());
+            false
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_register_type_name(
+    canonical_name: *const c_char,
+    header_size: usize,
+    payload_kind: u32,
+) -> u64 {
+    clear_last_error();
+    let type_hash = datapod_type_hash_name(canonical_name);
+    if type_hash == 0 {
+        return 0;
+    }
+    if datapod_register_type(type_hash, canonical_name, header_size, payload_kind) {
+        type_hash
+    } else {
+        0
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_type_name(type_hash: u64) -> *const c_char {
+    let Some(info) = crate::registry::find_type_info(type_hash) else {
+        return ptr::null();
+    };
+    TYPE_NAME_RESULT.with(|slot| {
+        *slot.borrow_mut() = Some(
+            CString::new(info.canonical_name)
+                .unwrap_or_else(|_| CString::new("datapod.unknown").unwrap()),
+        );
+        slot.borrow()
+            .as_ref()
+            .map_or(ptr::null(), |name| name.as_ptr())
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_header_size(type_hash: u64) -> usize {
+    crate::registry::find_type_info(type_hash).map_or(0, |info| info.header_size)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_payload_kind(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.payload_kind) {
+        Some(crate::registry::PayloadKind::Fixed) => 0,
+        Some(crate::registry::PayloadKind::Bytes) => 1,
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_point_to_wire(value: DatapodPoint, out: *mut DatapodOwnedBytes) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    let message = crate::to_wire_message(&Point::from(value));
+    unsafe {
+        *out = owned_bytes(message.bytes);
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_point_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodPoint,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null output point");
+        return false;
+    }
+    let Some(bytes) = clone_bytes(ptr, len) else {
+        return false;
+    };
+    let message = crate::WireMessage {
+        type_hash: crate::bind::type_hash::<Point>(),
+        bytes,
+    };
+    let value = match crate::from_wire_message::<Point>(&message) {
+        Ok(value) => value,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = value.into();
+    }
+    true
+}
+
+fn heap_to_wire<T: DataPod>(value: &T, out: *mut DatapodOwnedBytes) -> bool {
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    let message = crate::to_wire_message(value);
+    unsafe {
+        *out = owned_bytes(message.bytes);
+    }
+    true
+}
+
+fn heap_from_wire<T>(ptr: *const u8, len: usize) -> Option<T>
+where
+    T: DataPod + crate::DataPodDecode,
+{
+    let bytes = clone_bytes(ptr, len)?;
+    let message = crate::WireMessage {
+        type_hash: crate::bind::type_hash::<T>(),
+        bytes,
+    };
+    match crate::from_wire_message::<T>(&message) {
+        Ok(value) => Some(value),
+        Err(error) => {
+            set_last_error(error.to_string());
+            None
         }
     }
 }
@@ -2538,6 +2952,28 @@ pub extern "C" fn datapod_polygon_payload(polygon: *const DatapodPolygon) -> Dat
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_polygon_to_wire(
+    handle: *const DatapodPolygon,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null polygon handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_polygon_from_wire(ptr: *const u8, len: usize) -> *mut DatapodPolygon {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Polygon>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPolygon { inner }))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_bytes_value_new(ptr: *const u8, len: usize) -> *mut DatapodBytesValue {
     clear_last_error();
     let Some(data) = clone_bytes(ptr, len) else {
@@ -3081,6 +3517,31 @@ pub extern "C" fn datapod_bytes_value_payload(handle: *const DatapodBytesValue) 
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_bytes_value_to_wire(
+    handle: *const DatapodBytesValue,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null bytes_value handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_bytes_value_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodBytesValue {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Bytes>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodBytesValue { inner }))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_dpstr_free(handle: *mut DatapodDpStr) {
     if !handle.is_null() {
         unsafe { drop(std::boxed::Box::from_raw(handle)) };
@@ -3409,6 +3870,47 @@ pub extern "C" fn datapod_grid_payload(handle: *const DatapodGrid) -> DatapodByt
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_grid_to_wire(
+    handle: *const DatapodGrid,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null grid handle");
+        return false;
+    }
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    let message = crate::to_wire_message(&unsafe { &*handle }.inner);
+    unsafe {
+        *out = owned_bytes(message.bytes);
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_grid_from_wire(ptr: *const u8, len: usize) -> *mut DatapodGrid {
+    clear_last_error();
+    let Some(bytes) = clone_bytes(ptr, len) else {
+        return ptr::null_mut();
+    };
+    let message = crate::WireMessage {
+        type_hash: crate::bind::type_hash::<Grid>(),
+        bytes,
+    };
+    let inner = match crate::from_wire_message::<Grid>(&message) {
+        Ok(value) => value,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return ptr::null_mut();
+        }
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodGrid { inner }))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_layer_free(handle: *mut DatapodLayer) {
     if !handle.is_null() {
         unsafe { drop(std::boxed::Box::from_raw(handle)) };
@@ -3611,6 +4113,28 @@ pub extern "C" fn datapod_matrix_payload(handle: *const DatapodMatrix) -> Datapo
         return DatapodBytes::empty();
     }
     datapod_payload(&unsafe { &*handle }.inner)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_matrix_to_wire(
+    handle: *const DatapodMatrix,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null matrix handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_matrix_from_wire(ptr: *const u8, len: usize) -> *mut DatapodMatrix {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Matrix>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodMatrix { inner }))
 }
 
 #[unsafe(no_mangle)]
@@ -4062,6 +4586,508 @@ pub extern "C" fn datapod_paged_vecvec_payload(handle: *const DatapodPagedVecvec
         return DatapodBytes::empty();
     }
     datapod_payload(&unsafe { &*handle }.inner)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstr_to_wire(
+    handle: *const DatapodDpStr,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null dpstr handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstr_from_wire(ptr: *const u8, len: usize) -> *mut DatapodDpStr {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<DpStr>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodDpStr { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstring_to_wire(
+    handle: *const DatapodDpString,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null dpstring handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstring_from_wire(ptr: *const u8, len: usize) -> *mut DatapodDpString {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<DpString>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodDpString { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_linestring_to_wire(
+    handle: *const DatapodLinestring,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null linestring handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_linestring_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodLinestring {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Linestring>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodLinestring { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_multi_point_to_wire(
+    handle: *const DatapodMultiPoint,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null multi_point handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_multi_point_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodMultiPoint {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<MultiPoint>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodMultiPoint { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_ring_to_wire(
+    handle: *const DatapodRing,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null ring handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_ring_from_wire(ptr: *const u8, len: usize) -> *mut DatapodRing {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Ring>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodRing { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_path_to_wire(
+    handle: *const DatapodPath,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null path handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_path_from_wire(ptr: *const u8, len: usize) -> *mut DatapodPath {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Path>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPath { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_trajectory_to_wire(
+    handle: *const DatapodTrajectory,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null trajectory handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_trajectory_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodTrajectory {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Trajectory>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodTrajectory { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_layer_to_wire(
+    handle: *const DatapodLayer,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null layer handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_layer_from_wire(ptr: *const u8, len: usize) -> *mut DatapodLayer {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Layer>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodLayer { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_map_to_wire(
+    handle: *const DatapodMap,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null map handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_map_from_wire(ptr: *const u8, len: usize) -> *mut DatapodMap {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Map>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodMap { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_set_to_wire(
+    handle: *const DatapodSet,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null set handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_set_from_wire(ptr: *const u8, len: usize) -> *mut DatapodSet {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Set>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodSet { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vector_to_wire(
+    handle: *const DatapodVector,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null vector handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vector_from_wire(ptr: *const u8, len: usize) -> *mut DatapodVector {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Vector>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodVector { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_tensor_to_wire(
+    handle: *const DatapodTensor,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null tensor handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_tensor_from_wire(ptr: *const u8, len: usize) -> *mut DatapodTensor {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Tensor>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodTensor { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_bitvec_to_wire(
+    handle: *const DatapodBitVec,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null bitvec handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_bitvec_from_wire(ptr: *const u8, len: usize) -> *mut DatapodBitVec {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<BitVec>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodBitVec { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_deque_to_wire(
+    handle: *const DatapodDeque,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null deque handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_deque_from_wire(ptr: *const u8, len: usize) -> *mut DatapodDeque {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Deque>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodDeque { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_queue_to_wire(
+    handle: *const DatapodQueue,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null queue handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_queue_from_wire(ptr: *const u8, len: usize) -> *mut DatapodQueue {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Queue>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodQueue { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_stack_to_wire(
+    handle: *const DatapodStack,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null stack handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_stack_from_wire(ptr: *const u8, len: usize) -> *mut DatapodStack {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Stack>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodStack { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_list_to_wire(
+    handle: *const DatapodList,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null list handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_list_from_wire(ptr: *const u8, len: usize) -> *mut DatapodList {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<List>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodList { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_forward_list_to_wire(
+    handle: *const DatapodForwardList,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null forward_list handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_forward_list_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodForwardList {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<ForwardList>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodForwardList { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_heap_to_wire(
+    handle: *const DatapodHeap,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null heap handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_heap_from_wire(ptr: *const u8, len: usize) -> *mut DatapodHeap {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Heap>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodHeap { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_indexed_heap_to_wire(
+    handle: *const DatapodIndexedHeap,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null indexed_heap handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_indexed_heap_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodIndexedHeap {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<IndexedHeap>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodIndexedHeap { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vecvec_to_wire(
+    handle: *const DatapodVecvec,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null vecvec handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vecvec_from_wire(ptr: *const u8, len: usize) -> *mut DatapodVecvec {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<Vecvec>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodVecvec { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_paged_vecvec_to_wire(
+    handle: *const DatapodPagedVecvec,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
+    clear_last_error();
+    if handle.is_null() {
+        set_last_error("null paged_vecvec handle");
+        return false;
+    }
+    heap_to_wire(&unsafe { &*handle }.inner, out)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_paged_vecvec_from_wire(
+    ptr: *const u8,
+    len: usize,
+) -> *mut DatapodPagedVecvec {
+    clear_last_error();
+    let Some(inner) = heap_from_wire::<PagedVecvec>(ptr, len) else {
+        return ptr::null_mut();
+    };
+    std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPagedVecvec { inner }))
 }
 /// Opaque fixed-value handle for PointKey.
 pub struct DatapodPointKeyHandle {

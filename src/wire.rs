@@ -16,7 +16,7 @@
 //!   non-bytes field. `header()` builds that on demand from `&self`, and
 //!   `payload()` returns `bytemuck::cast_slice(&self.<bytes_field>)`.
 
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 
 use bytemuck::{Pod, Zeroable};
 
@@ -55,6 +55,153 @@ pub trait DataPod: Debug + 'static {
     fn payload_bytes(&self) -> &[u8];
 }
 
+/// Owned canonical datapod wire message.
+///
+/// `bytes` is always `header_bytes || payload_bytes`. Transports can move this
+/// value without knowing the concrete datapod type; decoders split it using the
+/// registered/static header size for the requested type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WireMessage {
+    pub type_hash: u64,
+    pub bytes: Vec<u8>,
+}
+
+/// Errors returned by generic datapod wire decoding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WireError {
+    WrongTypeHash {
+        expected: u64,
+        got: u64,
+    },
+    ShortHeader {
+        type_name: &'static str,
+        needed: usize,
+        got: usize,
+    },
+    MalformedHeader {
+        type_name: &'static str,
+    },
+    InvalidPayloadSize {
+        type_name: &'static str,
+        message: String,
+    },
+    UnknownTypeHash {
+        type_hash: u64,
+    },
+}
+
+impl fmt::Display for WireError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WrongTypeHash { expected, got } => {
+                write!(f, "wrong datapod type hash: got {got}, expected {expected}")
+            }
+            Self::ShortHeader {
+                type_name,
+                needed,
+                got,
+            } => write!(
+                f,
+                "{type_name} wire message is too short: got {got} bytes, need at least {needed}"
+            ),
+            Self::MalformedHeader { type_name } => {
+                write!(f, "{type_name} wire message has malformed header bytes")
+            }
+            Self::InvalidPayloadSize { type_name, message } => {
+                write!(
+                    f,
+                    "{type_name} wire message has invalid payload size: {message}"
+                )
+            }
+            Self::UnknownTypeHash { type_hash } => {
+                write!(f, "unknown datapod type hash: {type_hash}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for WireError {}
+
+/// Types that can reconstruct an owned value from datapod wire parts.
+pub trait DataPodDecode: DataPod + Sized {
+    fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, WireError>;
+}
+
+/// Encode any datapod value as the canonical owned wire message.
+pub fn to_wire_message<T: DataPod>(value: &T) -> WireMessage {
+    let header = value.header();
+    let header_bytes = bytemuck::bytes_of(&header);
+    let payload = value.payload_bytes();
+
+    let mut bytes = Vec::with_capacity(header_bytes.len() + payload.len());
+    bytes.extend_from_slice(header_bytes);
+    bytes.extend_from_slice(payload);
+
+    WireMessage {
+        type_hash: crate::bind::type_hash::<T>(),
+        bytes,
+    }
+}
+
+/// Decode a concrete datapod type from a canonical owned wire message.
+pub fn from_wire_message<T: DataPodDecode>(msg: &WireMessage) -> Result<T, WireError> {
+    let expected = crate::bind::type_hash::<T>();
+    if msg.type_hash != expected {
+        return Err(WireError::WrongTypeHash {
+            expected,
+            got: msg.type_hash,
+        });
+    }
+
+    let header_size = core::mem::size_of::<T::Header>();
+    if msg.bytes.len() < header_size {
+        return Err(WireError::ShortHeader {
+            type_name: core::any::type_name::<T>(),
+            needed: header_size,
+            got: msg.bytes.len(),
+        });
+    }
+
+    let header =
+        bytemuck::try_pod_read_unaligned::<T::Header>(&msg.bytes[..header_size]).map_err(|_| {
+            WireError::MalformedHeader {
+                type_name: core::any::type_name::<T>(),
+            }
+        })?;
+    let payload = msg.bytes[header_size..].to_vec();
+    T::from_wire_parts(header, payload)
+}
+
+/// Decode a heap-backed `#[dp(bytes)] Vec<T>` payload.
+///
+/// Payload bytes are densely packed and may be unaligned, so reconstruction
+/// uses `pod_read_unaligned` instead of casting the input slice.
+pub fn decode_payload_vec<T>(payload: &[u8]) -> Result<Vec<T>, WireError>
+where
+    T: Pod + Copy + 'static,
+{
+    let elem_size = core::mem::size_of::<T>();
+    if elem_size == 0 {
+        return Err(WireError::InvalidPayloadSize {
+            type_name: core::any::type_name::<T>(),
+            message: "zero-sized payload elements are not supported".to_string(),
+        });
+    }
+    if payload.len() % elem_size != 0 {
+        return Err(WireError::InvalidPayloadSize {
+            type_name: core::any::type_name::<T>(),
+            message: format!(
+                "{} bytes is not a multiple of element size {elem_size}",
+                payload.len()
+            ),
+        });
+    }
+    Ok(payload
+        .chunks_exact(elem_size)
+        .map(bytemuck::pod_read_unaligned::<T>)
+        .collect())
+}
+
 /// Universal transport envelope. Set by the messaging layer on every
 /// published message and made available to the receiver.
 #[repr(C)]
@@ -78,6 +225,18 @@ impl DataPod for Envelope {
     }
     fn payload_bytes(&self) -> &[u8] {
         &[]
+    }
+}
+
+impl DataPodDecode for Envelope {
+    fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, WireError> {
+        if !payload.is_empty() {
+            return Err(WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        Ok(header)
     }
 }
 
@@ -119,5 +278,17 @@ impl DataPod for Encoding {
     }
     fn payload_bytes(&self) -> &[u8] {
         &[]
+    }
+}
+
+impl DataPodDecode for Encoding {
+    fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, WireError> {
+        if !payload.is_empty() {
+            return Err(WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        Ok(header)
     }
 }

@@ -200,6 +200,249 @@ fn ffi_assoc_entry_values_are_available_as_raw_pods() {
 }
 
 #[test]
+fn ffi_generic_registry_reports_exported_type_metadata() {
+    let point_hash = datapod_point_type_hash();
+    assert!(datapod_type_exists(point_hash));
+    assert_eq!(datapod_header_size(point_hash), datapod_point_header_size());
+    assert_eq!(datapod_payload_kind(point_hash), 0);
+    let name = datapod_type_name(point_hash);
+    assert!(!name.is_null());
+    let name = unsafe { std::ffi::CStr::from_ptr(name) }
+        .to_str()
+        .expect("registry names are utf-8");
+    assert_eq!(name, "datapod.point.v1");
+    assert_eq!(datapod_payload_kind(datapod_grid_type_hash()), 1);
+
+    assert!(!datapod_type_exists(u64::MAX));
+    assert_eq!(datapod_header_size(u64::MAX), 0);
+    assert_eq!(datapod_payload_kind(u64::MAX), u32::MAX);
+    assert!(datapod_type_name(u64::MAX).is_null());
+}
+
+#[test]
+fn ffi_generic_wire_helpers_split_join_and_copy_messages() {
+    let point = datapod_point_new(4.0, 5.0, 6.0);
+    let mut header = vec![0_u8; datapod_point_header_size()];
+    assert!(datapod_point_to_header_bytes(
+        point,
+        header.as_mut_ptr(),
+        header.len()
+    ));
+
+    let mut joined = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_wire_message_join(
+        datapod_point_type_hash(),
+        header.as_ptr(),
+        header.len(),
+        std::ptr::null(),
+        0,
+        &mut joined,
+    ));
+
+    let message = datapod_wire_message_borrow(datapod_point_type_hash(), joined.ptr, joined.len);
+    assert!(datapod_wire_message_is_valid(message));
+    let header_view = datapod_wire_message_header(message);
+    assert_eq!(header_view.len, header.len());
+    let payload_view = datapod_wire_message_payload(message);
+    assert_eq!(payload_view.len, 0);
+
+    let mut copied = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_wire_message_copy(message, &mut copied));
+    assert_eq!(copied.len, joined.len);
+
+    datapod_owned_bytes_free(joined);
+    datapod_owned_bytes_free(copied);
+}
+
+#[test]
+fn ffi_generic_fixed_value_wire_helpers_cover_all_fixed_c_structs() {
+    let pose = datapod_pose_new(
+        datapod_point_new(1.0, 2.0, 3.0),
+        datapod_quaternion_identity(),
+    );
+    let mut pose_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_fixed_value_to_wire(
+        datapod_pose_type_hash(),
+        (&pose as *const DatapodPose).cast(),
+        std::mem::size_of::<DatapodPose>(),
+        &mut pose_wire,
+    ));
+    assert_eq!(pose_wire.len, datapod_pose_header_size());
+
+    let mut pose_out = DatapodPose::default();
+    assert!(datapod_fixed_value_from_wire(
+        datapod_pose_type_hash(),
+        pose_wire.ptr,
+        pose_wire.len,
+        (&mut pose_out as *mut DatapodPose).cast(),
+        std::mem::size_of::<DatapodPose>(),
+    ));
+    assert_eq!(pose, pose_out);
+    datapod_owned_bytes_free(pose_wire);
+
+    let bytes = [1_u8, 2, 3];
+    let value = datapod_bytes_value_new(bytes.as_ptr(), bytes.len());
+    assert!(!value.is_null());
+    let mut should_fail = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(!datapod_fixed_value_to_wire(
+        datapod_bytes_value_type_hash(),
+        std::ptr::null(),
+        0,
+        &mut should_fail,
+    ));
+    assert!(!datapod_last_error_message().is_null());
+    datapod_bytes_value_free(value);
+}
+
+#[test]
+fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
+    let point = datapod_point_new(1.0, 2.0, 3.0);
+    let mut point_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_point_to_wire(point, &mut point_wire));
+    assert!(!point_wire.ptr.is_null());
+    let mut point_out = DatapodPoint::default();
+    assert!(datapod_point_from_wire(
+        point_wire.ptr,
+        point_wire.len,
+        &mut point_out
+    ));
+    assert_eq!(point, point_out);
+    datapod_owned_bytes_free(point_wire);
+
+    let pixels = [1_u8, 2, 3, 4];
+    let grid = datapod_grid_new(
+        2,
+        2,
+        13,
+        false,
+        1.0,
+        datapod_pose_new(
+            datapod_point_new(0.0, 0.0, 0.0),
+            datapod_quaternion_identity(),
+        ),
+        pixels.as_ptr(),
+        pixels.len(),
+    );
+    assert!(!grid.is_null());
+    let mut grid_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_grid_to_wire(grid, &mut grid_wire));
+    let grid_out = datapod_grid_from_wire(grid_wire.ptr, grid_wire.len);
+    assert!(!grid_out.is_null());
+    assert_eq!(datapod_grid_payload(grid_out).len, pixels.len());
+    datapod_grid_free(grid);
+    datapod_grid_free(grid_out);
+    datapod_owned_bytes_free(grid_wire);
+
+    let bytes = [9_u8, 8, 7, 6];
+    let byte_value = datapod_bytes_value_new(bytes.as_ptr(), bytes.len());
+    assert!(!byte_value.is_null());
+    let mut byte_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_bytes_value_to_wire(byte_value, &mut byte_wire));
+    let byte_out = datapod_bytes_value_from_wire(byte_wire.ptr, byte_wire.len);
+    assert!(!byte_out.is_null());
+    assert_eq!(datapod_bytes_value_payload(byte_out).len, bytes.len());
+    datapod_bytes_value_free(byte_value);
+    datapod_bytes_value_free(byte_out);
+    datapod_owned_bytes_free(byte_wire);
+
+    let matrix = datapod_matrix_from_bytes(2, 2, 1, bytes.as_ptr(), bytes.len());
+    assert!(!matrix.is_null());
+    let mut matrix_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_matrix_to_wire(matrix, &mut matrix_wire));
+    let matrix_out = datapod_matrix_from_wire(matrix_wire.ptr, matrix_wire.len);
+    assert!(!matrix_out.is_null());
+    assert_eq!(datapod_matrix_payload(matrix_out).len, bytes.len());
+    datapod_matrix_free(matrix);
+    datapod_matrix_free(matrix_out);
+    datapod_owned_bytes_free(matrix_wire);
+
+    let vector = datapod_vector_from_bytes(1, bytes.as_ptr(), bytes.len());
+    assert!(!vector.is_null());
+    let mut vector_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_vector_to_wire(vector, &mut vector_wire));
+    let vector_out = datapod_vector_from_wire(vector_wire.ptr, vector_wire.len);
+    assert!(!vector_out.is_null());
+    assert_eq!(datapod_vector_payload(vector_out).len, bytes.len());
+    datapod_vector_free(vector);
+    datapod_vector_free(vector_out);
+    datapod_owned_bytes_free(vector_wire);
+
+    let tensor = datapod_tensor_from_bytes(1, 2, 2, 1, bytes.as_ptr(), bytes.len());
+    assert!(!tensor.is_null());
+    let mut tensor_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_tensor_to_wire(tensor, &mut tensor_wire));
+    let tensor_out = datapod_tensor_from_wire(tensor_wire.ptr, tensor_wire.len);
+    assert!(!tensor_out.is_null());
+    assert_eq!(datapod_tensor_payload(tensor_out).len, bytes.len());
+    datapod_tensor_free(tensor);
+    datapod_tensor_free(tensor_out);
+    datapod_owned_bytes_free(tensor_wire);
+
+    let vertices = [
+        datapod_point_new(0.0, 0.0, 0.0),
+        datapod_point_new(1.0, 0.0, 0.0),
+        datapod_point_new(0.0, 1.0, 0.0),
+    ];
+    let polygon = datapod_polygon_new(vertices.as_ptr(), vertices.len());
+    assert!(!polygon.is_null());
+    let mut polygon_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_polygon_to_wire(polygon, &mut polygon_wire));
+    let polygon_out = datapod_polygon_from_wire(polygon_wire.ptr, polygon_wire.len);
+    assert!(!polygon_out.is_null());
+    assert_eq!(
+        datapod_polygon_payload(polygon_out).len,
+        datapod_polygon_payload(polygon).len
+    );
+    datapod_polygon_free(polygon);
+    datapod_polygon_free(polygon_out);
+    datapod_owned_bytes_free(polygon_wire);
+}
+
+#[test]
 fn ffi_remaining_fixed_robot_and_shape_types_expose_wire_helpers() {
     let model = datapod_model_new_default();
     assert!(!model.is_null());
