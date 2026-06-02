@@ -86,6 +86,17 @@ impl PyPoint {
         Ok((crate::bind::type_hash::<Point>(), self.to_header_bytes()?))
     }
 
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Point>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        Self::from_wire(data, Vec::new())
+    }
+
     fn __repr__(&self) -> String {
         format!("Point(x={}, y={}, z={})", self.x, self.y, self.z)
     }
@@ -179,6 +190,17 @@ impl PyGeo {
         Ok((crate::bind::type_hash::<Geo>(), self.to_header_bytes()?))
     }
 
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Geo>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        Self::from_wire(data, Vec::new())
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Geo(latitude={}, longitude={}, altitude={})",
@@ -255,6 +277,17 @@ impl PySegment {
 
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
         Ok((crate::bind::type_hash::<Segment>(), self.to_header_bytes()?))
+    }
+
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Segment>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        Self::from_wire(data, Vec::new())
     }
 
     fn __repr__(&self) -> String {
@@ -388,6 +421,24 @@ impl PyPolygon {
         let mut data = self.to_header_bytes()?;
         data.extend_from_slice(self.inner.payload_bytes());
         Ok((crate::bind::type_hash::<Polygon>(), data))
+    }
+
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Polygon>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        let header_size = crate::bind::header_size::<Polygon>();
+        if data.len() < header_size {
+            return Err(PyValueError::new_err(format!(
+                "Polygon wire message too short: need at least {header_size}, got {}",
+                data.len()
+            )));
+        }
+        Self::from_wire(data[..header_size].to_vec(), data[header_size..].to_vec())
     }
 
     fn __len__(&self) -> usize {

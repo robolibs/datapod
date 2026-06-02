@@ -379,6 +379,32 @@ typedef struct DatapodVecvec DatapodVecvec;
 typedef struct DatapodVisualHandle DatapodVisualHandle;
 
 /**
+ * Owned bytes returned by Rust to C. Free with `datapod_owned_bytes_free`.
+ */
+typedef struct {
+  uint8_t *ptr;
+  uintptr_t len;
+  uintptr_t capacity;
+} DatapodOwnedBytes;
+
+/**
+ * Generic borrowed datapod wire message: `data = header || payload`.
+ */
+typedef struct {
+  uint64_t type_hash;
+  const uint8_t *data;
+  uintptr_t len;
+} DatapodWireMessage;
+
+/**
+ * A borrowed byte view.
+ */
+typedef struct {
+  const uint8_t *ptr;
+  uintptr_t len;
+} DatapodBytes;
+
+/**
  * FFI-safe point value.
  */
 typedef struct {
@@ -649,19 +675,83 @@ typedef struct {
   uint32_t key_len;
 } DatapodSetEntry;
 
-/**
- * A borrowed byte view.
- */
-typedef struct {
-  const uint8_t *ptr;
-  uintptr_t len;
-} DatapodBytes;
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
 const char *datapod_last_error_message(void);
+
+void datapod_owned_bytes_free(DatapodOwnedBytes bytes);
+
+DatapodWireMessage datapod_wire_message_borrow(uint64_t type_hash,
+                                               const uint8_t *data,
+                                               uintptr_t len);
+
+bool datapod_wire_message_copy(DatapodWireMessage message, DatapodOwnedBytes *out);
+
+bool datapod_wire_message_join(uint64_t type_hash,
+                               const uint8_t *header,
+                               uintptr_t header_len,
+                               const uint8_t *payload,
+                               uintptr_t payload_len,
+                               DatapodOwnedBytes *out);
+
+bool datapod_wire_message_is_valid(DatapodWireMessage message);
+
+DatapodBytes datapod_wire_message_header(DatapodWireMessage message);
+
+DatapodBytes datapod_wire_message_payload(DatapodWireMessage message);
+
+/**
+ * Copy any fixed-size datapod C value into canonical wire bytes.
+ *
+ * `value` must point at the concrete C struct bytes for a registered fixed
+ * datapod whose type hash is `type_hash`. The returned owned bytes are the
+ * complete datapod wire body for fixed values: just the header bytes.
+ */
+bool datapod_fixed_value_to_wire(uint64_t type_hash,
+                                 const uint8_t *value,
+                                 uintptr_t value_len,
+                                 DatapodOwnedBytes *out);
+
+/**
+ * Decode canonical fixed-size datapod wire bytes into a caller-owned C value.
+ *
+ * `out` must point at writable storage for the concrete C struct identified by
+ * `type_hash`; `out_len` must be at least that type's header size.
+ */
+bool datapod_fixed_value_from_wire(uint64_t type_hash,
+                                   const uint8_t *data,
+                                   uintptr_t data_len,
+                                   uint8_t *out,
+                                   uintptr_t out_len);
+
+bool datapod_type_exists(uint64_t type_hash);
+
+uint64_t datapod_type_hash_name(const char *name);
+
+uint32_t datapod_payload_kind_fixed(void);
+
+uint32_t datapod_payload_kind_bytes(void);
+
+bool datapod_register_type(uint64_t type_hash,
+                           const char *canonical_name,
+                           uintptr_t header_size,
+                           uint32_t payload_kind);
+
+uint64_t datapod_register_type_name(const char *canonical_name,
+                                    uintptr_t header_size,
+                                    uint32_t payload_kind);
+
+const char *datapod_type_name(uint64_t type_hash);
+
+uintptr_t datapod_header_size(uint64_t type_hash);
+
+uint32_t datapod_payload_kind(uint64_t type_hash);
+
+bool datapod_point_to_wire(DatapodPoint value, DatapodOwnedBytes *out);
+
+bool datapod_point_from_wire(const uint8_t *ptr, uintptr_t len, DatapodPoint *out);
 
 DatapodPoint datapod_point_new(double x, double y, double z);
 
@@ -1066,6 +1156,10 @@ bool datapod_polygon_to_header_bytes(const DatapodPolygon *polygon,
 
 DatapodBytes datapod_polygon_payload(const DatapodPolygon *polygon);
 
+bool datapod_polygon_to_wire(const DatapodPolygon *handle, DatapodOwnedBytes *out);
+
+DatapodPolygon *datapod_polygon_from_wire(const uint8_t *ptr, uintptr_t len);
+
 DatapodBytesValue *datapod_bytes_value_new(const uint8_t *ptr, uintptr_t len);
 
 DatapodDpStr *datapod_dpstr_new(const uint8_t *ptr, uintptr_t len);
@@ -1181,6 +1275,10 @@ bool datapod_bytes_value_to_header_bytes(const DatapodBytesValue *handle,
 
 DatapodBytes datapod_bytes_value_payload(const DatapodBytesValue *handle);
 
+bool datapod_bytes_value_to_wire(const DatapodBytesValue *handle, DatapodOwnedBytes *out);
+
+DatapodBytesValue *datapod_bytes_value_from_wire(const uint8_t *ptr, uintptr_t len);
+
 void datapod_dpstr_free(DatapodDpStr *handle);
 
 uint64_t datapod_dpstr_type_hash(void);
@@ -1269,6 +1367,10 @@ bool datapod_grid_to_header_bytes(const DatapodGrid *handle, uint8_t *out, uintp
 
 DatapodBytes datapod_grid_payload(const DatapodGrid *handle);
 
+bool datapod_grid_to_wire(const DatapodGrid *handle, DatapodOwnedBytes *out);
+
+DatapodGrid *datapod_grid_from_wire(const uint8_t *ptr, uintptr_t len);
+
 void datapod_layer_free(DatapodLayer *handle);
 
 uint64_t datapod_layer_type_hash(void);
@@ -1318,6 +1420,10 @@ uintptr_t datapod_matrix_header_size(void);
 bool datapod_matrix_to_header_bytes(const DatapodMatrix *handle, uint8_t *out, uintptr_t out_len);
 
 DatapodBytes datapod_matrix_payload(const DatapodMatrix *handle);
+
+bool datapod_matrix_to_wire(const DatapodMatrix *handle, DatapodOwnedBytes *out);
+
+DatapodMatrix *datapod_matrix_from_wire(const uint8_t *ptr, uintptr_t len);
 
 void datapod_tensor_free(DatapodTensor *handle);
 
@@ -1434,6 +1540,94 @@ bool datapod_paged_vecvec_to_header_bytes(const DatapodPagedVecvec *handle,
                                           uintptr_t out_len);
 
 DatapodBytes datapod_paged_vecvec_payload(const DatapodPagedVecvec *handle);
+
+bool datapod_dpstr_to_wire(const DatapodDpStr *handle, DatapodOwnedBytes *out);
+
+DatapodDpStr *datapod_dpstr_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_dpstring_to_wire(const DatapodDpString *handle, DatapodOwnedBytes *out);
+
+DatapodDpString *datapod_dpstring_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_linestring_to_wire(const DatapodLinestring *handle, DatapodOwnedBytes *out);
+
+DatapodLinestring *datapod_linestring_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_multi_point_to_wire(const DatapodMultiPoint *handle, DatapodOwnedBytes *out);
+
+DatapodMultiPoint *datapod_multi_point_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_ring_to_wire(const DatapodRing *handle, DatapodOwnedBytes *out);
+
+DatapodRing *datapod_ring_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_path_to_wire(const DatapodPath *handle, DatapodOwnedBytes *out);
+
+DatapodPath *datapod_path_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_trajectory_to_wire(const DatapodTrajectory *handle, DatapodOwnedBytes *out);
+
+DatapodTrajectory *datapod_trajectory_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_layer_to_wire(const DatapodLayer *handle, DatapodOwnedBytes *out);
+
+DatapodLayer *datapod_layer_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_map_to_wire(const DatapodMap *handle, DatapodOwnedBytes *out);
+
+DatapodMap *datapod_map_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_set_to_wire(const DatapodSet *handle, DatapodOwnedBytes *out);
+
+DatapodSet *datapod_set_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_vector_to_wire(const DatapodVector *handle, DatapodOwnedBytes *out);
+
+DatapodVector *datapod_vector_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_tensor_to_wire(const DatapodTensor *handle, DatapodOwnedBytes *out);
+
+DatapodTensor *datapod_tensor_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_bitvec_to_wire(const DatapodBitVec *handle, DatapodOwnedBytes *out);
+
+DatapodBitVec *datapod_bitvec_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_deque_to_wire(const DatapodDeque *handle, DatapodOwnedBytes *out);
+
+DatapodDeque *datapod_deque_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_queue_to_wire(const DatapodQueue *handle, DatapodOwnedBytes *out);
+
+DatapodQueue *datapod_queue_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_stack_to_wire(const DatapodStack *handle, DatapodOwnedBytes *out);
+
+DatapodStack *datapod_stack_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_list_to_wire(const DatapodList *handle, DatapodOwnedBytes *out);
+
+DatapodList *datapod_list_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_forward_list_to_wire(const DatapodForwardList *handle, DatapodOwnedBytes *out);
+
+DatapodForwardList *datapod_forward_list_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_heap_to_wire(const DatapodHeap *handle, DatapodOwnedBytes *out);
+
+DatapodHeap *datapod_heap_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_indexed_heap_to_wire(const DatapodIndexedHeap *handle, DatapodOwnedBytes *out);
+
+DatapodIndexedHeap *datapod_indexed_heap_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_vecvec_to_wire(const DatapodVecvec *handle, DatapodOwnedBytes *out);
+
+DatapodVecvec *datapod_vecvec_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_paged_vecvec_to_wire(const DatapodPagedVecvec *handle, DatapodOwnedBytes *out);
+
+DatapodPagedVecvec *datapod_paged_vecvec_from_wire(const uint8_t *ptr, uintptr_t len);
 
 DatapodPointKeyHandle *datapod_point_key_new_default(void);
 

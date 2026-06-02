@@ -8,11 +8,21 @@ use crate::DataPod;
 /// centralized here so C and Python expose the same value for the same Rust
 /// implementation type.
 pub fn type_hash<T: 'static>() -> u64 {
+    type_hash_name(core::any::type_name::<T>())
+}
+
+/// FNV-1a discriminator for an explicit canonical type name.
+///
+/// Built-in Rust types currently use [`type_hash`] over the Rust type path for
+/// 0.3 compatibility. User-defined C/Python schemas should use this helper on a
+/// canonical string such as `acme.depth_image.v1` and then register the schema
+/// metadata with the runtime registry.
+pub fn type_hash_name(name: &str) -> u64 {
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x00000100000001b3;
 
     let mut hash = OFFSET;
-    for byte in core::any::type_name::<T>().as_bytes() {
+    for byte in name.as_bytes() {
         hash ^= *byte as u64;
         hash = hash.wrapping_mul(PRIME);
     }

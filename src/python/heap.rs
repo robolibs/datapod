@@ -6,15 +6,57 @@ use pyo3::types::PyModule;
 
 use crate::wire::Encoding;
 use crate::{
-    BitVec, Bytes, DataPod, Deque, DpStr, DpString, ForwardList, Grid, Heap, IndexedHeap, Layer,
-    Linestring, List, Map, Matrix, MultiPoint, PagedVecvec, Path, Point, Polygon, Pose, Queue,
-    Ring, Set, Stack, State, Tensor, Trajectory, Vector, Vecvec,
+    BitVec, Bytes, DataPod, DataPodDecode, Deque, DpStr, DpString, ForwardList, Grid, GridHeader,
+    Heap, IndexedHeap, Layer, Linestring, List, Map, Matrix, MatrixHeader, MultiPoint, PagedVecvec,
+    Path, Point, Polygon, Pose, Queue, Ring, Set, Stack, State, Tensor, Trajectory, Vector, Vecvec,
 };
 
 fn header_bytes<T: DataPod>(value: &T) -> PyResult<Vec<u8>> {
     let mut out = vec![0_u8; crate::bind::header_size::<T>()];
     crate::bind::write_header(value, &mut out).map_err(PyValueError::new_err)?;
     Ok(out)
+}
+
+fn split_wire<T: DataPod>(data: Vec<u8>) -> PyResult<(Vec<u8>, Vec<u8>)> {
+    let header_size = crate::bind::header_size::<T>();
+    if data.len() < header_size {
+        return Err(PyValueError::new_err(format!(
+            "wire message too short: got {}, need at least {header_size}",
+            data.len()
+        )));
+    }
+    Ok((data[..header_size].to_vec(), data[header_size..].to_vec()))
+}
+
+fn read_header<H: bytemuck::Pod>(name: &str, header: &[u8]) -> PyResult<H> {
+    bytemuck::try_pod_read_unaligned(header)
+        .map_err(|_| PyValueError::new_err(format!("invalid {name} header bytes")))
+}
+
+fn decode_parts<T>(header: Vec<u8>, payload: Vec<u8>) -> PyResult<T>
+where
+    T: DataPod + DataPodDecode,
+{
+    let mut bytes = header;
+    bytes.extend_from_slice(&payload);
+    let message = crate::WireMessage {
+        type_hash: crate::bind::type_hash::<T>(),
+        bytes,
+    };
+    crate::from_wire_message::<T>(&message)
+        .map_err(|error| PyValueError::new_err(error.to_string()))
+}
+
+fn decode_message<T>(kind: u64, data: Vec<u8>) -> PyResult<T>
+where
+    T: DataPod + DataPodDecode,
+{
+    let message = crate::WireMessage {
+        type_hash: kind,
+        bytes: data,
+    };
+    crate::from_wire_message::<T>(&message)
+        .map_err(|error| PyValueError::new_err(error.to_string()))
 }
 
 fn encoding(value: u32) -> PyResult<Encoding> {
@@ -90,6 +132,18 @@ macro_rules! byte_container {
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
             }
+            #[staticmethod]
+            fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_parts::<$rust>(header, payload)?,
+                })
+            }
+            #[staticmethod]
+            fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_message::<$rust>(kind, data)?,
+                })
+            }
         }
     };
 }
@@ -123,6 +177,18 @@ macro_rules! raw_element_container {
             }
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
+            }
+            #[staticmethod]
+            fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_parts::<$rust>(header, payload)?,
+                })
+            }
+            #[staticmethod]
+            fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_message::<$rust>(kind, data)?,
+                })
             }
         }
     };
@@ -161,6 +227,18 @@ impl PyDpStr {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<DpStr>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<DpStr>(kind, data)?,
+        })
+    }
 }
 
 macro_rules! point_payload {
@@ -197,6 +275,18 @@ macro_rules! point_payload {
             }
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
+            }
+            #[staticmethod]
+            fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_parts::<$rust>(header, payload)?,
+                })
+            }
+            #[staticmethod]
+            fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+                Ok(Self {
+                    inner: decode_message::<$rust>(kind, data)?,
+                })
             }
         }
     };
@@ -263,6 +353,18 @@ impl PyPath {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Path>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Path>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "Trajectory")]
@@ -303,6 +405,18 @@ impl PyTrajectory {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Trajectory>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Trajectory>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "Grid")]
@@ -336,6 +450,26 @@ impl PyGrid {
     fn len(&self) -> usize {
         self.inner.size()
     }
+    #[getter]
+    fn rows(&self) -> u32 {
+        self.inner.rows
+    }
+    #[getter]
+    fn cols(&self) -> u32 {
+        self.inner.cols
+    }
+    #[getter]
+    fn encoding_id(&self) -> u32 {
+        self.inner.encoding as u32
+    }
+    #[getter]
+    fn centered(&self) -> bool {
+        self.inner.centered != 0
+    }
+    #[getter]
+    fn resolution(&self) -> f64 {
+        self.inner.resolution
+    }
     #[classattr]
     fn TYPE_HASH() -> u64 {
         crate::bind::type_hash::<Grid>()
@@ -353,6 +487,32 @@ impl PyGrid {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        let h: GridHeader = read_header("Grid", &header)?;
+        Ok(Self {
+            inner: Grid {
+                rows: h.rows,
+                cols: h.cols,
+                encoding: h.encoding,
+                centered: h.centered,
+                resolution: h.resolution,
+                pose: h.pose,
+                data: payload,
+            },
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Grid>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        let (header, payload) = split_wire::<Grid>(data)?;
+        Self::from_wire(header, payload)
     }
 }
 
@@ -410,6 +570,18 @@ impl PyLayer {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Layer>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Layer>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "Map")]
@@ -446,6 +618,18 @@ impl PyMap {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Map>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Map>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "Set")]
@@ -481,6 +665,18 @@ impl PySet {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Set>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Set>(kind, data)?,
+        })
     }
 }
 
@@ -532,6 +728,18 @@ impl PyMatrix {
     fn TYPE_HASH() -> u64 {
         crate::bind::type_hash::<Matrix>()
     }
+    #[getter]
+    fn rows(&self) -> u32 {
+        self.inner.rows
+    }
+    #[getter]
+    fn cols(&self) -> u32 {
+        self.inner.cols
+    }
+    #[getter]
+    fn element_size(&self) -> u32 {
+        self.inner.element_size
+    }
     fn to_header_bytes(&self) -> PyResult<Vec<u8>> {
         header_bytes(&self.inner)
     }
@@ -545,6 +753,30 @@ impl PyMatrix {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        let h: MatrixHeader = read_header("Matrix", &header)?;
+        Ok(Self {
+            inner: Matrix {
+                rows: h.rows,
+                cols: h.cols,
+                element_size: h.element_size,
+                _pad: h._pad,
+                data: payload,
+            },
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        let expected = crate::bind::type_hash::<Matrix>();
+        if kind != expected {
+            return Err(PyValueError::new_err(format!(
+                "wrong type hash: got {kind}, expected {expected}"
+            )));
+        }
+        let (header, payload) = split_wire::<Matrix>(data)?;
+        Self::from_wire(header, payload)
     }
 }
 
@@ -584,6 +816,18 @@ impl PyTensor {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Tensor>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Tensor>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "BitVec")]
@@ -615,6 +859,18 @@ impl PyBitVec {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<BitVec>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<BitVec>(kind, data)?,
+        })
     }
 }
 
@@ -652,6 +908,18 @@ impl PyDeque {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Deque>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Deque>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "Queue")]
@@ -687,6 +955,18 @@ impl PyQueue {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Queue>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Queue>(kind, data)?,
+        })
     }
 }
 
@@ -728,6 +1008,18 @@ impl PyList {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<List>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<List>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "ForwardList")]
@@ -765,6 +1057,18 @@ impl PyForwardList {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<ForwardList>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<ForwardList>(kind, data)?,
+        })
     }
 }
 
@@ -807,6 +1111,18 @@ impl PyHeap {
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
     }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<Heap>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<Heap>(kind, data)?,
+        })
+    }
 }
 
 #[pyclass(name = "IndexedHeap")]
@@ -847,6 +1163,18 @@ impl PyIndexedHeap {
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
+    }
+    #[staticmethod]
+    fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_parts::<IndexedHeap>(header, payload)?,
+        })
+    }
+    #[staticmethod]
+    fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
+        Ok(Self {
+            inner: decode_message::<IndexedHeap>(kind, data)?,
+        })
     }
 }
 

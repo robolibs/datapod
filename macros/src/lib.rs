@@ -31,8 +31,8 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
-    Attribute, Data, DeriveInput, Error, Field, Fields, FieldsNamed, ItemStruct, Visibility,
-    parse_macro_input, spanned::Spanned,
+    Attribute, Data, DeriveInput, Error, Field, Fields, FieldsNamed, GenericArgument, ItemStruct,
+    PathArguments, Type, Visibility, parse_macro_input, spanned::Spanned,
 };
 
 #[proc_macro_attribute]
@@ -94,6 +94,24 @@ fn expand_fixed(mut input: ItemStruct) -> Result<TokenStream2, Error> {
             fn header(&self) -> Self::Header { *self }
             fn payload_bytes(&self) -> &[u8] { &[] }
         }
+
+        impl #impl_generics ::datapod::DataPodDecode for #name #ty_generics #where_clause {
+            fn from_wire_parts(
+                header: <Self as ::datapod::DataPod>::Header,
+                payload: ::std::vec::Vec<u8>,
+            ) -> ::core::result::Result<Self, ::datapod::WireError> {
+                if !payload.is_empty() {
+                    return Err(::datapod::WireError::InvalidPayloadSize {
+                        type_name: ::core::any::type_name::<Self>(),
+                        message: ::std::format!(
+                            "fixed datapod payload must be empty, got {}",
+                            payload.len()
+                        ),
+                    });
+                }
+                Ok(header)
+            }
+        }
     })
 }
 
@@ -112,11 +130,12 @@ fn expand_heap(
     // Strip the `#[dp(bytes)]` attribute from the bytes field on the user
     // struct so it doesn't end up in the emitted source (the macro consumed
     // its meaning).
-    let bytes_field_ident: syn::Ident = match &mut input.fields {
+    let (bytes_field_ident, bytes_field_ty): (syn::Ident, Type) = match &mut input.fields {
         Fields::Named(named) => {
             let f = named.named.iter_mut().nth(bytes_field_index).unwrap();
+            let ty = f.ty.clone();
             f.attrs.retain(|a| !a.path().is_ident("dp"));
-            f.ident.clone().unwrap()
+            (f.ident.clone().unwrap(), ty)
         }
         _ => {
             return Err(Error::new(
@@ -125,6 +144,7 @@ fn expand_heap(
             ));
         }
     };
+    let bytes_element_ty = vec_element_type(&bytes_field_ty)?;
 
     // Collect the non-bytes named fields — they become the header struct.
     let header_fields: Vec<&Field> = match &input.fields {
@@ -153,6 +173,10 @@ fn expand_heap(
     let header_field_copies = header_fields.iter().map(|f| {
         let ident = f.ident.as_ref().unwrap();
         quote! { #ident: self.#ident }
+    });
+    let header_field_decodes = header_fields.iter().map(|f| {
+        let ident = f.ident.as_ref().unwrap();
+        quote! { #ident: header.#ident }
     });
 
     // Outer visibility of the original struct → reuse for the header.
@@ -200,6 +224,18 @@ fn expand_heap(
                 ::datapod::bytemuck::cast_slice(&self.#bytes_field_ident)
             }
         }
+
+        impl ::datapod::DataPodDecode for #name {
+            fn from_wire_parts(
+                header: <Self as ::datapod::DataPod>::Header,
+                payload: ::std::vec::Vec<u8>,
+            ) -> ::core::result::Result<Self, ::datapod::WireError> {
+                Ok(Self {
+                    #(#header_field_decodes,)*
+                    #bytes_field_ident: ::datapod::decode_payload_vec::<#bytes_element_ty>(&payload)?,
+                })
+            }
+        }
     })
 }
 
@@ -241,6 +277,40 @@ fn has_dp_bytes(field: &Field) -> bool {
         });
         found
     })
+}
+
+fn vec_element_type(ty: &Type) -> Result<Type, Error> {
+    let Type::Path(path) = ty else {
+        return Err(Error::new(
+            ty.span(),
+            "#[dp(bytes)] field must be Vec<T> with a Pod element type.",
+        ));
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return Err(Error::new(
+            ty.span(),
+            "#[dp(bytes)] field must be Vec<T> with a Pod element type.",
+        ));
+    };
+    if segment.ident != "Vec" {
+        return Err(Error::new(
+            ty.span(),
+            "#[dp(bytes)] field must be Vec<T> with a Pod element type.",
+        ));
+    }
+    let PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return Err(Error::new(
+            ty.span(),
+            "#[dp(bytes)] field must be Vec<T> with a Pod element type.",
+        ));
+    };
+    let Some(GenericArgument::Type(inner)) = args.args.first() else {
+        return Err(Error::new(
+            ty.span(),
+            "#[dp(bytes)] field must be Vec<T> with a Pod element type.",
+        ));
+    };
+    Ok(inner.clone())
 }
 
 fn has_repr_c(attrs: &[Attribute]) -> bool {
@@ -328,6 +398,24 @@ fn expand_derive(input: &DeriveInput) -> Result<TokenStream2, Error> {
             type Payload = ();
             fn header(&self) -> Self::Header { *self }
             fn payload_bytes(&self) -> &[u8] { &[] }
+        }
+
+        impl #impl_generics ::datapod::DataPodDecode for #name #ty_generics #where_clause {
+            fn from_wire_parts(
+                header: <Self as ::datapod::DataPod>::Header,
+                payload: ::std::vec::Vec<u8>,
+            ) -> ::core::result::Result<Self, ::datapod::WireError> {
+                if !payload.is_empty() {
+                    return Err(::datapod::WireError::InvalidPayloadSize {
+                        type_name: ::core::any::type_name::<Self>(),
+                        message: ::std::format!(
+                            "fixed datapod payload must be empty, got {}",
+                            payload.len()
+                        ),
+                    });
+                }
+                Ok(header)
+            }
         }
     })
 }

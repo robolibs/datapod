@@ -44,7 +44,7 @@ pub use forward_list::{FORWARD_LIST_NIL, ForwardList};
 pub use heap::{Heap, HeapOrder, MaxHeap, MinHeap, PriorityQueue};
 pub use indexed_heap::IndexedHeap;
 pub use list::{LIST_NIL, List};
-pub use matrix::Matrix;
+pub use matrix::{Matrix, MatrixHeader};
 pub use paged_vecvec::PagedVecvec;
 pub use queue::{Fifo, Queue};
 pub use stack::Stack;
