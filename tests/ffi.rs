@@ -202,9 +202,52 @@ fn ffi_assoc_entry_values_are_available_as_raw_pods() {
 #[test]
 fn ffi_generic_registry_reports_exported_type_metadata() {
     let point_hash = datapod_point_type_hash();
+    let point_canonical_hash = datapod::bind::type_hash_canonical::<datapod::Point>().unwrap();
+    assert_eq!(point_hash, point_canonical_hash);
     assert!(datapod_type_exists(point_hash));
+    assert!(datapod_type_exists(point_canonical_hash));
+    assert_eq!(
+        datapod_canonical_type_hash(point_hash),
+        point_canonical_hash
+    );
+    assert_eq!(
+        datapod_canonical_type_hash(point_canonical_hash),
+        point_canonical_hash
+    );
+    assert_eq!(datapod_emitted_type_hash(point_hash), point_canonical_hash);
+    assert_eq!(
+        datapod_emitted_hash_kind(point_hash),
+        datapod_hash_kind_canonical_name()
+    );
+    let current_format = unsafe { std::ffi::CStr::from_ptr(datapod_current_wire_format_name()) };
+    assert_eq!(current_format.to_str().unwrap(), "datapod-wire-v1/le");
+    let hash_policy = unsafe { std::ffi::CStr::from_ptr(datapod_builtin_hash_policy()) };
+    assert!(hash_policy.to_str().unwrap().contains("canonical-name"));
     assert_eq!(datapod_header_size(point_hash), datapod_point_header_size());
+    assert_eq!(
+        datapod_header_size(point_canonical_hash),
+        datapod_point_header_size()
+    );
+    assert_eq!(
+        datapod_header_size_v1(point_canonical_hash),
+        datapod_point_header_size()
+    );
+    assert_eq!(
+        datapod_header_size_v1(point_hash),
+        datapod_point_header_size()
+    );
     assert_eq!(datapod_payload_kind(point_hash), 0);
+    assert_eq!(datapod_format_version(point_hash), 1);
+    assert_eq!(datapod_wire_format(point_hash), 1);
+    assert_eq!(datapod_endian(point_hash), datapod_endian_little());
+    assert_eq!(
+        datapod_alignment_policy(point_hash),
+        datapod_alignment_unaligned_wire()
+    );
+    assert_eq!(
+        datapod_validator_kind(point_hash),
+        datapod_validator_builtin()
+    );
     let name = datapod_type_name(point_hash);
     assert!(!name.is_null());
     let name = unsafe { std::ffi::CStr::from_ptr(name) }
@@ -215,8 +258,55 @@ fn ffi_generic_registry_reports_exported_type_metadata() {
 
     assert!(!datapod_type_exists(u64::MAX));
     assert_eq!(datapod_header_size(u64::MAX), 0);
+    assert_eq!(datapod_header_size_v1(u64::MAX), 0);
+    assert_eq!(datapod_canonical_type_hash(u64::MAX), 0);
     assert_eq!(datapod_payload_kind(u64::MAX), u32::MAX);
+    assert_eq!(datapod_format_version(u64::MAX), u32::MAX);
+    assert_eq!(datapod_wire_format(u64::MAX), u32::MAX);
+    assert_eq!(datapod_emitted_type_hash(u64::MAX), 0);
+    assert_eq!(datapod_emitted_hash_kind(u64::MAX), u32::MAX);
+    assert_eq!(datapod_endian(u64::MAX), u32::MAX);
+    assert_eq!(datapod_alignment_policy(u64::MAX), u32::MAX);
+    assert_eq!(datapod_validator_kind(u64::MAX), u32::MAX);
     assert!(datapod_type_name(u64::MAX).is_null());
+
+    let mut point_v1_bytes = Vec::new();
+    point_v1_bytes.extend_from_slice(&1.0f64.to_bits().to_le_bytes());
+    point_v1_bytes.extend_from_slice(&2.0f64.to_bits().to_le_bytes());
+    point_v1_bytes.extend_from_slice(&3.0f64.to_bits().to_le_bytes());
+    let point_v1_message = datapod_wire_message_borrow(
+        point_canonical_hash,
+        point_v1_bytes.as_ptr(),
+        point_v1_bytes.len(),
+    );
+    assert!(datapod_wire_message_validate_v1(point_v1_message));
+    assert!(datapod_wire_message_is_valid_v1(point_v1_message));
+    assert_eq!(
+        datapod_wire_message_header_v1(point_v1_message).len,
+        datapod_header_size_v1(point_canonical_hash)
+    );
+    assert_eq!(datapod_wire_message_payload_v1(point_v1_message).len, 0);
+    let mut joined_v1 = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_wire_message_join_v1(
+        point_canonical_hash,
+        point_v1_bytes.as_ptr(),
+        point_v1_bytes.len(),
+        std::ptr::null(),
+        0,
+        &mut joined_v1,
+    ));
+    assert_eq!(joined_v1.len, point_v1_bytes.len());
+    datapod_owned_bytes_free(joined_v1);
+    let wrong_v1_message = datapod_wire_message_borrow(
+        datapod::bind::rust_type_hash::<datapod::Point>(),
+        point_v1_bytes.as_ptr(),
+        point_v1_bytes.len(),
+    );
+    assert!(!datapod_wire_message_validate_v1(wrong_v1_message));
 }
 
 #[test]
@@ -234,8 +324,9 @@ fn ffi_generic_wire_helpers_split_join_and_copy_messages() {
         len: 0,
         capacity: 0,
     };
+    let point_wire_hash = datapod_emitted_type_hash(datapod_point_type_hash());
     assert!(datapod_wire_message_join(
-        datapod_point_type_hash(),
+        point_wire_hash,
         header.as_ptr(),
         header.len(),
         std::ptr::null(),
@@ -243,7 +334,7 @@ fn ffi_generic_wire_helpers_split_join_and_copy_messages() {
         &mut joined,
     ));
 
-    let message = datapod_wire_message_borrow(datapod_point_type_hash(), joined.ptr, joined.len);
+    let message = datapod_wire_message_borrow(point_wire_hash, joined.ptr, joined.len);
     assert!(datapod_wire_message_is_valid(message));
     let header_view = datapod_wire_message_header(message);
     assert_eq!(header_view.len, header.len());
@@ -273,8 +364,9 @@ fn ffi_generic_fixed_value_wire_helpers_cover_all_fixed_c_structs() {
         len: 0,
         capacity: 0,
     };
+    let pose_wire_hash = datapod_emitted_type_hash(datapod_pose_type_hash());
     assert!(datapod_fixed_value_to_wire(
-        datapod_pose_type_hash(),
+        pose_wire_hash,
         (&pose as *const DatapodPose).cast(),
         std::mem::size_of::<DatapodPose>(),
         &mut pose_wire,
@@ -283,7 +375,7 @@ fn ffi_generic_fixed_value_wire_helpers_cover_all_fixed_c_structs() {
 
     let mut pose_out = DatapodPose::default();
     assert!(datapod_fixed_value_from_wire(
-        datapod_pose_type_hash(),
+        pose_wire_hash,
         pose_wire.ptr,
         pose_wire.len,
         (&mut pose_out as *mut DatapodPose).cast(),
@@ -353,6 +445,25 @@ fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
     let grid_out = datapod_grid_from_wire(grid_wire.ptr, grid_wire.len);
     assert!(!grid_out.is_null());
     assert_eq!(datapod_grid_payload(grid_out).len, pixels.len());
+    let mut grid_view = DatapodGridView::default();
+    assert!(datapod_grid_view_from_wire(
+        grid_wire.ptr,
+        grid_wire.len,
+        &mut grid_view,
+    ));
+    assert_eq!(grid_view.rows, 2);
+    assert_eq!(grid_view.cols, 2);
+    assert_eq!(grid_view.encoding, 13);
+    assert_eq!(grid_view.data.len, pixels.len());
+    assert_eq!(
+        grid_view.data.ptr,
+        unsafe { grid_wire.ptr.add(datapod_grid_header_size()) }.cast_const()
+    );
+    assert!(!datapod_grid_view_from_wire(
+        grid_wire.ptr,
+        grid_wire.len - 1,
+        &mut grid_view,
+    ));
     datapod_grid_free(grid);
     datapod_grid_free(grid_out);
     datapod_owned_bytes_free(grid_wire);
@@ -369,6 +480,17 @@ fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
     let byte_out = datapod_bytes_value_from_wire(byte_wire.ptr, byte_wire.len);
     assert!(!byte_out.is_null());
     assert_eq!(datapod_bytes_value_payload(byte_out).len, bytes.len());
+    let mut byte_view = DatapodBytesView::default();
+    assert!(datapod_bytes_value_view_from_wire(
+        byte_wire.ptr,
+        byte_wire.len,
+        &mut byte_view,
+    ));
+    assert_eq!(byte_view.payload.len, bytes.len());
+    assert_eq!(
+        byte_view.payload.ptr,
+        unsafe { byte_wire.ptr.add(datapod_bytes_value_header_size()) }.cast_const()
+    );
     datapod_bytes_value_free(byte_value);
     datapod_bytes_value_free(byte_out);
     datapod_owned_bytes_free(byte_wire);
@@ -384,6 +506,25 @@ fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
     let matrix_out = datapod_matrix_from_wire(matrix_wire.ptr, matrix_wire.len);
     assert!(!matrix_out.is_null());
     assert_eq!(datapod_matrix_payload(matrix_out).len, bytes.len());
+    let mut matrix_view = DatapodMatrixView::default();
+    assert!(datapod_matrix_view_from_wire(
+        matrix_wire.ptr,
+        matrix_wire.len,
+        &mut matrix_view,
+    ));
+    assert_eq!(matrix_view.rows, 2);
+    assert_eq!(matrix_view.cols, 2);
+    assert_eq!(matrix_view.element_size, 1);
+    assert_eq!(matrix_view.payload.len, bytes.len());
+    assert_eq!(
+        matrix_view.payload.ptr,
+        unsafe { matrix_wire.ptr.add(datapod_matrix_header_size()) }.cast_const()
+    );
+    assert!(!datapod_matrix_view_from_wire(
+        matrix_wire.ptr,
+        matrix_wire.len - 1,
+        &mut matrix_view,
+    ));
     datapod_matrix_free(matrix);
     datapod_matrix_free(matrix_out);
     datapod_owned_bytes_free(matrix_wire);
@@ -399,6 +540,14 @@ fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
     let vector_out = datapod_vector_from_wire(vector_wire.ptr, vector_wire.len);
     assert!(!vector_out.is_null());
     assert_eq!(datapod_vector_payload(vector_out).len, bytes.len());
+    let mut vector_view = DatapodVectorView::default();
+    assert!(datapod_vector_view_from_wire(
+        vector_wire.ptr,
+        vector_wire.len,
+        &mut vector_view,
+    ));
+    assert_eq!(vector_view.element_size, 1);
+    assert_eq!(vector_view.payload.len, bytes.len());
     datapod_vector_free(vector);
     datapod_vector_free(vector_out);
     datapod_owned_bytes_free(vector_wire);
@@ -414,9 +563,145 @@ fn ffi_typed_wire_helpers_round_trip_fixed_and_heap_values() {
     let tensor_out = datapod_tensor_from_wire(tensor_wire.ptr, tensor_wire.len);
     assert!(!tensor_out.is_null());
     assert_eq!(datapod_tensor_payload(tensor_out).len, bytes.len());
+    let mut tensor_view = DatapodTensorView::default();
+    assert!(datapod_tensor_view_from_wire(
+        tensor_wire.ptr,
+        tensor_wire.len,
+        &mut tensor_view,
+    ));
+    assert_eq!(tensor_view.rows, 1);
+    assert_eq!(tensor_view.cols, 2);
+    assert_eq!(tensor_view.layers, 2);
+    assert_eq!(tensor_view.element_size, 1);
+    assert_eq!(tensor_view.payload.len, bytes.len());
+    assert!(!datapod_tensor_view_from_wire(
+        tensor_wire.ptr,
+        tensor_wire.len - 1,
+        &mut tensor_view,
+    ));
     datapod_tensor_free(tensor);
     datapod_tensor_free(tensor_out);
     datapod_owned_bytes_free(tensor_wire);
+
+    let bit_payload = [0b0000_0101_u8];
+    let bitvec = datapod_bitvec_from_bytes(3, bit_payload.as_ptr(), bit_payload.len());
+    assert!(!bitvec.is_null());
+    let mut bitvec_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_bitvec_to_wire(bitvec, &mut bitvec_wire));
+    let mut bitvec_view = DatapodBitVecView::default();
+    assert!(datapod_bitvec_view_from_wire(
+        bitvec_wire.ptr,
+        bitvec_wire.len,
+        &mut bitvec_view,
+    ));
+    assert_eq!(bitvec_view.bits, 3);
+    assert_eq!(bitvec_view.data.len, 1);
+    datapod_bitvec_free(bitvec);
+    datapod_owned_bytes_free(bitvec_wire);
+
+    let mut vecvec_payload = Vec::new();
+    vecvec_payload.extend_from_slice(&1_u32.to_le_bytes());
+    vecvec_payload.extend_from_slice(&0_u32.to_le_bytes());
+    vecvec_payload.extend_from_slice(&4_u32.to_le_bytes());
+    vecvec_payload.extend_from_slice(&[1_u8, 0, 2, 0]);
+    let vecvec = datapod_vecvec_from_bytes(2, vecvec_payload.as_ptr(), vecvec_payload.len());
+    assert!(!vecvec.is_null());
+    let mut vecvec_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_vecvec_to_wire(vecvec, &mut vecvec_wire));
+    let mut vecvec_view = DatapodVecvecView::default();
+    assert!(datapod_vecvec_view_from_wire(
+        vecvec_wire.ptr,
+        vecvec_wire.len,
+        &mut vecvec_view,
+    ));
+    assert_eq!(vecvec_view.element_size, 2);
+    assert_eq!(vecvec_view.bucket_count, 1);
+    assert_eq!(vecvec_view.payload.len, vecvec_payload.len());
+    datapod_vecvec_free(vecvec);
+    datapod_owned_bytes_free(vecvec_wire);
+
+    let map = datapod_map_new();
+    assert!(!map.is_null());
+    let map_key = b"k";
+    let map_value = b"v";
+    assert!(datapod_map_insert(
+        map,
+        map_key.as_ptr(),
+        map_key.len(),
+        map_value.as_ptr(),
+        map_value.len(),
+    ));
+    let mut map_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_map_to_wire(map, &mut map_wire));
+    let mut map_view = DatapodMapView::default();
+    assert!(datapod_map_view_from_wire(
+        map_wire.ptr,
+        map_wire.len,
+        &mut map_view,
+    ));
+    assert_eq!(map_view.count, 1);
+    assert_eq!(
+        map_view.entries.len,
+        std::mem::size_of::<datapod::MapEntry>()
+    );
+    assert_eq!(map_view.blob.len, map_key.len() + map_value.len());
+    assert_eq!(
+        map_view.payload.ptr,
+        unsafe { map_wire.ptr.add(datapod_map_header_size()) }.cast_const()
+    );
+    assert!(!datapod_map_view_from_wire(
+        map_wire.ptr,
+        map_wire.len - 1,
+        &mut map_view,
+    ));
+    datapod_map_free(map);
+    datapod_owned_bytes_free(map_wire);
+
+    let set = datapod_set_new();
+    assert!(!set.is_null());
+    let set_key = b"s";
+    assert!(datapod_set_insert(set, set_key.as_ptr(), set_key.len()));
+    let mut set_wire = DatapodOwnedBytes {
+        ptr: std::ptr::null_mut(),
+        len: 0,
+        capacity: 0,
+    };
+    assert!(datapod_set_to_wire(set, &mut set_wire));
+    let mut set_view = DatapodSetView::default();
+    assert!(datapod_set_view_from_wire(
+        set_wire.ptr,
+        set_wire.len,
+        &mut set_view,
+    ));
+    assert_eq!(set_view.count, 1);
+    assert_eq!(
+        set_view.entries.len,
+        std::mem::size_of::<datapod::SetEntry>()
+    );
+    assert_eq!(set_view.blob.len, set_key.len());
+    assert_eq!(
+        set_view.payload.ptr,
+        unsafe { set_wire.ptr.add(datapod_set_header_size()) }.cast_const()
+    );
+    assert!(!datapod_set_view_from_wire(
+        set_wire.ptr,
+        set_wire.len - 1,
+        &mut set_view,
+    ));
+    datapod_set_free(set);
+    datapod_owned_bytes_free(set_wire);
 
     let vertices = [
         datapod_point_new(0.0, 0.0, 0.0),

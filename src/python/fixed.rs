@@ -21,6 +21,29 @@ fn fixed_header_bytes<T: crate::DataPod>(value: &T) -> PyResult<Vec<u8>> {
     Ok(out)
 }
 
+fn fixed_wire_message_v1<T>(value: &T) -> PyResult<(u64, Vec<u8>)>
+where
+    T: crate::DataPod,
+    T::Header: crate::LeWireHeader,
+{
+    let message = crate::to_wire_message_v1(value)
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
+    Ok((message.type_hash, message.bytes))
+}
+
+fn decode_fixed_message<T>(kind: u64, data: Vec<u8>) -> PyResult<T>
+where
+    T: crate::DataPod + crate::DataPodDecode,
+    T::Header: crate::LeWireHeader,
+{
+    let message = crate::WireMessage {
+        type_hash: kind,
+        bytes: data,
+    };
+    crate::from_wire_message::<T>(&message)
+        .map_err(|error| PyValueError::new_err(error.to_string()))
+}
+
 fn reject_payload(type_name: &str, payload: &[u8]) -> PyResult<()> {
     if payload.is_empty() {
         Ok(())
@@ -93,18 +116,16 @@ macro_rules! py_fixed {
             }
 
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-                Ok((crate::bind::type_hash::<$rust>(), self.to_header_bytes()?))
+                fixed_wire_message_v1(&<$rust>::from(*self))
+            }
+
+            fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+                fixed_wire_message_v1(&<$rust>::from(*self))
             }
 
             #[staticmethod]
             fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-                let expected = crate::bind::type_hash::<$rust>();
-                if kind != expected {
-                    return Err(PyValueError::new_err(format!(
-                        "wrong type hash: got {kind}, expected {expected}"
-                    )));
-                }
-                Self::from_wire(data, Vec::new())
+                decode_fixed_message::<$rust>(kind, data).map(Self::from)
             }
 
             fn __repr__(&self) -> String {
@@ -159,18 +180,16 @@ macro_rules! py_default_fixed {
             }
 
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-                Ok((crate::bind::type_hash::<$rust>(), self.to_header_bytes()?))
+                fixed_wire_message_v1(&self.inner)
+            }
+
+            fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+                fixed_wire_message_v1(&self.inner)
             }
 
             #[staticmethod]
             fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-                let expected = crate::bind::type_hash::<$rust>();
-                if kind != expected {
-                    return Err(PyValueError::new_err(format!(
-                        "wrong type hash: got {kind}, expected {expected}"
-                    )));
-                }
-                Self::from_wire(data, Vec::new())
+                decode_fixed_message::<$rust>(kind, data).map(|inner| Self { inner })
             }
 
             fn __repr__(&self) -> String {
@@ -235,7 +254,7 @@ impl PyMapEntry {
 
     #[classattr]
     fn TYPE_HASH() -> u64 {
-        crate::bind::type_hash::<MapEntry>()
+        crate::bind::rust_type_hash::<MapEntry>()
     }
 
     #[classattr]
@@ -310,7 +329,7 @@ impl PySetEntry {
 
     #[classattr]
     fn TYPE_HASH() -> u64 {
-        crate::bind::type_hash::<SetEntry>()
+        crate::bind::rust_type_hash::<SetEntry>()
     }
 
     #[classattr]

@@ -7,6 +7,7 @@
 use crate::seq::assert_element_size;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Deque {
     pub element_size: u32,

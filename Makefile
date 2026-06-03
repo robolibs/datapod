@@ -18,7 +18,7 @@ $(info ------------------------------------------)
 $(info Project: $(PROJECT_NAME) v$(PROJECT_VERSION))
 $(info ------------------------------------------)
 
-.PHONY: build b compile c run r test t check fmt bench clean bind bind-c bind-py test-py test-c-abi test-bindings help h
+.PHONY: build b compile c run r test t check fmt bench bench-rust bench-c bench-py clean bind bind-c bind-py test-py test-c-abi test-bindings help h
 
 build:
 	@$(CARGO) build --lib
@@ -47,6 +47,25 @@ check:
 fmt:
 	@$(CARGO) fmt --all
 
+bench: bench-rust bench-c bench-py
+
+bench-rust:
+	@$(CARGO) run --release --example wire_bench_scaffold
+
+bench-c:
+	@$(CARGO) build --release --lib --no-default-features
+	@$(CC) -I. tests/c_wire_bench.c -L target/release -ldatapod \
+		-Wl,-rpath,$(TOP_DIR)/target/release \
+		-o /tmp/$(PROJECT_NAME)_c_wire_bench
+	@/tmp/$(PROJECT_NAME)_c_wire_bench
+
+bench-py: bind-py
+	@tmp=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	wheel=$$(ls -t target/wheels/*.whl | head -1); \
+	$(PYTHON) -m pip install --no-deps --force-reinstall --target "$$tmp" "$$wheel" >/dev/null; \
+	PYTHONPATH="$$tmp" $(PYTHON) tests/python_wire_bench.py
+
 clean:
 	@$(CARGO) clean
 
@@ -64,7 +83,8 @@ test-py: bind-py
 	@$(CARGO) build --lib --example wire_fixture
 	@tmp=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp"' EXIT; \
-	$(PYTHON) -m pip install --no-deps --force-reinstall --target "$$tmp" target/wheels/$(PROJECT_NAME)-$(PROJECT_VERSION)-*.whl >/dev/null; \
+	wheel=$$(ls -t target/wheels/*.whl | head -1); \
+	$(PYTHON) -m pip install --no-deps --force-reinstall --target "$$tmp" "$$wheel" >/dev/null; \
 	PYTHONPATH="$$tmp" $(PYTHON) tests/python_generic_wire_smoke.py
 
 test-c-abi:
@@ -101,6 +121,7 @@ help:
 	@echo "  compile      Clean and rebuild"
 	@echo "  run          Run a development example (if examples exist)"
 	@echo "  test         Run all tests"
+	@echo "  bench        Run Rust/C/Python owned-vs-borrowed wire benchmarks"
 	@echo "  bind         Generate both C and Python bindings"
 	@echo "  test-py      Build/install the Python wheel and run generic wire smoke"
 	@echo "  test-c-abi   Build the C ABI library and run C wire runtime smoke"

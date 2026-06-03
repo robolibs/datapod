@@ -14,7 +14,7 @@ mod square;
 mod triangle;
 
 pub use aabb::Aabb;
-pub use bounding_sphere::{BoundingSphere, Bs};
+pub use bounding_sphere::BoundingSphere;
 pub use r#box::Box;
 pub use circle::Circle;
 pub use gaussian::{GaussianBox, GaussianCircle, GaussianPoint, GaussianRectangle};

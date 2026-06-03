@@ -25,6 +25,8 @@
 
 use std::cmp::Ordering;
 
+use crate::{DataPodAccess, DataPodValidate, WireError};
+
 /// Fixed-size sorted-array entry. `(key_off, key_len, value_off, value_len)`
 /// are all u32 byte offsets/lengths into the blob region that follows the
 /// entry table.
@@ -40,6 +42,7 @@ pub struct MapEntry {
 const ENTRY_SIZE: usize = std::mem::size_of::<MapEntry>();
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct Map {
     #[dp(bytes)]
     pub data: Vec<u8>,
@@ -307,4 +310,155 @@ impl<'a> Iterator for MapIter<'a> {
         self.cursor += 1;
         Some((self.map.key_at(i), self.map.value_at(i)))
     }
+}
+
+/// Borrowed, validation-backed view over a `Map` wire payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MapView<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> MapView<'a> {
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn size(&self) -> usize {
+        self.count() as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count() == 0
+    }
+
+    pub fn key_at(&self, index: usize) -> &'a [u8] {
+        let entry = self.entry_at(index);
+        let base = self.blob_offset();
+        let start = base + entry.key_off as usize;
+        let end = start + entry.key_len as usize;
+        &self.data[start..end]
+    }
+
+    pub fn value_at(&self, index: usize) -> &'a [u8] {
+        let entry = self.entry_at(index);
+        let base = self.blob_offset();
+        let start = base + entry.value_off as usize;
+        let end = start + entry.value_len as usize;
+        &self.data[start..end]
+    }
+
+    fn count(&self) -> u32 {
+        u32::from_le_bytes(self.data[0..4].try_into().unwrap())
+    }
+
+    fn blob_offset(&self) -> usize {
+        4 + self.size() * ENTRY_SIZE
+    }
+
+    fn entry_at(&self, index: usize) -> MapEntry {
+        let start = 4 + index * ENTRY_SIZE;
+        let end = start + ENTRY_SIZE;
+        bytemuck::pod_read_unaligned(&self.data[start..end])
+    }
+}
+
+impl DataPodValidate for Map {
+    fn validate_wire_parts(_header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        validate_map_payload(payload)
+    }
+}
+
+impl DataPodAccess for Map {
+    type View<'a> = MapView<'a>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(MapView { data: payload })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        _header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        MapView { data: payload }
+    }
+}
+
+fn validate_map_payload(payload: &[u8]) -> Result<(), WireError> {
+    if payload.len() < 4 {
+        return Err(crate::wire::invalid_payload::<Map>(format!(
+            "map payload too short: got {}, need at least 4",
+            payload.len()
+        )));
+    }
+    let count = u32::from_le_bytes(payload[0..4].try_into().unwrap()) as usize;
+    let table_len = count
+        .checked_mul(ENTRY_SIZE)
+        .ok_or_else(|| crate::wire::invalid_payload::<Map>("entry table length overflowed"))?;
+    let blob_offset = 4usize
+        .checked_add(table_len)
+        .ok_or_else(|| crate::wire::invalid_payload::<Map>("blob offset overflowed"))?;
+    if payload.len() < blob_offset {
+        return Err(crate::wire::invalid_payload::<Map>(format!(
+            "map payload too short for {count} entries: got {}, need at least {blob_offset}",
+            payload.len()
+        )));
+    }
+
+    let blob_len = payload.len() - blob_offset;
+    let mut previous_key: Option<&[u8]> = None;
+    for index in 0..count {
+        let entry = read_map_entry(payload, index);
+        let key = map_blob_range(payload, blob_offset, blob_len, entry.key_off, entry.key_len)
+            .ok_or_else(|| {
+                crate::wire::invalid_payload::<Map>(format!(
+                    "entry {index} key range is out of bounds"
+                ))
+            })?;
+        let _value = map_blob_range(
+            payload,
+            blob_offset,
+            blob_len,
+            entry.value_off,
+            entry.value_len,
+        )
+        .ok_or_else(|| {
+            crate::wire::invalid_payload::<Map>(format!(
+                "entry {index} value range is out of bounds"
+            ))
+        })?;
+        if let Some(previous_key) = previous_key
+            && previous_key >= key
+        {
+            return Err(crate::wire::invalid_payload::<Map>(format!(
+                "entry {index} key is not strictly sorted"
+            )));
+        }
+        previous_key = Some(key);
+    }
+    Ok(())
+}
+
+fn read_map_entry(payload: &[u8], index: usize) -> MapEntry {
+    let start = 4 + index * ENTRY_SIZE;
+    let end = start + ENTRY_SIZE;
+    bytemuck::pod_read_unaligned(&payload[start..end])
+}
+
+fn map_blob_range(
+    payload: &[u8],
+    blob_offset: usize,
+    blob_len: usize,
+    offset: u32,
+    len: u32,
+) -> Option<&[u8]> {
+    let start = offset as usize;
+    let end = start.checked_add(len as usize)?;
+    if end > blob_len {
+        return None;
+    }
+    Some(&payload[blob_offset + start..blob_offset + end])
 }

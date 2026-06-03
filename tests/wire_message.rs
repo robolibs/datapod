@@ -1,10 +1,12 @@
 use datapod::{
-    DataPod, DataPodDecode, Grid, Matrix, Point, WireError, from_wire_message, to_wire_message,
+    DataPod, DataPodDecode, Grid, LeWireHeader, Matrix, Point, WireError, from_wire_message,
+    to_wire_message,
 };
 
 fn assert_decode<T>(value: T)
 where
     T: DataPod + DataPodDecode + PartialEq + std::fmt::Debug,
+    T::Header: LeWireHeader,
 {
     let msg = to_wire_message(&value);
     let decoded: T = from_wire_message(&msg).expect("wire decode should succeed");

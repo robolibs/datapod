@@ -7,6 +7,7 @@
 use crate::seq::assert_element_size;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct PagedVecvec {
     pub element_size: u32,
     pub _pad: u32,

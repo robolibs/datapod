@@ -3,5 +3,5 @@
 mod grid;
 mod layer;
 
-pub use grid::{Grid, GridHeader};
-pub use layer::{Layer, LayerHeader};
+pub use grid::{Grid, GridHeader, GridView};
+pub use layer::{Layer, LayerHeader, LayerView};

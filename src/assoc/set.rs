@@ -12,6 +12,8 @@
 
 use std::cmp::Ordering;
 
+use crate::{DataPodAccess, DataPodValidate, WireError};
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SetEntry {
@@ -22,6 +24,7 @@ pub struct SetEntry {
 const ENTRY_SIZE: usize = std::mem::size_of::<SetEntry>();
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct Set {
     #[dp(bytes)]
     pub data: Vec<u8>,
@@ -215,4 +218,135 @@ impl<'a> Iterator for SetIter<'a> {
         self.cursor += 1;
         Some(self.set.key_at(i))
     }
+}
+
+/// Borrowed, validation-backed view over a `Set` wire payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SetView<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> SetView<'a> {
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn size(&self) -> usize {
+        self.count() as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count() == 0
+    }
+
+    pub fn key_at(&self, index: usize) -> &'a [u8] {
+        let entry = self.entry_at(index);
+        let base = self.blob_offset();
+        let start = base + entry.key_off as usize;
+        let end = start + entry.key_len as usize;
+        &self.data[start..end]
+    }
+
+    fn count(&self) -> u32 {
+        u32::from_le_bytes(self.data[0..4].try_into().unwrap())
+    }
+
+    fn blob_offset(&self) -> usize {
+        4 + self.size() * ENTRY_SIZE
+    }
+
+    fn entry_at(&self, index: usize) -> SetEntry {
+        let start = 4 + index * ENTRY_SIZE;
+        let end = start + ENTRY_SIZE;
+        bytemuck::pod_read_unaligned(&self.data[start..end])
+    }
+}
+
+impl DataPodValidate for Set {
+    fn validate_wire_parts(_header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        validate_set_payload(payload)
+    }
+}
+
+impl DataPodAccess for Set {
+    type View<'a> = SetView<'a>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(SetView { data: payload })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        _header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        SetView { data: payload }
+    }
+}
+
+fn validate_set_payload(payload: &[u8]) -> Result<(), WireError> {
+    if payload.len() < 4 {
+        return Err(crate::wire::invalid_payload::<Set>(format!(
+            "set payload too short: got {}, need at least 4",
+            payload.len()
+        )));
+    }
+    let count = u32::from_le_bytes(payload[0..4].try_into().unwrap()) as usize;
+    let table_len = count
+        .checked_mul(ENTRY_SIZE)
+        .ok_or_else(|| crate::wire::invalid_payload::<Set>("entry table length overflowed"))?;
+    let blob_offset = 4usize
+        .checked_add(table_len)
+        .ok_or_else(|| crate::wire::invalid_payload::<Set>("blob offset overflowed"))?;
+    if payload.len() < blob_offset {
+        return Err(crate::wire::invalid_payload::<Set>(format!(
+            "set payload too short for {count} entries: got {}, need at least {blob_offset}",
+            payload.len()
+        )));
+    }
+
+    let blob_len = payload.len() - blob_offset;
+    let mut previous_key: Option<&[u8]> = None;
+    for index in 0..count {
+        let entry = read_set_entry(payload, index);
+        let key = set_blob_range(payload, blob_offset, blob_len, entry.key_off, entry.key_len)
+            .ok_or_else(|| {
+                crate::wire::invalid_payload::<Set>(format!(
+                    "entry {index} key range is out of bounds"
+                ))
+            })?;
+        if let Some(previous_key) = previous_key
+            && previous_key >= key
+        {
+            return Err(crate::wire::invalid_payload::<Set>(format!(
+                "entry {index} key is not strictly sorted"
+            )));
+        }
+        previous_key = Some(key);
+    }
+    Ok(())
+}
+
+fn read_set_entry(payload: &[u8], index: usize) -> SetEntry {
+    let start = 4 + index * ENTRY_SIZE;
+    let end = start + ENTRY_SIZE;
+    bytemuck::pod_read_unaligned(&payload[start..end])
+}
+
+fn set_blob_range(
+    payload: &[u8],
+    blob_offset: usize,
+    blob_len: usize,
+    offset: u32,
+    len: u32,
+) -> Option<&[u8]> {
+    let start = offset as usize;
+    let end = start.checked_add(len as usize)?;
+    if end > blob_len {
+        return None;
+    }
+    Some(&payload[blob_offset + start..blob_offset + end])
 }

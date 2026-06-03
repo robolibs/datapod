@@ -3,11 +3,14 @@
 //! Mirrors the wire shape of `datapod::Bytes` from the C++ library, but in
 //! POD form: the bytes themselves ride on the slice payload, no metadata.
 
+use crate::{DataPodAccess, DataPodValidate, WireError};
+
 /// Sentinel returned by `find` / `rfind` when no match is present.
 pub const BYTES_NPOS: usize = usize::MAX;
 
 /// Heap-bearing byte buffer. `data` is the wire payload, no header fields.
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Bytes {
     #[dp(bytes)]
@@ -94,5 +97,49 @@ impl Bytes {
         }
         let end = (pos + count).min(self.data.len());
         self.data[pos..end].to_vec()
+    }
+}
+
+/// Borrowed view over `Bytes` wire payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BytesView<'a> {
+    pub data: &'a [u8],
+}
+
+impl<'a> BytesView<'a> {
+    pub fn as_slice(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+}
+
+impl DataPodValidate for Bytes {
+    fn validate_wire_parts(_header: &Self::Header, _payload: &[u8]) -> Result<(), WireError> {
+        Ok(())
+    }
+}
+
+impl DataPodAccess for Bytes {
+    type View<'a> = BytesView<'a>;
+
+    fn access_wire_parts<'a>(
+        _header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Ok(BytesView { data: payload })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        _header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        BytesView { data: payload }
     }
 }

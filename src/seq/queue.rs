@@ -10,6 +10,7 @@ use crate::seq::assert_element_size;
 pub type Fifo = Queue;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Queue {
     pub element_size: u32,

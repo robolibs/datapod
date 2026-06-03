@@ -6,6 +6,29 @@ use pyo3::types::PyModule;
 
 use crate::{DataPod, Geo, Point, Polygon, Segment};
 
+fn wire_message_v1<T>(value: &T) -> PyResult<(u64, Vec<u8>)>
+where
+    T: DataPod,
+    T::Header: crate::LeWireHeader,
+{
+    let message = crate::to_wire_message_v1(value)
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
+    Ok((message.type_hash, message.bytes))
+}
+
+fn decode_message<T>(kind: u64, data: Vec<u8>) -> PyResult<T>
+where
+    T: DataPod + crate::DataPodDecode,
+    T::Header: crate::LeWireHeader,
+{
+    let message = crate::WireMessage {
+        type_hash: kind,
+        bytes: data,
+    };
+    crate::from_wire_message::<T>(&message)
+        .map_err(|error| PyValueError::new_err(error.to_string()))
+}
+
 #[pyclass(name = "Point")]
 #[derive(Clone, Copy)]
 pub struct PyPoint {
@@ -83,18 +106,16 @@ impl PyPoint {
     }
 
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        Ok((crate::bind::type_hash::<Point>(), self.to_header_bytes()?))
+        wire_message_v1(&Point::from(*self))
+    }
+
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&Point::from(*self))
     }
 
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-        let expected = crate::bind::type_hash::<Point>();
-        if kind != expected {
-            return Err(PyValueError::new_err(format!(
-                "wrong type hash: got {kind}, expected {expected}"
-            )));
-        }
-        Self::from_wire(data, Vec::new())
+        decode_message::<Point>(kind, data).map(PyPoint::from)
     }
 
     fn __repr__(&self) -> String {
@@ -187,18 +208,16 @@ impl PyGeo {
     }
 
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        Ok((crate::bind::type_hash::<Geo>(), self.to_header_bytes()?))
+        wire_message_v1(&Geo::from(*self))
+    }
+
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&Geo::from(*self))
     }
 
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-        let expected = crate::bind::type_hash::<Geo>();
-        if kind != expected {
-            return Err(PyValueError::new_err(format!(
-                "wrong type hash: got {kind}, expected {expected}"
-            )));
-        }
-        Self::from_wire(data, Vec::new())
+        decode_message::<Geo>(kind, data).map(PyGeo::from)
     }
 
     fn __repr__(&self) -> String {
@@ -276,18 +295,16 @@ impl PySegment {
     }
 
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        Ok((crate::bind::type_hash::<Segment>(), self.to_header_bytes()?))
+        wire_message_v1(&self.inner)
+    }
+
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
 
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-        let expected = crate::bind::type_hash::<Segment>();
-        if kind != expected {
-            return Err(PyValueError::new_err(format!(
-                "wrong type hash: got {kind}, expected {expected}"
-            )));
-        }
-        Self::from_wire(data, Vec::new())
+        decode_message::<Segment>(kind, data).map(|inner| Self { inner })
     }
 
     fn __repr__(&self) -> String {
@@ -418,27 +435,16 @@ impl PyPolygon {
     }
 
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = self.to_header_bytes()?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Polygon>(), data))
+        wire_message_v1(&self.inner)
+    }
+
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
 
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
-        let expected = crate::bind::type_hash::<Polygon>();
-        if kind != expected {
-            return Err(PyValueError::new_err(format!(
-                "wrong type hash: got {kind}, expected {expected}"
-            )));
-        }
-        let header_size = crate::bind::header_size::<Polygon>();
-        if data.len() < header_size {
-            return Err(PyValueError::new_err(format!(
-                "Polygon wire message too short: need at least {header_size}, got {}",
-                data.len()
-            )));
-        }
-        Self::from_wire(data[..header_size].to_vec(), data[header_size..].to_vec())
+        decode_message::<Polygon>(kind, data).map(|inner| Self { inner })
     }
 
     fn __len__(&self) -> usize {

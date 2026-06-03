@@ -16,6 +16,7 @@ use crate::seq::assert_element_size;
 pub const LIST_NIL: u32 = u32::MAX;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct List {
     pub head: u32,
     pub tail: u32,

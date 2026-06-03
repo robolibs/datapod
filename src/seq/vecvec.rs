@@ -13,8 +13,10 @@
 //! `element_size: u32`.
 
 use crate::seq::assert_element_size;
+use crate::{DataPodAccess, DataPodValidate, WireError};
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct Vecvec {
     pub element_size: u32,
     pub _pad: u32,
@@ -114,4 +116,172 @@ impl Vecvec {
         self.data.extend_from_slice(&payload);
         self.data.extend_from_slice(bytes);
     }
+}
+
+/// Borrowed, validation-backed view over a ragged `Vecvec` payload.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VecvecView<'a> {
+    pub header: VecvecHeader,
+    pub data: &'a [u8],
+}
+
+impl<'a> VecvecView<'a> {
+    pub fn element_size(&self) -> u32 {
+        self.header.element_size
+    }
+
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn bucket_count(&self) -> u32 {
+        read_u32(self.data, 0)
+    }
+
+    pub fn size(&self) -> usize {
+        self.bucket_count() as usize
+    }
+
+    pub fn header_bytes(&self) -> usize {
+        4 + (self.size() + 1) * 4
+    }
+
+    pub fn bucket_bytes(&self, index: usize) -> Result<&'a [u8], WireError> {
+        if index >= self.size() {
+            return Err(crate::wire::invalid_header::<Vecvec>(format!(
+                "bucket index out of bounds: {index} for len {}",
+                self.size()
+            )));
+        }
+        let payload_start = self.header_bytes();
+        let start = payload_start + self.offset(index) as usize;
+        let end = payload_start + self.offset(index + 1) as usize;
+        Ok(&self.data[start..end])
+    }
+
+    pub fn bucket_unaligned<T: bytemuck::Pod + Copy>(
+        &self,
+        index: usize,
+    ) -> Result<Vec<T>, WireError> {
+        assert_element_size::<T>(self.header.element_size);
+        let bytes = self.bucket_bytes(index)?;
+        Ok(bytes
+            .chunks_exact(core::mem::size_of::<T>())
+            .map(bytemuck::pod_read_unaligned::<T>)
+            .collect())
+    }
+
+    fn offset(&self, index: usize) -> u32 {
+        read_u32(self.data, 4 + index * 4)
+    }
+}
+
+impl DataPodValidate for Vecvec {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        if header._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "reserved _pad field must be zero",
+            ));
+        }
+        if payload.len() < 8 {
+            return Err(crate::wire::invalid_payload::<Self>(
+                "payload must contain bucket count and at least one offset",
+            ));
+        }
+        let bucket_count = read_u32(payload, 0) as usize;
+        let header_bytes = 4usize
+            .checked_add(
+                bucket_count
+                    .checked_add(1)
+                    .and_then(|count| count.checked_mul(4))
+                    .ok_or_else(|| {
+                        crate::wire::invalid_payload::<Self>("offset table length overflowed")
+                    })?,
+            )
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("header length overflowed"))?;
+        if payload.len() < header_bytes {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "payload too short for offset table: got {}, need at least {header_bytes}",
+                payload.len()
+            )));
+        }
+        let data_len = payload.len() - header_bytes;
+        let mut previous = None;
+        for index in 0..=bucket_count {
+            let offset = read_u32(payload, 4 + index * 4) as usize;
+            if offset > data_len {
+                return Err(crate::wire::invalid_payload::<Self>(format!(
+                    "bucket offset {offset} exceeds data length {data_len}"
+                )));
+            }
+            if let Some(previous) = previous
+                && offset < previous
+            {
+                return Err(crate::wire::invalid_payload::<Self>(
+                    "bucket offsets must be non-decreasing",
+                ));
+            }
+            if index == 0 && offset != 0 {
+                return Err(crate::wire::invalid_payload::<Self>(
+                    "first bucket offset must be zero",
+                ));
+            }
+            previous = Some(offset);
+        }
+        let last = previous.unwrap_or(0);
+        if last != data_len {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "last bucket offset {last} must equal data length {data_len}"
+            )));
+        }
+        if header.element_size == 0 {
+            return if data_len == 0 {
+                Ok(())
+            } else {
+                Err(crate::wire::invalid_payload::<Self>(
+                    "zero element_size requires empty bucket data",
+                ))
+            };
+        }
+        for index in 0..bucket_count {
+            let start = read_u32(payload, 4 + index * 4) as usize;
+            let end = read_u32(payload, 4 + (index + 1) * 4) as usize;
+            if (end - start) % header.element_size as usize != 0 {
+                return Err(crate::wire::invalid_payload::<Self>(format!(
+                    "bucket {index} byte length is not a multiple of element_size {}",
+                    header.element_size
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl DataPodAccess for Vecvec {
+    type View<'a> = VecvecView<'a>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(VecvecView {
+            header,
+            data: payload,
+        })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        VecvecView {
+            header,
+            data: payload,
+        }
+    }
+}
+
+fn read_u32(bytes: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }

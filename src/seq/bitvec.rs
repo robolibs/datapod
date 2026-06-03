@@ -5,7 +5,10 @@
 //! rides in the header — bytes alone aren't enough because the last byte
 //! has trailing-bit slack.
 
+use crate::{DataPodAccess, DataPodValidate, WireError};
+
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct BitVec {
     /// Logical bit length. Bytes are `ceil(bits / 8)`.
@@ -119,4 +122,95 @@ impl BitVec {
             self.data[last] &= (1u8 << tail_bits) - 1;
         }
     }
+}
+
+/// Borrowed, validation-backed view over a bit-packed `BitVec` payload.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BitVecView<'a> {
+    pub header: BitVecHeader,
+    pub data: &'a [u8],
+}
+
+impl<'a> BitVecView<'a> {
+    pub fn bits(&self) -> u64 {
+        self.header.bits
+    }
+
+    pub fn size(&self) -> usize {
+        self.header.bits as usize
+    }
+
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn test(&self, index: usize) -> Result<bool, WireError> {
+        if index >= self.header.bits as usize {
+            return Err(crate::wire::invalid_header::<BitVec>(format!(
+                "bit index out of bounds: {index} for len {}",
+                self.header.bits
+            )));
+        }
+        Ok((self.data[index >> 3] >> (index & 7)) & 1 != 0)
+    }
+
+    pub fn count_ones(&self) -> usize {
+        self.data.iter().map(|b| b.count_ones() as usize).sum()
+    }
+}
+
+impl DataPodValidate for BitVec {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        let expected = bit_payload_len::<Self>(header.bits)?;
+        if payload.len() != expected {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "got {} bytes, expected {expected}",
+                payload.len()
+            )));
+        }
+        let tail_bits = (header.bits % 8) as usize;
+        if tail_bits != 0 && !payload.is_empty() {
+            let slack_mask = !((1u8 << tail_bits) - 1);
+            if payload[payload.len() - 1] & slack_mask != 0 {
+                return Err(crate::wire::invalid_payload::<Self>(
+                    "trailing slack bits must be zero",
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl DataPodAccess for BitVec {
+    type View<'a> = BitVecView<'a>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(BitVecView {
+            header,
+            data: payload,
+        })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        BitVecView {
+            header,
+            data: payload,
+        }
+    }
+}
+
+fn bit_payload_len<T: 'static>(bits: u64) -> Result<usize, WireError> {
+    let bytes = bits
+        .checked_add(7)
+        .ok_or_else(|| crate::wire::invalid_payload::<T>("bit length overflowed"))?
+        / 8;
+    usize::try_from(bytes)
+        .map_err(|_| crate::wire::invalid_payload::<T>("bit payload length exceeds usize"))
 }

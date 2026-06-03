@@ -378,6 +378,10 @@ typedef struct DatapodVecvec DatapodVecvec;
  */
 typedef struct DatapodVisualHandle DatapodVisualHandle;
 
+typedef struct HashKind HashKind;
+
+typedef struct WireFormat WireFormat;
+
 /**
  * Owned bytes returned by Rust to C. Free with `datapod_owned_bytes_free`.
  */
@@ -395,6 +399,20 @@ typedef struct {
   const uint8_t *data;
   uintptr_t len;
 } DatapodWireMessage;
+
+/**
+ * Generic borrowed zero-copy datapod wire frame.
+ *
+ * This is the C ABI fast path: `header` and `payload` are separate borrowed
+ * buffers and are not joined or copied by datapod.
+ */
+typedef struct {
+  uint64_t type_hash;
+  const uint8_t *header;
+  uintptr_t header_len;
+  const uint8_t *payload;
+  uintptr_t payload_len;
+} DatapodWireFrame;
 
 /**
  * A borrowed byte view.
@@ -675,6 +693,268 @@ typedef struct {
   uint32_t key_len;
 } DatapodSetEntry;
 
+/**
+ * Borrowed C view over a validated polygon wire message.
+ */
+typedef struct {
+  uintptr_t vertex_count;
+  uintptr_t point_size;
+  DatapodBytes vertices;
+} DatapodPolygonView;
+
+/**
+ * Borrowed C view over a validated Bytes wire message.
+ */
+typedef struct {
+  DatapodBytes payload;
+} DatapodBytesView;
+
+/**
+ * Borrowed C view over a validated Grid wire message.
+ *
+ * `data` points into the caller-owned wire bytes passed to
+ * `datapod_grid_view_from_wire`; keep those bytes alive while using the view.
+ */
+typedef struct {
+  uint32_t rows;
+  uint32_t cols;
+  uint32_t encoding;
+  bool centered;
+  double resolution;
+  DatapodPose pose;
+  DatapodBytes data;
+} DatapodGridView;
+
+/**
+ * Borrowed C view over a validated Matrix wire message.
+ *
+ * `payload` points into the caller-owned wire bytes passed to
+ * `datapod_matrix_view_from_wire`; keep those bytes alive while using the
+ * view.
+ */
+typedef struct {
+  uint32_t rows;
+  uint32_t cols;
+  uint32_t element_size;
+  DatapodBytes payload;
+} DatapodMatrixView;
+
+/**
+ * Borrowed C view over a validated UTF-8 DpStr wire message.
+ */
+typedef struct {
+  DatapodBytes utf8;
+} DatapodDpStrView;
+
+/**
+ * Borrowed C view over a validated point-sequence wire message.
+ */
+typedef struct {
+  uintptr_t point_count;
+  uintptr_t point_size;
+  DatapodBytes points;
+} DatapodLinestringView;
+
+/**
+ * Borrowed C view over a validated multi-point wire message.
+ */
+typedef struct {
+  uintptr_t point_count;
+  uintptr_t point_size;
+  DatapodBytes points;
+} DatapodMultiPointView;
+
+/**
+ * Borrowed C view over a validated ring wire message.
+ */
+typedef struct {
+  uintptr_t point_count;
+  uintptr_t point_size;
+  DatapodBytes points;
+} DatapodRingView;
+
+/**
+ * Borrowed C view over a validated path wire message.
+ */
+typedef struct {
+  uintptr_t waypoint_count;
+  uintptr_t pose_size;
+  DatapodBytes waypoints;
+} DatapodPathView;
+
+/**
+ * Borrowed C view over a validated trajectory wire message.
+ */
+typedef struct {
+  uintptr_t state_count;
+  uintptr_t state_size;
+  DatapodBytes states;
+} DatapodTrajectoryView;
+
+/**
+ * Borrowed C view over a validated Layer wire message.
+ */
+typedef struct {
+  uint32_t rows;
+  uint32_t cols;
+  uint32_t layers;
+  uint32_t encoding;
+  bool centered;
+  double resolution;
+  double layer_height;
+  DatapodPose pose;
+  DatapodBytes data;
+} DatapodLayerView;
+
+/**
+ * Borrowed C view over a validated Map wire message.
+ */
+typedef struct {
+  uint32_t count;
+  DatapodBytes entries;
+  DatapodBytes blob;
+  DatapodBytes payload;
+} DatapodMapView;
+
+/**
+ * Borrowed C view over a validated Set wire message.
+ */
+typedef struct {
+  uint32_t count;
+  DatapodBytes entries;
+  DatapodBytes blob;
+  DatapodBytes payload;
+} DatapodSetView;
+
+/**
+ * Borrowed C view over a validated Vector wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  DatapodBytes payload;
+} DatapodVectorView;
+
+/**
+ * Borrowed C view over a validated Tensor wire message.
+ */
+typedef struct {
+  uint32_t rows;
+  uint32_t cols;
+  uint32_t layers;
+  uint32_t element_size;
+  DatapodBytes payload;
+} DatapodTensorView;
+
+/**
+ * Borrowed C view over a validated bit-packed BitVec wire message.
+ */
+typedef struct {
+  uint64_t bits;
+  DatapodBytes data;
+} DatapodBitVecView;
+
+/**
+ * Borrowed C view over a validated Deque wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uint32_t split_byte;
+  uintptr_t element_count;
+  DatapodBytes front;
+  DatapodBytes back;
+  DatapodBytes payload;
+} DatapodDequeView;
+
+/**
+ * Borrowed C view over a validated Queue wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uint32_t front;
+  uintptr_t raw_count;
+  uintptr_t logical_count;
+  DatapodBytes payload;
+} DatapodQueueView;
+
+/**
+ * Borrowed C view over a validated Stack wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uintptr_t element_count;
+  DatapodBytes payload;
+} DatapodStackView;
+
+/**
+ * Borrowed C view over a validated List wire message.
+ */
+typedef struct {
+  uint32_t head;
+  uint32_t tail;
+  uint32_t free_head;
+  uint32_t size;
+  uint32_t element_size;
+  uintptr_t node_size;
+  uintptr_t slot_count;
+  DatapodBytes payload;
+} DatapodListView;
+
+/**
+ * Borrowed C view over a validated ForwardList wire message.
+ */
+typedef struct {
+  uint32_t head;
+  uint32_t free_head;
+  uint32_t size;
+  uint32_t element_size;
+  uintptr_t node_size;
+  uintptr_t slot_count;
+  DatapodBytes payload;
+} DatapodForwardListView;
+
+/**
+ * Borrowed C view over a validated Heap wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uint8_t order;
+  uintptr_t element_count;
+  DatapodBytes payload;
+} DatapodHeapView;
+
+/**
+ * Borrowed C view over a validated IndexedHeap wire message.
+ */
+typedef struct {
+  uint32_t priority_size;
+  uint8_t order;
+  uintptr_t entry_size;
+  uintptr_t entry_count;
+  DatapodBytes payload;
+} DatapodIndexedHeapView;
+
+/**
+ * Borrowed C view over a validated ragged Vecvec wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uint32_t bucket_count;
+  DatapodBytes payload;
+} DatapodVecvecView;
+
+/**
+ * Borrowed C view over a validated PagedVecvec wire message.
+ */
+typedef struct {
+  uint32_t element_size;
+  uint32_t bucket_count;
+  DatapodBytes payload;
+} DatapodPagedVecvecView;
+
+
+
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -687,6 +967,16 @@ DatapodWireMessage datapod_wire_message_borrow(uint64_t type_hash,
                                                const uint8_t *data,
                                                uintptr_t len);
 
+DatapodWireFrame datapod_wire_frame_borrow(uint64_t type_hash,
+                                           const uint8_t *header,
+                                           uintptr_t header_len,
+                                           const uint8_t *payload,
+                                           uintptr_t payload_len);
+
+bool datapod_wire_frame_from_message_v1(DatapodWireMessage message, DatapodWireFrame *out);
+
+bool datapod_wire_frame_from_message(DatapodWireMessage message, DatapodWireFrame *out);
+
 bool datapod_wire_message_copy(DatapodWireMessage message, DatapodOwnedBytes *out);
 
 bool datapod_wire_message_join(uint64_t type_hash,
@@ -696,11 +986,40 @@ bool datapod_wire_message_join(uint64_t type_hash,
                                uintptr_t payload_len,
                                DatapodOwnedBytes *out);
 
+bool datapod_wire_message_join_v1(uint64_t type_hash,
+                                  const uint8_t *header,
+                                  uintptr_t header_len,
+                                  const uint8_t *payload,
+                                  uintptr_t payload_len,
+                                  DatapodOwnedBytes *out);
+
 bool datapod_wire_message_is_valid(DatapodWireMessage message);
+
+bool datapod_wire_message_validate(DatapodWireMessage message);
+
+bool datapod_wire_message_validate_v1(DatapodWireMessage message);
+
+bool datapod_wire_message_is_valid_v1(DatapodWireMessage message);
+
+bool datapod_wire_frame_validate_v1(DatapodWireFrame frame);
+
+bool datapod_wire_frame_validate_as_v1(uint64_t expected_hash, DatapodWireFrame frame);
+
+bool datapod_wire_frame_validate_as(uint64_t expected_hash, DatapodWireFrame frame);
+
+bool datapod_wire_frame_validate(DatapodWireFrame frame);
+
+bool datapod_wire_frame_is_valid_v1(DatapodWireFrame frame);
+
+bool datapod_wire_frame_is_valid(DatapodWireFrame frame);
 
 DatapodBytes datapod_wire_message_header(DatapodWireMessage message);
 
 DatapodBytes datapod_wire_message_payload(DatapodWireMessage message);
+
+DatapodBytes datapod_wire_message_header_v1(DatapodWireMessage message);
+
+DatapodBytes datapod_wire_message_payload_v1(DatapodWireMessage message);
 
 /**
  * Copy any fixed-size datapod C value into canonical wire bytes.
@@ -730,9 +1049,29 @@ bool datapod_type_exists(uint64_t type_hash);
 
 uint64_t datapod_type_hash_name(const char *name);
 
+uint64_t datapod_canonical_type_hash(uint64_t type_hash);
+
+uint64_t datapod_emitted_type_hash(uint64_t type_hash);
+
+uint32_t datapod_hash_kind_canonical_name(void);
+
+const char *datapod_current_wire_format_name(void);
+
+const char *datapod_builtin_hash_policy(void);
+
 uint32_t datapod_payload_kind_fixed(void);
 
 uint32_t datapod_payload_kind_bytes(void);
+
+uint32_t datapod_endian_little(void);
+
+uint32_t datapod_alignment_unaligned_wire(void);
+
+uint32_t datapod_validator_registry_only(void);
+
+uint32_t datapod_validator_builtin(void);
+
+uint32_t datapod_validator_runtime_schema(void);
 
 bool datapod_register_type(uint64_t type_hash,
                            const char *canonical_name,
@@ -745,9 +1084,25 @@ uint64_t datapod_register_type_name(const char *canonical_name,
 
 const char *datapod_type_name(uint64_t type_hash);
 
+bool datapod_type_exists_name(const char *canonical_name);
+
 uintptr_t datapod_header_size(uint64_t type_hash);
 
+uintptr_t datapod_header_size_v1(uint64_t type_hash);
+
 uint32_t datapod_payload_kind(uint64_t type_hash);
+
+uint32_t datapod_format_version(uint64_t type_hash);
+
+uint32_t datapod_wire_format(uint64_t type_hash);
+
+uint32_t datapod_emitted_hash_kind(uint64_t type_hash);
+
+uint32_t datapod_endian(uint64_t type_hash);
+
+uint32_t datapod_alignment_policy(uint64_t type_hash);
+
+uint32_t datapod_validator_kind(uint64_t type_hash);
 
 bool datapod_point_to_wire(DatapodPoint value, DatapodOwnedBytes *out);
 
@@ -1160,6 +1515,10 @@ bool datapod_polygon_to_wire(const DatapodPolygon *handle, DatapodOwnedBytes *ou
 
 DatapodPolygon *datapod_polygon_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_polygon_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodPolygonView *out);
+
+bool datapod_polygon_view_from_frame(DatapodWireFrame frame, DatapodPolygonView *out);
+
 DatapodBytesValue *datapod_bytes_value_new(const uint8_t *ptr, uintptr_t len);
 
 DatapodDpStr *datapod_dpstr_new(const uint8_t *ptr, uintptr_t len);
@@ -1279,6 +1638,10 @@ bool datapod_bytes_value_to_wire(const DatapodBytesValue *handle, DatapodOwnedBy
 
 DatapodBytesValue *datapod_bytes_value_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_bytes_value_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodBytesView *out);
+
+bool datapod_bytes_value_view_from_frame(DatapodWireFrame frame, DatapodBytesView *out);
+
 void datapod_dpstr_free(DatapodDpStr *handle);
 
 uint64_t datapod_dpstr_type_hash(void);
@@ -1371,6 +1734,10 @@ bool datapod_grid_to_wire(const DatapodGrid *handle, DatapodOwnedBytes *out);
 
 DatapodGrid *datapod_grid_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_grid_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodGridView *out);
+
+bool datapod_grid_view_from_frame(DatapodWireFrame frame, DatapodGridView *out);
+
 void datapod_layer_free(DatapodLayer *handle);
 
 uint64_t datapod_layer_type_hash(void);
@@ -1424,6 +1791,10 @@ DatapodBytes datapod_matrix_payload(const DatapodMatrix *handle);
 bool datapod_matrix_to_wire(const DatapodMatrix *handle, DatapodOwnedBytes *out);
 
 DatapodMatrix *datapod_matrix_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_matrix_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodMatrixView *out);
+
+bool datapod_matrix_view_from_frame(DatapodWireFrame frame, DatapodMatrixView *out);
 
 void datapod_tensor_free(DatapodTensor *handle);
 
@@ -1545,6 +1916,10 @@ bool datapod_dpstr_to_wire(const DatapodDpStr *handle, DatapodOwnedBytes *out);
 
 DatapodDpStr *datapod_dpstr_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_dpstr_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodDpStrView *out);
+
+bool datapod_dpstr_view_from_frame(DatapodWireFrame frame, DatapodDpStrView *out);
+
 bool datapod_dpstring_to_wire(const DatapodDpString *handle, DatapodOwnedBytes *out);
 
 DatapodDpString *datapod_dpstring_from_wire(const uint8_t *ptr, uintptr_t len);
@@ -1553,81 +1928,173 @@ bool datapod_linestring_to_wire(const DatapodLinestring *handle, DatapodOwnedByt
 
 DatapodLinestring *datapod_linestring_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_linestring_view_from_wire(const uint8_t *ptr,
+                                       uintptr_t len,
+                                       DatapodLinestringView *out);
+
+bool datapod_linestring_view_from_frame(DatapodWireFrame frame, DatapodLinestringView *out);
+
 bool datapod_multi_point_to_wire(const DatapodMultiPoint *handle, DatapodOwnedBytes *out);
 
 DatapodMultiPoint *datapod_multi_point_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_multi_point_view_from_wire(const uint8_t *ptr,
+                                        uintptr_t len,
+                                        DatapodMultiPointView *out);
+
+bool datapod_multi_point_view_from_frame(DatapodWireFrame frame, DatapodMultiPointView *out);
 
 bool datapod_ring_to_wire(const DatapodRing *handle, DatapodOwnedBytes *out);
 
 DatapodRing *datapod_ring_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_ring_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodRingView *out);
+
+bool datapod_ring_view_from_frame(DatapodWireFrame frame, DatapodRingView *out);
+
 bool datapod_path_to_wire(const DatapodPath *handle, DatapodOwnedBytes *out);
 
 DatapodPath *datapod_path_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_path_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodPathView *out);
+
+bool datapod_path_view_from_frame(DatapodWireFrame frame, DatapodPathView *out);
 
 bool datapod_trajectory_to_wire(const DatapodTrajectory *handle, DatapodOwnedBytes *out);
 
 DatapodTrajectory *datapod_trajectory_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_trajectory_view_from_wire(const uint8_t *ptr,
+                                       uintptr_t len,
+                                       DatapodTrajectoryView *out);
+
+bool datapod_trajectory_view_from_frame(DatapodWireFrame frame, DatapodTrajectoryView *out);
+
 bool datapod_layer_to_wire(const DatapodLayer *handle, DatapodOwnedBytes *out);
 
 DatapodLayer *datapod_layer_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_layer_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodLayerView *out);
+
+bool datapod_layer_view_from_frame(DatapodWireFrame frame, DatapodLayerView *out);
 
 bool datapod_map_to_wire(const DatapodMap *handle, DatapodOwnedBytes *out);
 
 DatapodMap *datapod_map_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_map_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodMapView *out);
+
+bool datapod_map_view_from_frame(DatapodWireFrame frame, DatapodMapView *out);
+
 bool datapod_set_to_wire(const DatapodSet *handle, DatapodOwnedBytes *out);
 
 DatapodSet *datapod_set_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_set_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodSetView *out);
+
+bool datapod_set_view_from_frame(DatapodWireFrame frame, DatapodSetView *out);
 
 bool datapod_vector_to_wire(const DatapodVector *handle, DatapodOwnedBytes *out);
 
 DatapodVector *datapod_vector_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_vector_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodVectorView *out);
+
+bool datapod_vector_view_from_frame(DatapodWireFrame frame, DatapodVectorView *out);
+
 bool datapod_tensor_to_wire(const DatapodTensor *handle, DatapodOwnedBytes *out);
 
 DatapodTensor *datapod_tensor_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_tensor_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodTensorView *out);
+
+bool datapod_tensor_view_from_frame(DatapodWireFrame frame, DatapodTensorView *out);
 
 bool datapod_bitvec_to_wire(const DatapodBitVec *handle, DatapodOwnedBytes *out);
 
 DatapodBitVec *datapod_bitvec_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_bitvec_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodBitVecView *out);
+
+bool datapod_bitvec_view_from_frame(DatapodWireFrame frame, DatapodBitVecView *out);
+
 bool datapod_deque_to_wire(const DatapodDeque *handle, DatapodOwnedBytes *out);
 
 DatapodDeque *datapod_deque_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_deque_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodDequeView *out);
+
+bool datapod_deque_view_from_frame(DatapodWireFrame frame, DatapodDequeView *out);
 
 bool datapod_queue_to_wire(const DatapodQueue *handle, DatapodOwnedBytes *out);
 
 DatapodQueue *datapod_queue_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_queue_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodQueueView *out);
+
+bool datapod_queue_view_from_frame(DatapodWireFrame frame, DatapodQueueView *out);
+
 bool datapod_stack_to_wire(const DatapodStack *handle, DatapodOwnedBytes *out);
 
 DatapodStack *datapod_stack_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_stack_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodStackView *out);
+
+bool datapod_stack_view_from_frame(DatapodWireFrame frame, DatapodStackView *out);
 
 bool datapod_list_to_wire(const DatapodList *handle, DatapodOwnedBytes *out);
 
 DatapodList *datapod_list_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_list_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodListView *out);
+
+bool datapod_list_view_from_frame(DatapodWireFrame frame, DatapodListView *out);
+
 bool datapod_forward_list_to_wire(const DatapodForwardList *handle, DatapodOwnedBytes *out);
 
 DatapodForwardList *datapod_forward_list_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_forward_list_view_from_wire(const uint8_t *ptr,
+                                         uintptr_t len,
+                                         DatapodForwardListView *out);
+
+bool datapod_forward_list_view_from_frame(DatapodWireFrame frame, DatapodForwardListView *out);
 
 bool datapod_heap_to_wire(const DatapodHeap *handle, DatapodOwnedBytes *out);
 
 DatapodHeap *datapod_heap_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_heap_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodHeapView *out);
+
+bool datapod_heap_view_from_frame(DatapodWireFrame frame, DatapodHeapView *out);
+
 bool datapod_indexed_heap_to_wire(const DatapodIndexedHeap *handle, DatapodOwnedBytes *out);
 
 DatapodIndexedHeap *datapod_indexed_heap_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_indexed_heap_view_from_wire(const uint8_t *ptr,
+                                         uintptr_t len,
+                                         DatapodIndexedHeapView *out);
+
+bool datapod_indexed_heap_view_from_frame(DatapodWireFrame frame, DatapodIndexedHeapView *out);
 
 bool datapod_vecvec_to_wire(const DatapodVecvec *handle, DatapodOwnedBytes *out);
 
 DatapodVecvec *datapod_vecvec_from_wire(const uint8_t *ptr, uintptr_t len);
 
+bool datapod_vecvec_view_from_wire(const uint8_t *ptr, uintptr_t len, DatapodVecvecView *out);
+
+bool datapod_vecvec_view_from_frame(DatapodWireFrame frame, DatapodVecvecView *out);
+
 bool datapod_paged_vecvec_to_wire(const DatapodPagedVecvec *handle, DatapodOwnedBytes *out);
 
 DatapodPagedVecvec *datapod_paged_vecvec_from_wire(const uint8_t *ptr, uintptr_t len);
+
+bool datapod_paged_vecvec_view_from_wire(const uint8_t *ptr,
+                                         uintptr_t len,
+                                         DatapodPagedVecvecView *out);
+
+bool datapod_paged_vecvec_view_from_frame(DatapodWireFrame frame, DatapodPagedVecvecView *out);
 
 DatapodPointKeyHandle *datapod_point_key_new_default(void);
 

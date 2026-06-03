@@ -11,23 +11,41 @@ use crate::seq::assert_element_size;
 use std::cmp::Ordering;
 
 /// 0 = max-heap (largest on top), 1 = min-heap (smallest on top).
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeapOrder {
-    Max = 0,
-    Min = 1,
-}
+///
+/// This is a transparent newtype rather than a Rust enum so untrusted wire
+/// bytes can be copied into a header before validation without creating an
+/// invalid enum discriminant.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HeapOrder(pub u8);
 
-impl Default for HeapOrder {
-    fn default() -> Self {
-        Self::Max
+#[allow(non_upper_case_globals)]
+impl HeapOrder {
+    pub const Max: Self = Self(0);
+    pub const Min: Self = Self(1);
+
+    pub fn is_valid(self) -> bool {
+        self == Self::Max || self == Self::Min
     }
 }
 
 unsafe impl bytemuck::Zeroable for HeapOrder {}
 unsafe impl bytemuck::Pod for HeapOrder {}
 
+impl crate::LeWireHeader for HeapOrder {
+    const LE_WIRE_SIZE: usize = <u8 as crate::LeWireHeader>::LE_WIRE_SIZE;
+
+    fn write_le(&self, out: &mut Vec<u8>) {
+        <u8 as crate::LeWireHeader>::write_le(&self.0, out);
+    }
+
+    fn read_le(bytes: &[u8]) -> Result<Self, crate::WireError> {
+        Ok(Self(<u8 as crate::LeWireHeader>::read_le(bytes)?))
+    }
+}
+
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Heap {
     pub element_size: u32,
@@ -88,9 +106,10 @@ impl Heap {
     fn cmp<T: bytemuck::Pod + PartialOrd>(&self, a: usize, b: usize) -> Ordering {
         let s = self.typed::<T>();
         let raw = s[a].partial_cmp(&s[b]).unwrap_or(Ordering::Equal);
-        match self.order {
-            HeapOrder::Max => raw,
-            HeapOrder::Min => raw.reverse(),
+        if self.order == HeapOrder::Min {
+            raw.reverse()
+        } else {
+            raw
         }
     }
 

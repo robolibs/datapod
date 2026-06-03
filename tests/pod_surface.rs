@@ -6,13 +6,13 @@
 //! primitive aliases, top-level sugar) are gone.
 
 use datapod::{
-    Aabb, Accel, Acceleration, BoundingSphere, Box, Bs, Circle, Encoding, Envelope, Euler,
-    GaussianBox, GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Grid, INVALID_ID, Identity,
-    Inertial, Ip, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
-    JointSafetyController, Layer, Line, Linestring, Link, Loc, MacAddr, Material, MeshShape, Model,
-    MultiPoint, Obb, Odom, Path, Point, PointKey, Polygon, Pose, Quaternion, Rectangle, Ring,
-    Robot, Segment, Sensor, Size, SphereShape, Square, State, Trajectory, Transform, Triangle,
-    Twist, Utm, Uuid, Velocity, Visual, Wrench,
+    Aabb, Accel, Acceleration, BoundingSphere, Box, Circle, Encoding, Envelope, Euler, GaussianBox,
+    GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Grid, INVALID_ID, Identity, Inertial,
+    Ip, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic, JointSafetyController,
+    Layer, Line, Linestring, Link, Loc, MacAddr, Material, MeshShape, Model, MultiPoint, Obb, Odom,
+    Path, Point, PointKey, Polygon, Pose, Quaternion, Rectangle, Ring, Robot, Segment, Sensor,
+    Size, SphereShape, Square, State, Trajectory, Transform, Triangle, Twist, Utm, Uuid, Velocity,
+    Visual, Wrench,
 };
 
 #[test]
@@ -27,7 +27,6 @@ fn spatial_pod_surface_compiles() {
     let _acceleration = Acceleration::default();
     let _bounding_sphere = BoundingSphere::default();
     let _box = Box::default();
-    let _bs = Bs::default();
     let _euler = Euler::default();
     let _geo = Geo::default();
     let _loc = Loc::default();

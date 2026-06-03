@@ -3,10 +3,18 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "datapod"
-version = "0.3.0"
-description = "Python bindings for the datapod library"
+name = "robolibs-datapod"
+version = "0.4.0"
+description = "Python bindings for the robolibs datapod wire-contract library"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
 [tool.maturin]
 features = ["python"]

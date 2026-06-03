@@ -13,6 +13,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct IndexedHeap {
     pub priority_size: u32,
@@ -98,9 +99,10 @@ impl IndexedHeap {
 
     fn better<T: PartialOrd>(&self, a: &T, b: &T) -> bool {
         let raw = a.partial_cmp(b).unwrap_or(Ordering::Equal);
-        match self.order {
-            HeapOrder::Max => raw == Ordering::Greater,
-            HeapOrder::Min => raw == Ordering::Less,
+        if self.order == HeapOrder::Min {
+            raw == Ordering::Less
+        } else {
+            raw == Ordering::Greater
         }
     }
 

@@ -9,6 +9,7 @@ use crate::seq::assert_element_size;
 pub const FORWARD_LIST_NIL: u32 = u32::MAX;
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct ForwardList {
     pub head: u32,
     pub free_head: u32,

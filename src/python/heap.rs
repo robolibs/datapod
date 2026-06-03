@@ -1,8 +1,11 @@
-#![allow(non_snake_case, clippy::wrong_self_convention)]
+#![allow(deprecated, non_snake_case, clippy::wrong_self_convention)]
+
+use std::ffi::c_char;
 
 use pyo3::exceptions::PyValueError;
+use pyo3::ffi;
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
+use pyo3::types::{PyAny, PyModule};
 
 use crate::wire::Encoding;
 use crate::{
@@ -15,6 +18,60 @@ fn header_bytes<T: DataPod>(value: &T) -> PyResult<Vec<u8>> {
     let mut out = vec![0_u8; crate::bind::header_size::<T>()];
     crate::bind::write_header(value, &mut out).map_err(PyValueError::new_err)?;
     Ok(out)
+}
+
+fn wire_message_v1<T>(value: &T) -> PyResult<(u64, Vec<u8>)>
+where
+    T: DataPod,
+    T::Header: crate::LeWireHeader,
+{
+    let message = crate::to_wire_message_v1(value)
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
+    Ok((message.type_hash, message.bytes))
+}
+
+fn payload_memoryview(py: Python<'_>, payload: &[u8]) -> PyResult<PyObject> {
+    unsafe {
+        let ptr = payload.as_ptr() as *mut c_char;
+        const PYBUF_READ: std::os::raw::c_int = 0x100;
+        let view = ffi::PyMemoryView_FromMemory(ptr, payload.len() as isize, PYBUF_READ);
+        if view.is_null() {
+            Err(PyErr::fetch(py))
+        } else {
+            Ok(Py::<PyAny>::from_owned_ptr(py, view))
+        }
+    }
+}
+
+fn wire_frame_object<T>(py: Python<'_>, owner: PyObject, value: &T) -> PyResult<PyObject>
+where
+    T: DataPod,
+{
+    let module = PyModule::import(py, "datapod")?;
+    let frame_cls = module.getattr("WireFrame")?;
+    let header = header_bytes(value)?;
+    let payload = payload_memoryview(py, value.payload_bytes())?;
+    let frame = frame_cls.call1((crate::bind::type_hash::<T>(), header, payload, owner))?;
+    Ok(frame.unbind())
+}
+
+fn frame_header_and_payload<'py>(
+    frame: &Bound<'py, PyAny>,
+    name: &str,
+    expected_hash: u64,
+) -> PyResult<(Vec<u8>, Bound<'py, PyAny>)> {
+    let kind: u64 = frame.getattr("type_hash")?.extract()?;
+    if kind != expected_hash {
+        return Err(PyValueError::new_err(format!(
+            "wrong {name} frame type hash: got {kind}, expected {expected_hash}"
+        )));
+    }
+    let header: Vec<u8> = frame
+        .getattr("header")?
+        .call_method0("tobytes")?
+        .extract()?;
+    let payload = frame.getattr("payload")?;
+    Ok((header, payload))
 }
 
 fn split_wire<T: DataPod>(data: Vec<u8>) -> PyResult<(Vec<u8>, Vec<u8>)> {
@@ -36,11 +93,12 @@ fn read_header<H: bytemuck::Pod>(name: &str, header: &[u8]) -> PyResult<H> {
 fn decode_parts<T>(header: Vec<u8>, payload: Vec<u8>) -> PyResult<T>
 where
     T: DataPod + DataPodDecode,
+    T::Header: crate::LeWireHeader,
 {
     let mut bytes = header;
     bytes.extend_from_slice(&payload);
     let message = crate::WireMessage {
-        type_hash: crate::bind::type_hash::<T>(),
+        type_hash: crate::bind::emitted_type_hash::<T>(),
         bytes,
     };
     crate::from_wire_message::<T>(&message)
@@ -50,6 +108,7 @@ where
 fn decode_message<T>(kind: u64, data: Vec<u8>) -> PyResult<T>
 where
     T: DataPod + DataPodDecode,
+    T::Header: crate::LeWireHeader,
 {
     let message = crate::WireMessage {
         type_hash: kind,
@@ -125,9 +184,18 @@ macro_rules! byte_container {
                 self.inner.payload_bytes().to_vec()
             }
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-                let mut data = header_bytes(&self.inner)?;
-                data.extend_from_slice(self.inner.payload_bytes());
-                Ok((crate::bind::type_hash::<$rust>(), data))
+                wire_message_v1(&self.inner)
+            }
+            fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+                wire_message_v1(&self.inner)
+            }
+            fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                wire_frame_object(py, owner, &slf.inner)
+            }
+            fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                wire_frame_object(py, owner, &slf.inner)
             }
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
@@ -171,9 +239,18 @@ macro_rules! raw_element_container {
                 self.inner.payload_bytes().to_vec()
             }
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-                let mut data = header_bytes(&self.inner)?;
-                data.extend_from_slice(self.inner.payload_bytes());
-                Ok((crate::bind::type_hash::<$rust>(), data))
+                wire_message_v1(&self.inner)
+            }
+            fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+                wire_message_v1(&self.inner)
+            }
+            fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                wire_frame_object(py, owner, &slf.inner)
+            }
+            fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                wire_frame_object(py, owner, &slf.inner)
             }
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
@@ -220,9 +297,18 @@ impl PyDpStr {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<DpStr>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -269,9 +355,10 @@ macro_rules! point_payload {
                 self.inner.payload_bytes().to_vec()
             }
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-                let mut data = header_bytes(&self.inner)?;
-                data.extend_from_slice(self.inner.payload_bytes());
-                Ok((crate::bind::type_hash::<$rust>(), data))
+                wire_message_v1(&self.inner)
+            }
+            fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+                wire_message_v1(&self.inner)
             }
             fn payload_len(&self) -> usize {
                 self.inner.payload_bytes().len()
@@ -346,9 +433,18 @@ impl PyPath {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Path>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -398,9 +494,18 @@ impl PyTrajectory {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Trajectory>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -416,6 +521,44 @@ impl PyTrajectory {
         Ok(Self {
             inner: decode_message::<Trajectory>(kind, data)?,
         })
+    }
+}
+
+#[pyclass(name = "GridView")]
+pub struct PyGridView {
+    rows: u32,
+    cols: u32,
+    encoding_id: u32,
+    centered: bool,
+    resolution: f64,
+    payload: PyObject,
+}
+
+#[pymethods]
+impl PyGridView {
+    #[getter]
+    fn rows(&self) -> u32 {
+        self.rows
+    }
+    #[getter]
+    fn cols(&self) -> u32 {
+        self.cols
+    }
+    #[getter]
+    fn encoding_id(&self) -> u32 {
+        self.encoding_id
+    }
+    #[getter]
+    fn centered(&self) -> bool {
+        self.centered
+    }
+    #[getter]
+    fn resolution(&self) -> f64 {
+        self.resolution
+    }
+    #[getter]
+    fn payload(&self, py: Python<'_>) -> PyObject {
+        self.payload.clone_ref(py)
     }
 }
 
@@ -460,7 +603,7 @@ impl PyGrid {
     }
     #[getter]
     fn encoding_id(&self) -> u32 {
-        self.inner.encoding as u32
+        self.inner.encoding.0
     }
     #[getter]
     fn centered(&self) -> bool {
@@ -481,9 +624,18 @@ impl PyGrid {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Grid>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -506,13 +658,54 @@ impl PyGrid {
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
         let expected = crate::bind::type_hash::<Grid>();
-        if kind != expected {
+        if !crate::bind::is_type_hash_for::<Grid>(kind) {
             return Err(PyValueError::new_err(format!(
                 "wrong type hash: got {kind}, expected {expected}"
             )));
         }
         let (header, payload) = split_wire::<Grid>(data)?;
         Self::from_wire(header, payload)
+    }
+    #[staticmethod]
+    fn from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+        Self::from_wire_frame_v1(frame)
+    }
+    #[staticmethod]
+    fn from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+        let (header, payload) =
+            frame_header_and_payload(frame, "Grid", crate::bind::type_hash::<Grid>())?;
+        let payload: Vec<u8> = payload.call_method0("tobytes")?.extract()?;
+        Self::from_wire(header, payload)
+    }
+    #[staticmethod]
+    fn view_from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<PyGridView> {
+        Self::view_from_wire_frame_v1(frame)
+    }
+    #[staticmethod]
+    fn view_from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<PyGridView> {
+        let (header, payload) =
+            frame_header_and_payload(frame, "Grid", crate::bind::type_hash::<Grid>())?;
+        let h: GridHeader = read_header("Grid", &header)?;
+        let payload_len = payload.len()?;
+        let expected_len = h
+            .rows
+            .checked_mul(h.cols)
+            .and_then(|cells| cells.checked_mul(h.encoding.byte_width() as u32))
+            .map(|bytes| bytes as usize)
+            .ok_or_else(|| PyValueError::new_err("Grid frame payload size overflowed"))?;
+        if payload_len != expected_len {
+            return Err(PyValueError::new_err(format!(
+                "invalid Grid frame payload length: got {payload_len}, expected {expected_len}"
+            )));
+        }
+        Ok(PyGridView {
+            rows: h.rows,
+            cols: h.cols,
+            encoding_id: h.encoding.0,
+            centered: h.centered != 0,
+            resolution: h.resolution,
+            payload: payload.unbind(),
+        })
     }
 }
 
@@ -563,9 +756,18 @@ impl PyLayer {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Layer>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -611,9 +813,10 @@ impl PyMap {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Map>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -659,9 +862,10 @@ impl PySet {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Set>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -706,6 +910,34 @@ raw_element_container!(
     }
 );
 
+#[pyclass(name = "MatrixView")]
+pub struct PyMatrixView {
+    rows: u32,
+    cols: u32,
+    element_size: u32,
+    payload: PyObject,
+}
+
+#[pymethods]
+impl PyMatrixView {
+    #[getter]
+    fn rows(&self) -> u32 {
+        self.rows
+    }
+    #[getter]
+    fn cols(&self) -> u32 {
+        self.cols
+    }
+    #[getter]
+    fn element_size(&self) -> u32 {
+        self.element_size
+    }
+    #[getter]
+    fn payload(&self, py: Python<'_>) -> PyObject {
+        self.payload.clone_ref(py)
+    }
+}
+
 #[pyclass(name = "Matrix")]
 pub struct PyMatrix {
     inner: Matrix,
@@ -747,9 +979,18 @@ impl PyMatrix {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Matrix>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
+    }
+    fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+        let owner = (&slf).into_py(py);
+        wire_frame_object(py, owner, &slf.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -770,13 +1011,52 @@ impl PyMatrix {
     #[staticmethod]
     fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
         let expected = crate::bind::type_hash::<Matrix>();
-        if kind != expected {
+        if !crate::bind::is_type_hash_for::<Matrix>(kind) {
             return Err(PyValueError::new_err(format!(
                 "wrong type hash: got {kind}, expected {expected}"
             )));
         }
         let (header, payload) = split_wire::<Matrix>(data)?;
         Self::from_wire(header, payload)
+    }
+    #[staticmethod]
+    fn from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+        Self::from_wire_frame_v1(frame)
+    }
+    #[staticmethod]
+    fn from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+        let (header, payload) =
+            frame_header_and_payload(frame, "Matrix", crate::bind::type_hash::<Matrix>())?;
+        let payload: Vec<u8> = payload.call_method0("tobytes")?.extract()?;
+        Self::from_wire(header, payload)
+    }
+    #[staticmethod]
+    fn view_from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<PyMatrixView> {
+        Self::view_from_wire_frame_v1(frame)
+    }
+    #[staticmethod]
+    fn view_from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<PyMatrixView> {
+        let (header, payload) =
+            frame_header_and_payload(frame, "Matrix", crate::bind::type_hash::<Matrix>())?;
+        let h: MatrixHeader = read_header("Matrix", &header)?;
+        let payload_len = payload.len()?;
+        let expected_len = h
+            .rows
+            .checked_mul(h.cols)
+            .and_then(|cells| cells.checked_mul(h.element_size))
+            .map(|bytes| bytes as usize)
+            .ok_or_else(|| PyValueError::new_err("Matrix frame payload size overflowed"))?;
+        if payload_len != expected_len {
+            return Err(PyValueError::new_err(format!(
+                "invalid Matrix frame payload length: got {payload_len}, expected {expected_len}"
+            )));
+        }
+        Ok(PyMatrixView {
+            rows: h.rows,
+            cols: h.cols,
+            element_size: h.element_size,
+            payload: payload.unbind(),
+        })
     }
 }
 
@@ -809,9 +1089,10 @@ impl PyTensor {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Tensor>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -853,9 +1134,10 @@ impl PyBitVec {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<BitVec>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -901,9 +1183,10 @@ impl PyDeque {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Deque>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -949,9 +1232,10 @@ impl PyQueue {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Queue>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -1001,9 +1285,10 @@ impl PyList {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<List>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -1051,9 +1336,10 @@ impl PyForwardList {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<ForwardList>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -1104,9 +1390,10 @@ impl PyHeap {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<Heap>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -1157,9 +1444,10 @@ impl PyIndexedHeap {
         self.inner.payload_bytes().to_vec()
     }
     fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
-        let mut data = header_bytes(&self.inner)?;
-        data.extend_from_slice(self.inner.payload_bytes());
-        Ok((crate::bind::type_hash::<IndexedHeap>(), data))
+        wire_message_v1(&self.inner)
+    }
+    fn to_wire_message_v1(&self) -> PyResult<(u64, Vec<u8>)> {
+        wire_message_v1(&self.inner)
     }
     fn payload_len(&self) -> usize {
         self.inner.payload_bytes().len()
@@ -1187,11 +1475,13 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRing>()?;
     m.add_class::<PyPath>()?;
     m.add_class::<PyTrajectory>()?;
+    m.add_class::<PyGridView>()?;
     m.add_class::<PyGrid>()?;
     m.add_class::<PyLayer>()?;
     m.add_class::<PyMap>()?;
     m.add_class::<PySet>()?;
     m.add_class::<PyVector>()?;
+    m.add_class::<PyMatrixView>()?;
     m.add_class::<PyMatrix>()?;
     m.add_class::<PyTensor>()?;
     m.add_class::<PyBitVec>()?;

@@ -8,7 +8,7 @@ mod uuid;
 
 pub use ip::Ip;
 pub use mac_addr::MacAddr;
-pub use string::{DpString, STRING_NONE};
+pub use string::{DpString, DpStringHeader, DpStringView, STRING_NONE};
 pub use uuid::Uuid;
 
 /// Legacy uppercase aliases — some consumers imported these names.

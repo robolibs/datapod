@@ -59,7 +59,7 @@ pub extern "C" fn datapod_last_error_message() -> *const c_char {
 
 /// A borrowed byte view.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct DatapodBytes {
     pub ptr: *const u8,
     pub len: usize,
@@ -81,6 +81,20 @@ pub struct DatapodWireMessage {
     pub type_hash: u64,
     pub data: *const u8,
     pub len: usize,
+}
+
+/// Generic borrowed zero-copy datapod wire frame.
+///
+/// This is the C ABI fast path: `header` and `payload` are separate borrowed
+/// buffers and are not joined or copied by datapod.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct DatapodWireFrame {
+    pub type_hash: u64,
+    pub header: *const u8,
+    pub header_len: usize,
+    pub payload: *const u8,
+    pub payload_len: usize,
 }
 
 /// Owned bytes returned by Rust to C. Free with `datapod_owned_bytes_free`.
@@ -132,6 +146,63 @@ pub extern "C" fn datapod_wire_message_borrow(
         data,
         len,
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_borrow(
+    type_hash: u64,
+    header: *const u8,
+    header_len: usize,
+    payload: *const u8,
+    payload_len: usize,
+) -> DatapodWireFrame {
+    DatapodWireFrame {
+        type_hash,
+        header,
+        header_len,
+        payload,
+        payload_len,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_from_message_v1(
+    message: DatapodWireMessage,
+    out: *mut DatapodWireFrame,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null wire-frame output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(message.data, message.len) }) else {
+        return false;
+    };
+    let frame = match crate::split_wire_frame(message.type_hash, bytes) {
+        Ok(frame) => frame,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodWireFrame {
+            type_hash: frame.type_hash,
+            header: frame.header.as_ptr(),
+            header_len: frame.header.len(),
+            payload: frame.payload.as_ptr(),
+            payload_len: frame.payload.len(),
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_from_message(
+    message: DatapodWireMessage,
+    out: *mut DatapodWireFrame,
+) -> bool {
+    datapod_wire_frame_from_message_v1(message, out)
 }
 
 #[unsafe(no_mangle)]
@@ -194,21 +265,138 @@ pub extern "C" fn datapod_wire_message_join(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn datapod_wire_message_is_valid(message: DatapodWireMessage) -> bool {
+pub extern "C" fn datapod_wire_message_join_v1(
+    type_hash: u64,
+    header: *const u8,
+    header_len: usize,
+    payload: *const u8,
+    payload_len: usize,
+    out: *mut DatapodOwnedBytes,
+) -> bool {
     clear_last_error();
-    if !crate::registry::type_exists(message.type_hash) {
+    if out.is_null() {
+        set_last_error("null owned-byte output");
+        return false;
+    }
+    if !crate::registry::type_exists(type_hash) {
         set_last_error("unknown datapod type hash");
         return false;
     }
-    let header_len = datapod_header_size(message.type_hash);
-    if message.len < header_len {
+    let expected_header_len = datapod_header_size_v1(type_hash);
+    if expected_header_len == 0 {
+        set_last_error("datapod type has no v1 header metadata");
+        return false;
+    }
+    if header_len != expected_header_len {
         set_last_error(format!(
-            "wire message too short: got {}, need at least {header_len}",
-            message.len
+            "wrong v1 header length: got {header_len}, expected {expected_header_len}"
         ));
         return false;
     }
+    let Ok(header) = (unsafe { bytes_in(header, header_len) }) else {
+        return false;
+    };
+    let Ok(payload) = (unsafe { bytes_in(payload, payload_len) }) else {
+        return false;
+    };
+    let mut bytes = Vec::with_capacity(header.len() + payload.len());
+    bytes.extend_from_slice(header);
+    bytes.extend_from_slice(payload);
+    unsafe {
+        *out = owned_bytes(bytes);
+    }
     true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_is_valid(message: DatapodWireMessage) -> bool {
+    datapod_wire_message_validate_v1(message)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_validate(message: DatapodWireMessage) -> bool {
+    datapod_wire_message_validate_v1(message)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_validate_v1(message: DatapodWireMessage) -> bool {
+    clear_last_error();
+    let Ok(bytes) = (unsafe { bytes_in(message.data, message.len) }) else {
+        return false;
+    };
+    match crate::validate_registered_wire_v1(message.type_hash, bytes) {
+        Ok(()) => true,
+        Err(error) => {
+            set_last_error(error.to_string());
+            false
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_is_valid_v1(message: DatapodWireMessage) -> bool {
+    datapod_wire_message_validate_v1(message)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_validate_v1(frame: DatapodWireFrame) -> bool {
+    clear_last_error();
+    let Ok(header) = (unsafe { bytes_in(frame.header, frame.header_len) }) else {
+        return false;
+    };
+    let Ok(payload) = (unsafe { bytes_in(frame.payload, frame.payload_len) }) else {
+        return false;
+    };
+    match crate::validate_registered_wire_frame_v1(crate::WireFrame {
+        type_hash: frame.type_hash,
+        header,
+        payload,
+    }) {
+        Ok(()) => true,
+        Err(error) => {
+            set_last_error(error.to_string());
+            false
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_validate_as_v1(
+    expected_hash: u64,
+    frame: DatapodWireFrame,
+) -> bool {
+    clear_last_error();
+    if frame.type_hash != expected_hash {
+        set_last_error(format!(
+            "wrong datapod frame type hash: got {}, expected {}",
+            frame.type_hash, expected_hash
+        ));
+        return false;
+    }
+    datapod_wire_frame_validate_v1(frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_validate_as(
+    expected_hash: u64,
+    frame: DatapodWireFrame,
+) -> bool {
+    datapod_wire_frame_validate_as_v1(expected_hash, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_validate(frame: DatapodWireFrame) -> bool {
+    datapod_wire_frame_validate_v1(frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_is_valid_v1(frame: DatapodWireFrame) -> bool {
+    datapod_wire_frame_validate_v1(frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_frame_is_valid(frame: DatapodWireFrame) -> bool {
+    datapod_wire_frame_validate_v1(frame)
 }
 
 #[unsafe(no_mangle)]
@@ -230,6 +418,31 @@ pub extern "C" fn datapod_wire_message_payload(message: DatapodWireMessage) -> D
         return DatapodBytes::empty();
     }
     let header_len = datapod_header_size(message.type_hash);
+    DatapodBytes {
+        ptr: unsafe { message.data.add(header_len) },
+        len: message.len - header_len,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_header_v1(message: DatapodWireMessage) -> DatapodBytes {
+    clear_last_error();
+    if !datapod_wire_message_validate_v1(message) {
+        return DatapodBytes::empty();
+    }
+    DatapodBytes {
+        ptr: message.data,
+        len: datapod_header_size_v1(message.type_hash),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_message_payload_v1(message: DatapodWireMessage) -> DatapodBytes {
+    clear_last_error();
+    if !datapod_wire_message_validate_v1(message) {
+        return DatapodBytes::empty();
+    }
+    let header_len = datapod_header_size_v1(message.type_hash);
     DatapodBytes {
         ptr: unsafe { message.data.add(header_len) },
         len: message.len - header_len,
@@ -321,6 +534,31 @@ pub extern "C" fn datapod_type_hash_name(name: *const c_char) -> u64 {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_canonical_type_hash(type_hash: u64) -> u64 {
+    crate::registry::find_type_info(type_hash).map_or(0, |info| info.canonical_type_hash)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_emitted_type_hash(type_hash: u64) -> u64 {
+    crate::registry::find_type_info(type_hash).map_or(0, |info| info.emitted_hash)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_hash_kind_canonical_name() -> u32 {
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_current_wire_format_name() -> *const c_char {
+    c"datapod-wire-v1/le".as_ptr()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_builtin_hash_policy() -> *const c_char {
+    c"built-in emission uses canonical-name hashes in datapod-wire-v1/le".as_ptr()
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_payload_kind_fixed() -> u32 {
     0
 }
@@ -328,6 +566,31 @@ pub extern "C" fn datapod_payload_kind_fixed() -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn datapod_payload_kind_bytes() -> u32 {
     1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_endian_little() -> u32 {
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_alignment_unaligned_wire() -> u32 {
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_validator_registry_only() -> u32 {
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_validator_builtin() -> u32 {
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_validator_runtime_schema() -> u32 {
+    2
 }
 
 #[unsafe(no_mangle)]
@@ -398,8 +661,27 @@ pub extern "C" fn datapod_type_name(type_hash: u64) -> *const c_char {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_type_exists_name(canonical_name: *const c_char) -> bool {
+    clear_last_error();
+    if canonical_name.is_null() {
+        set_last_error("null datapod canonical type name");
+        return false;
+    }
+    let Ok(canonical_name) = (unsafe { CStr::from_ptr(canonical_name) }).to_str() else {
+        set_last_error("datapod canonical type name is not utf-8");
+        return false;
+    };
+    crate::registry::find_type_info_by_name(canonical_name).is_some()
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_header_size(type_hash: u64) -> usize {
     crate::registry::find_type_info(type_hash).map_or(0, |info| info.header_size)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_header_size_v1(type_hash: u64) -> usize {
+    crate::registry::v1_header_size(type_hash).unwrap_or(0)
 }
 
 #[unsafe(no_mangle)]
@@ -407,6 +689,56 @@ pub extern "C" fn datapod_payload_kind(type_hash: u64) -> u32 {
     match crate::registry::find_type_info(type_hash).map(|info| info.payload_kind) {
         Some(crate::registry::PayloadKind::Fixed) => 0,
         Some(crate::registry::PayloadKind::Bytes) => 1,
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_format_version(type_hash: u64) -> u32 {
+    crate::registry::find_type_info(type_hash)
+        .map(|info| info.format_version)
+        .unwrap_or(u32::MAX)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_wire_format(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.wire_format) {
+        Some(crate::registry::WireFormat::DatapodWireV1Little) => 1,
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_emitted_hash_kind(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.emitted_hash_kind) {
+        Some(crate::registry::HashKind::CanonicalName) => datapod_hash_kind_canonical_name(),
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_endian(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.endian) {
+        Some(crate::registry::Endian::Little) => datapod_endian_little(),
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_alignment_policy(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.alignment) {
+        Some(crate::registry::AlignmentPolicy::UnalignedWire) => datapod_alignment_unaligned_wire(),
+        Some(crate::registry::AlignmentPolicy::AlignedPayload { .. }) => 1,
+        None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_validator_kind(type_hash: u64) -> u32 {
+    match crate::registry::find_type_info(type_hash).map(|info| info.validator) {
+        Some(crate::registry::ValidatorKind::RegistryOnly) => datapod_validator_registry_only(),
+        Some(crate::registry::ValidatorKind::BuiltIn) => datapod_validator_builtin(),
+        Some(crate::registry::ValidatorKind::RuntimeSchema) => datapod_validator_runtime_schema(),
         None => u32::MAX,
     }
 }
@@ -440,7 +772,7 @@ pub extern "C" fn datapod_point_from_wire(
         return false;
     };
     let message = crate::WireMessage {
-        type_hash: crate::bind::type_hash::<Point>(),
+        type_hash: crate::bind::emitted_type_hash::<Point>(),
         bytes,
     };
     let value = match crate::from_wire_message::<Point>(&message) {
@@ -456,7 +788,11 @@ pub extern "C" fn datapod_point_from_wire(
     true
 }
 
-fn heap_to_wire<T: DataPod>(value: &T, out: *mut DatapodOwnedBytes) -> bool {
+fn heap_to_wire<T>(value: &T, out: *mut DatapodOwnedBytes) -> bool
+where
+    T: DataPod,
+    T::Header: crate::LeWireHeader,
+{
     if out.is_null() {
         set_last_error("null owned-byte output");
         return false;
@@ -471,10 +807,11 @@ fn heap_to_wire<T: DataPod>(value: &T, out: *mut DatapodOwnedBytes) -> bool {
 fn heap_from_wire<T>(ptr: *const u8, len: usize) -> Option<T>
 where
     T: DataPod + crate::DataPodDecode,
+    T::Header: crate::LeWireHeader,
 {
     let bytes = clone_bytes(ptr, len)?;
     let message = crate::WireMessage {
-        type_hash: crate::bind::type_hash::<T>(),
+        type_hash: crate::bind::emitted_type_hash::<T>(),
         bytes,
     };
     match crate::from_wire_message::<T>(&message) {
@@ -635,6 +972,264 @@ impl From<DatapodPose> for Pose {
             rotation: value.rotation.into(),
         }
     }
+}
+
+/// Borrowed C view over a validated Bytes wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodBytesView {
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated UTF-8 DpStr wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodDpStrView {
+    pub utf8: DatapodBytes,
+}
+
+/// Borrowed C view over a validated point-sequence wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodLinestringView {
+    pub point_count: usize,
+    pub point_size: usize,
+    pub points: DatapodBytes,
+}
+
+/// Borrowed C view over a validated multi-point wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodMultiPointView {
+    pub point_count: usize,
+    pub point_size: usize,
+    pub points: DatapodBytes,
+}
+
+/// Borrowed C view over a validated ring wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodRingView {
+    pub point_count: usize,
+    pub point_size: usize,
+    pub points: DatapodBytes,
+}
+
+/// Borrowed C view over a validated polygon wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodPolygonView {
+    pub vertex_count: usize,
+    pub point_size: usize,
+    pub vertices: DatapodBytes,
+}
+
+/// Borrowed C view over a validated path wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodPathView {
+    pub waypoint_count: usize,
+    pub pose_size: usize,
+    pub waypoints: DatapodBytes,
+}
+
+/// Borrowed C view over a validated trajectory wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodTrajectoryView {
+    pub state_count: usize,
+    pub state_size: usize,
+    pub states: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Matrix wire message.
+///
+/// `payload` points into the caller-owned wire bytes passed to
+/// `datapod_matrix_view_from_wire`; keep those bytes alive while using the
+/// view.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodMatrixView {
+    pub rows: u32,
+    pub cols: u32,
+    pub element_size: u32,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Tensor wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodTensorView {
+    pub rows: u32,
+    pub cols: u32,
+    pub layers: u32,
+    pub element_size: u32,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Vector wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodVectorView {
+    pub element_size: u32,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Stack wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodStackView {
+    pub element_size: u32,
+    pub element_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Queue wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodQueueView {
+    pub element_size: u32,
+    pub front: u32,
+    pub raw_count: usize,
+    pub logical_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Deque wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodDequeView {
+    pub element_size: u32,
+    pub split_byte: u32,
+    pub element_count: usize,
+    pub front: DatapodBytes,
+    pub back: DatapodBytes,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Heap wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodHeapView {
+    pub element_size: u32,
+    pub order: u8,
+    pub element_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated IndexedHeap wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodIndexedHeapView {
+    pub priority_size: u32,
+    pub order: u8,
+    pub entry_size: usize,
+    pub entry_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated bit-packed BitVec wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodBitVecView {
+    pub bits: u64,
+    pub data: DatapodBytes,
+}
+
+/// Borrowed C view over a validated ragged Vecvec wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodVecvecView {
+    pub element_size: u32,
+    pub bucket_count: u32,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated PagedVecvec wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodPagedVecvecView {
+    pub element_size: u32,
+    pub bucket_count: u32,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated List wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodListView {
+    pub head: u32,
+    pub tail: u32,
+    pub free_head: u32,
+    pub size: u32,
+    pub element_size: u32,
+    pub node_size: usize,
+    pub slot_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated ForwardList wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodForwardListView {
+    pub head: u32,
+    pub free_head: u32,
+    pub size: u32,
+    pub element_size: u32,
+    pub node_size: usize,
+    pub slot_count: usize,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Map wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodMapView {
+    pub count: u32,
+    pub entries: DatapodBytes,
+    pub blob: DatapodBytes,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Set wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodSetView {
+    pub count: u32,
+    pub entries: DatapodBytes,
+    pub blob: DatapodBytes,
+    pub payload: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Grid wire message.
+///
+/// `data` points into the caller-owned wire bytes passed to
+/// `datapod_grid_view_from_wire`; keep those bytes alive while using the view.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodGridView {
+    pub rows: u32,
+    pub cols: u32,
+    pub encoding: u32,
+    pub centered: bool,
+    pub resolution: f64,
+    pub pose: DatapodPose,
+    pub data: DatapodBytes,
+}
+
+/// Borrowed C view over a validated Layer wire message.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DatapodLayerView {
+    pub rows: u32,
+    pub cols: u32,
+    pub layers: u32,
+    pub encoding: u32,
+    pub centered: bool,
+    pub resolution: f64,
+    pub layer_height: f64,
+    pub pose: DatapodPose,
+    pub data: DatapodBytes,
 }
 
 /// FFI-safe velocity value.
@@ -1500,6 +2095,16 @@ unsafe fn bytes_in<'a>(ptr: *const u8, len: usize) -> Result<&'a [u8], ()> {
     }
 }
 
+fn wire_frame_in(frame: DatapodWireFrame) -> Result<crate::WireFrame<'static>, ()> {
+    let header = unsafe { bytes_in(frame.header, frame.header_len) }?;
+    let payload = unsafe { bytes_in(frame.payload, frame.payload_len) }?;
+    Ok(crate::WireFrame {
+        type_hash: frame.type_hash,
+        header,
+        payload,
+    })
+}
+
 fn write_fixed_header<C, R>(value: C, out: *mut u8, out_len: usize) -> bool
 where
     R: crate::DataPod + From<C>,
@@ -1522,7 +2127,7 @@ where
 fn read_fixed_header<C, R>(ptr: *const u8, len: usize, out: *mut C) -> bool
 where
     C: From<R>,
-    R: crate::DataPod<Header = R> + bytemuck::Pod + Copy,
+    R: crate::DataPod<Header = R> + crate::DataPodValidate + bytemuck::Pod + Copy,
 {
     clear_last_error();
     if out.is_null() {
@@ -2741,7 +3346,7 @@ pub extern "C" fn datapod_map_entry_new(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn datapod_map_entry_type_hash() -> u64 {
-    crate::bind::type_hash::<MapEntry>()
+    crate::bind::rust_type_hash::<MapEntry>()
 }
 
 #[unsafe(no_mangle)]
@@ -2775,7 +3380,7 @@ pub extern "C" fn datapod_set_entry_new(key_off: u32, key_len: u32) -> DatapodSe
 
 #[unsafe(no_mangle)]
 pub extern "C" fn datapod_set_entry_type_hash() -> u64 {
-    crate::bind::type_hash::<SetEntry>()
+    crate::bind::rust_type_hash::<SetEntry>()
 }
 
 #[unsafe(no_mangle)]
@@ -2971,6 +3576,80 @@ pub extern "C" fn datapod_polygon_from_wire(ptr: *const u8, len: usize) -> *mut 
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPolygon { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_polygon_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodPolygonView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null polygon view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<Polygon>(
+        crate::bind::emitted_type_hash::<Polygon>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodPolygonView {
+            vertex_count: payload.len() / point_size,
+            point_size,
+            vertices: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_polygon_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodPolygonView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null polygon view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Polygon>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodPolygonView {
+            vertex_count: payload.len() / point_size,
+            point_size,
+            vertices: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -3542,6 +4221,70 @@ pub extern "C" fn datapod_bytes_value_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_bytes_value_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodBytesView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null bytes view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Bytes>(crate::bind::emitted_type_hash::<Bytes>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodBytesView {
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_bytes_value_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodBytesView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null bytes view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Bytes>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodBytesView {
+            payload: DatapodBytes {
+                ptr: view.as_slice().as_ptr(),
+                len: view.as_slice().len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_dpstr_free(handle: *mut DatapodDpStr) {
     if !handle.is_null() {
         unsafe { drop(std::boxed::Box::from_raw(handle)) };
@@ -3897,7 +4640,7 @@ pub extern "C" fn datapod_grid_from_wire(ptr: *const u8, len: usize) -> *mut Dat
         return ptr::null_mut();
     };
     let message = crate::WireMessage {
-        type_hash: crate::bind::type_hash::<Grid>(),
+        type_hash: crate::bind::emitted_type_hash::<Grid>(),
         bytes,
     };
     let inner = match crate::from_wire_message::<Grid>(&message) {
@@ -3908,6 +4651,89 @@ pub extern "C" fn datapod_grid_from_wire(ptr: *const u8, len: usize) -> *mut Dat
         }
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodGrid { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_grid_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodGridView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null grid view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Grid>(crate::bind::emitted_type_hash::<Grid>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodGridView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            encoding: view.header.encoding.0,
+            centered: view.header.centered != 0,
+            resolution: view.header.resolution,
+            pose: view.header.pose.into(),
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_grid_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodGridView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null grid view output");
+        return false;
+    }
+    let Ok(header) = (unsafe { bytes_in(frame.header, frame.header_len) }) else {
+        return false;
+    };
+    let Ok(payload) = (unsafe { bytes_in(frame.payload, frame.payload_len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Grid>(crate::WireFrame {
+        type_hash: frame.type_hash,
+        header,
+        payload,
+    }) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodGridView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            encoding: view.header.encoding.0,
+            centered: view.header.centered != 0,
+            resolution: view.header.resolution,
+            pose: view.header.pose.into(),
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4135,6 +4961,84 @@ pub extern "C" fn datapod_matrix_from_wire(ptr: *const u8, len: usize) -> *mut D
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodMatrix { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_matrix_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodMatrixView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null matrix view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Matrix>(crate::bind::emitted_type_hash::<Matrix>(), bytes)
+        {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodMatrixView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_matrix_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodMatrixView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null matrix view output");
+        return false;
+    }
+    let Ok(header) = (unsafe { bytes_in(frame.header, frame.header_len) }) else {
+        return false;
+    };
+    let Ok(payload) = (unsafe { bytes_in(frame.payload, frame.payload_len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Matrix>(crate::WireFrame {
+        type_hash: frame.type_hash,
+        header,
+        payload,
+    }) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodMatrixView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4611,6 +5515,70 @@ pub extern "C" fn datapod_dpstr_from_wire(ptr: *const u8, len: usize) -> *mut Da
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstr_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodDpStrView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null dpstr view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<DpStr>(crate::bind::emitted_type_hash::<DpStr>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodDpStrView {
+            utf8: DatapodBytes {
+                ptr: view.as_bytes().as_ptr(),
+                len: view.as_bytes().len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dpstr_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodDpStrView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null dpstr view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<DpStr>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodDpStrView {
+            utf8: DatapodBytes {
+                ptr: view.as_bytes().as_ptr(),
+                len: view.as_bytes().len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_dpstring_to_wire(
     handle: *const DatapodDpString,
     out: *mut DatapodOwnedBytes,
@@ -4658,6 +5626,80 @@ pub extern "C" fn datapod_linestring_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_linestring_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodLinestringView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null linestring view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<Linestring>(
+        crate::bind::emitted_type_hash::<Linestring>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodLinestringView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_linestring_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodLinestringView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null linestring view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Linestring>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodLinestringView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_multi_point_to_wire(
     handle: *const DatapodMultiPoint,
     out: *mut DatapodOwnedBytes,
@@ -4683,6 +5725,80 @@ pub extern "C" fn datapod_multi_point_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_multi_point_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodMultiPointView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null multi_point view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<MultiPoint>(
+        crate::bind::emitted_type_hash::<MultiPoint>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodMultiPointView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_multi_point_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodMultiPointView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null multi_point view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<MultiPoint>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodMultiPointView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_ring_to_wire(
     handle: *const DatapodRing,
     out: *mut DatapodOwnedBytes,
@@ -4705,6 +5821,78 @@ pub extern "C" fn datapod_ring_from_wire(ptr: *const u8, len: usize) -> *mut Dat
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_ring_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodRingView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null ring view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Ring>(crate::bind::emitted_type_hash::<Ring>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodRingView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_ring_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodRingView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null ring view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Ring>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let point_size = core::mem::size_of::<Point>();
+    unsafe {
+        *out = DatapodRingView {
+            point_count: payload.len() / point_size,
+            point_size,
+            points: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_path_to_wire(
     handle: *const DatapodPath,
     out: *mut DatapodOwnedBytes,
@@ -4724,6 +5912,78 @@ pub extern "C" fn datapod_path_from_wire(ptr: *const u8, len: usize) -> *mut Dat
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPath { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_path_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodPathView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null path view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Path>(crate::bind::emitted_type_hash::<Path>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload_bytes();
+    let pose_size = core::mem::size_of::<Pose>();
+    unsafe {
+        *out = DatapodPathView {
+            waypoint_count: payload.len() / pose_size,
+            pose_size,
+            waypoints: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_path_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodPathView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null path view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Path>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let pose_size = core::mem::size_of::<Pose>();
+    unsafe {
+        *out = DatapodPathView {
+            waypoint_count: payload.len() / pose_size,
+            pose_size,
+            waypoints: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4752,6 +6012,80 @@ pub extern "C" fn datapod_trajectory_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_trajectory_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodTrajectoryView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null trajectory view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<Trajectory>(
+        crate::bind::emitted_type_hash::<Trajectory>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let state_size = core::mem::size_of::<State>();
+    unsafe {
+        *out = DatapodTrajectoryView {
+            state_count: payload.len() / state_size,
+            state_size,
+            states: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_trajectory_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodTrajectoryView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null trajectory view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Trajectory>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let state_size = core::mem::size_of::<State>();
+    unsafe {
+        *out = DatapodTrajectoryView {
+            state_count: payload.len() / state_size,
+            state_size,
+            states: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_layer_to_wire(
     handle: *const DatapodLayer,
     out: *mut DatapodOwnedBytes,
@@ -4771,6 +6105,86 @@ pub extern "C" fn datapod_layer_from_wire(ptr: *const u8, len: usize) -> *mut Da
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodLayer { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_layer_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodLayerView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null layer view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Layer>(crate::bind::emitted_type_hash::<Layer>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodLayerView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            layers: view.header.layers,
+            encoding: view.header.encoding.0,
+            centered: view.header.centered != 0,
+            resolution: view.header.resolution,
+            layer_height: view.header.layer_height,
+            pose: view.header.pose.into(),
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_layer_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodLayerView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null layer view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Layer>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodLayerView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            layers: view.header.layers,
+            encoding: view.header.encoding.0,
+            centered: view.header.centered != 0,
+            resolution: view.header.resolution,
+            layer_height: view.header.layer_height,
+            pose: view.header.pose.into(),
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4796,6 +6210,96 @@ pub extern "C" fn datapod_map_from_wire(ptr: *const u8, len: usize) -> *mut Data
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_map_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodMapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null map view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<Map>(crate::bind::emitted_type_hash::<Map>(), bytes)
+    {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let count = view.size();
+    let entries_len = count * core::mem::size_of::<MapEntry>();
+    let blob_offset = 4 + entries_len;
+    unsafe {
+        *out = DatapodMapView {
+            count: count as u32,
+            entries: DatapodBytes {
+                ptr: payload[4..blob_offset].as_ptr(),
+                len: entries_len,
+            },
+            blob: DatapodBytes {
+                ptr: payload[blob_offset..].as_ptr(),
+                len: payload.len() - blob_offset,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_map_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodMapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null map view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Map>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let count = view.size();
+    let entries_len = count * core::mem::size_of::<MapEntry>();
+    let blob_offset = 4 + entries_len;
+    unsafe {
+        *out = DatapodMapView {
+            count: count as u32,
+            entries: DatapodBytes {
+                ptr: payload[4..blob_offset].as_ptr(),
+                len: entries_len,
+            },
+            blob: DatapodBytes {
+                ptr: payload[blob_offset..].as_ptr(),
+                len: payload.len() - blob_offset,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_set_to_wire(
     handle: *const DatapodSet,
     out: *mut DatapodOwnedBytes,
@@ -4815,6 +6319,96 @@ pub extern "C" fn datapod_set_from_wire(ptr: *const u8, len: usize) -> *mut Data
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodSet { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_set_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodSetView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null set view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<Set>(crate::bind::emitted_type_hash::<Set>(), bytes)
+    {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let count = view.size();
+    let entries_len = count * core::mem::size_of::<SetEntry>();
+    let blob_offset = 4 + entries_len;
+    unsafe {
+        *out = DatapodSetView {
+            count: count as u32,
+            entries: DatapodBytes {
+                ptr: payload[4..blob_offset].as_ptr(),
+                len: entries_len,
+            },
+            blob: DatapodBytes {
+                ptr: payload[blob_offset..].as_ptr(),
+                len: payload.len() - blob_offset,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_set_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodSetView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null set view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Set>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload_bytes();
+    let count = view.size();
+    let entries_len = count * core::mem::size_of::<SetEntry>();
+    let blob_offset = 4 + entries_len;
+    unsafe {
+        *out = DatapodSetView {
+            count: count as u32,
+            entries: DatapodBytes {
+                ptr: payload[4..blob_offset].as_ptr(),
+                len: entries_len,
+            },
+            blob: DatapodBytes {
+                ptr: payload[blob_offset..].as_ptr(),
+                len: payload.len() - blob_offset,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4840,6 +6434,73 @@ pub extern "C" fn datapod_vector_from_wire(ptr: *const u8, len: usize) -> *mut D
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_vector_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodVectorView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null vector view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Vector>(crate::bind::emitted_type_hash::<Vector>(), bytes)
+        {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodVectorView {
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vector_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodVectorView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null vector view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Vector>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodVectorView {
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_tensor_to_wire(
     handle: *const DatapodTensor,
     out: *mut DatapodOwnedBytes,
@@ -4859,6 +6520,79 @@ pub extern "C" fn datapod_tensor_from_wire(ptr: *const u8, len: usize) -> *mut D
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodTensor { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_tensor_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodTensorView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null tensor view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Tensor>(crate::bind::emitted_type_hash::<Tensor>(), bytes)
+        {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodTensorView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            layers: view.header.layers,
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_tensor_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodTensorView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null tensor view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Tensor>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodTensorView {
+            rows: view.header.rows,
+            cols: view.header.cols,
+            layers: view.header.layers,
+            element_size: view.header.element_size,
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4884,6 +6618,73 @@ pub extern "C" fn datapod_bitvec_from_wire(ptr: *const u8, len: usize) -> *mut D
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_bitvec_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodBitVecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null bitvec view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<BitVec>(crate::bind::emitted_type_hash::<BitVec>(), bytes)
+        {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodBitVecView {
+            bits: view.header.bits,
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_bitvec_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodBitVecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null bitvec view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<BitVec>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodBitVecView {
+            bits: view.header.bits,
+            data: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_deque_to_wire(
     handle: *const DatapodDeque,
     out: *mut DatapodOwnedBytes,
@@ -4903,6 +6704,106 @@ pub extern "C" fn datapod_deque_from_wire(ptr: *const u8, len: usize) -> *mut Da
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodDeque { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_deque_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodDequeView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null deque view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Deque>(crate::bind::emitted_type_hash::<Deque>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload;
+    let split = view.header.split_byte as usize;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodDequeView {
+            element_size: view.header.element_size,
+            split_byte: view.header.split_byte,
+            element_count: count,
+            front: DatapodBytes {
+                ptr: payload[..split].as_ptr(),
+                len: split,
+            },
+            back: DatapodBytes {
+                ptr: payload[split..].as_ptr(),
+                len: payload.len() - split,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_deque_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodDequeView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null deque view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Deque>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let split = view.header.split_byte as usize;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodDequeView {
+            element_size: view.header.element_size,
+            split_byte: view.header.split_byte,
+            element_count: count,
+            front: DatapodBytes {
+                ptr: payload[..split].as_ptr(),
+                len: split,
+            },
+            back: DatapodBytes {
+                ptr: payload[split..].as_ptr(),
+                len: payload.len() - split,
+            },
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4928,6 +6829,90 @@ pub extern "C" fn datapod_queue_from_wire(ptr: *const u8, len: usize) -> *mut Da
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_queue_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodQueueView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null queue view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Queue>(crate::bind::emitted_type_hash::<Queue>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload;
+    let raw_count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodQueueView {
+            element_size: view.header.element_size,
+            front: view.header.front,
+            raw_count,
+            logical_count: raw_count - view.header.front as usize,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_queue_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodQueueView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null queue view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Queue>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let raw_count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodQueueView {
+            element_size: view.header.element_size,
+            front: view.header.front,
+            raw_count,
+            logical_count: raw_count - view.header.front as usize,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_stack_to_wire(
     handle: *const DatapodStack,
     out: *mut DatapodOwnedBytes,
@@ -4950,6 +6935,86 @@ pub extern "C" fn datapod_stack_from_wire(ptr: *const u8, len: usize) -> *mut Da
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_stack_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodStackView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null stack view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Stack>(crate::bind::emitted_type_hash::<Stack>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodStackView {
+            element_size: view.header.element_size,
+            element_count: count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_stack_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodStackView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null stack view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Stack>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodStackView {
+            element_size: view.header.element_size,
+            element_count: count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_list_to_wire(
     handle: *const DatapodList,
     out: *mut DatapodOwnedBytes,
@@ -4969,6 +7034,106 @@ pub extern "C" fn datapod_list_from_wire(ptr: *const u8, len: usize) -> *mut Dat
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodList { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_list_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodListView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null list view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<List>(crate::bind::emitted_type_hash::<List>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload;
+    let node_size = if view.header.element_size == 0 {
+        0
+    } else {
+        view.header.element_size as usize + 8
+    };
+    let slot_count = if node_size == 0 {
+        0
+    } else {
+        payload.len() / node_size
+    };
+    unsafe {
+        *out = DatapodListView {
+            head: view.header.head,
+            tail: view.header.tail,
+            free_head: view.header.free_head,
+            size: view.header.size_,
+            element_size: view.header.element_size,
+            node_size,
+            slot_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_list_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodListView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null list view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<List>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let node_size = if view.header.element_size == 0 {
+        0
+    } else {
+        view.header.element_size as usize + 8
+    };
+    let slot_count = if node_size == 0 {
+        0
+    } else {
+        payload.len() / node_size
+    };
+    unsafe {
+        *out = DatapodListView {
+            head: view.header.head,
+            tail: view.header.tail,
+            free_head: view.header.free_head,
+            size: view.header.size_,
+            element_size: view.header.element_size,
+            node_size,
+            slot_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -4997,6 +7162,106 @@ pub extern "C" fn datapod_forward_list_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_forward_list_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodForwardListView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null forward_list view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<ForwardList>(
+        crate::bind::type_hash::<ForwardList>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let node_size = if view.header.element_size == 0 {
+        0
+    } else {
+        view.header.element_size as usize + 8
+    };
+    let slot_count = if node_size == 0 {
+        0
+    } else {
+        payload.len() / node_size
+    };
+    unsafe {
+        *out = DatapodForwardListView {
+            head: view.header.head,
+            free_head: view.header.free_head,
+            size: view.header.size_,
+            element_size: view.header.element_size,
+            node_size,
+            slot_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_forward_list_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodForwardListView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null forward_list view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<ForwardList>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let node_size = if view.header.element_size == 0 {
+        0
+    } else {
+        view.header.element_size as usize + 8
+    };
+    let slot_count = if node_size == 0 {
+        0
+    } else {
+        payload.len() / node_size
+    };
+    unsafe {
+        *out = DatapodForwardListView {
+            head: view.header.head,
+            free_head: view.header.free_head,
+            size: view.header.size_,
+            element_size: view.header.element_size,
+            node_size,
+            slot_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_heap_to_wire(
     handle: *const DatapodHeap,
     out: *mut DatapodOwnedBytes,
@@ -5016,6 +7281,88 @@ pub extern "C" fn datapod_heap_from_wire(ptr: *const u8, len: usize) -> *mut Dat
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodHeap { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_heap_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodHeapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null heap view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Heap>(crate::bind::emitted_type_hash::<Heap>(), bytes) {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    let payload = view.payload;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodHeapView {
+            element_size: view.header.element_size,
+            order: view.header.order.0,
+            element_count: count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_heap_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodHeapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null heap view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Heap>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let count = if view.header.element_size == 0 {
+        0
+    } else {
+        payload.len() / view.header.element_size as usize
+    };
+    unsafe {
+        *out = DatapodHeapView {
+            element_size: view.header.element_size,
+            order: view.header.order.0,
+            element_count: count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -5044,6 +7391,102 @@ pub extern "C" fn datapod_indexed_heap_from_wire(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn datapod_indexed_heap_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodIndexedHeapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null indexed_heap view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<IndexedHeap>(
+        crate::bind::type_hash::<IndexedHeap>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let entry_size = if view.header.priority_size == 0 {
+        0
+    } else {
+        8 + view.header.priority_size as usize
+    };
+    let entry_count = if entry_size == 0 {
+        0
+    } else {
+        payload.len() / entry_size
+    };
+    unsafe {
+        *out = DatapodIndexedHeapView {
+            priority_size: view.header.priority_size,
+            order: view.header.order.0,
+            entry_size,
+            entry_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_indexed_heap_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodIndexedHeapView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null indexed_heap view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<IndexedHeap>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let entry_size = if view.header.priority_size == 0 {
+        0
+    } else {
+        8 + view.header.priority_size as usize
+    };
+    let entry_count = if entry_size == 0 {
+        0
+    } else {
+        payload.len() / entry_size
+    };
+    unsafe {
+        *out = DatapodIndexedHeapView {
+            priority_size: view.header.priority_size,
+            order: view.header.order.0,
+            entry_size,
+            entry_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn datapod_vecvec_to_wire(
     handle: *const DatapodVecvec,
     out: *mut DatapodOwnedBytes,
@@ -5063,6 +7506,75 @@ pub extern "C" fn datapod_vecvec_from_wire(ptr: *const u8, len: usize) -> *mut D
         return ptr::null_mut();
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodVecvec { inner }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vecvec_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodVecvecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null vecvec view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view =
+        match crate::access_wire_bytes::<Vecvec>(crate::bind::emitted_type_hash::<Vecvec>(), bytes)
+        {
+            Ok(view) => view,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return false;
+            }
+        };
+    unsafe {
+        *out = DatapodVecvecView {
+            element_size: view.header.element_size,
+            bucket_count: view.bucket_count(),
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_vecvec_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodVecvecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null vecvec view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<Vecvec>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    unsafe {
+        *out = DatapodVecvecView {
+            element_size: view.header.element_size,
+            bucket_count: view.bucket_count(),
+            payload: DatapodBytes {
+                ptr: view.data.as_ptr(),
+                len: view.data.len(),
+            },
+        };
+    }
+    true
 }
 
 #[unsafe(no_mangle)]
@@ -5089,6 +7601,81 @@ pub extern "C" fn datapod_paged_vecvec_from_wire(
     };
     std::boxed::Box::into_raw(std::boxed::Box::new(DatapodPagedVecvec { inner }))
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_paged_vecvec_view_from_wire(
+    ptr: *const u8,
+    len: usize,
+    out: *mut DatapodPagedVecvecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null paged_vecvec view output");
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(ptr, len) }) else {
+        return false;
+    };
+    let view = match crate::access_wire_bytes::<PagedVecvec>(
+        crate::bind::type_hash::<PagedVecvec>(),
+        bytes,
+    ) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let bucket_count = u32::from_le_bytes(payload[0..4].try_into().unwrap());
+    unsafe {
+        *out = DatapodPagedVecvecView {
+            element_size: view.header.element_size,
+            bucket_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_paged_vecvec_view_from_frame(
+    frame: DatapodWireFrame,
+    out: *mut DatapodPagedVecvecView,
+) -> bool {
+    clear_last_error();
+    if out.is_null() {
+        set_last_error("null paged_vecvec view output");
+        return false;
+    }
+    let Ok(frame) = wire_frame_in(frame) else {
+        return false;
+    };
+    let view = match crate::access_wire_frame::<PagedVecvec>(frame) {
+        Ok(view) => view,
+        Err(error) => {
+            set_last_error(error.to_string());
+            return false;
+        }
+    };
+    let payload = view.payload;
+    let bucket_count = u32::from_le_bytes(payload[0..4].try_into().unwrap());
+    unsafe {
+        *out = DatapodPagedVecvecView {
+            element_size: view.header.element_size,
+            bucket_count,
+            payload: DatapodBytes {
+                ptr: payload.as_ptr(),
+                len: payload.len(),
+            },
+        };
+    }
+    true
+}
+
 /// Opaque fixed-value handle for PointKey.
 pub struct DatapodPointKeyHandle {
     inner: PointKey,

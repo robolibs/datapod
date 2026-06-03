@@ -6,8 +6,10 @@
 //! that `size_of::<T>()` matches the stored element_size.
 
 use crate::seq::assert_element_size;
+use crate::{DataPodAccess, DataPodValidate, WireError};
 
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Vector {
     pub element_size: u32,
@@ -101,5 +103,106 @@ impl Vector {
         let value: T = *bytemuck::from_bytes(&self.data[start..]);
         self.data.truncate(start);
         Some(value)
+    }
+}
+
+/// Borrowed, validation-backed view over a `Vector` wire payload.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VectorView<'a> {
+    pub header: VectorHeader,
+    pub data: &'a [u8],
+}
+
+impl<'a> VectorView<'a> {
+    pub fn element_size(&self) -> u32 {
+        self.header.element_size
+    }
+
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.data
+    }
+
+    pub fn size(&self) -> usize {
+        if self.header.element_size == 0 {
+            0
+        } else {
+            self.data.len() / self.header.element_size as usize
+        }
+    }
+
+    pub fn get_unaligned<T: bytemuck::Pod + Copy>(&self, index: usize) -> Result<T, WireError> {
+        assert_element_size::<T>(self.header.element_size);
+        if index >= self.size() {
+            return Err(crate::wire::invalid_header::<Vector>(format!(
+                "vector index out of bounds: {index} for len {}",
+                self.size()
+            )));
+        }
+        let elem_size = core::mem::size_of::<T>();
+        let offset = index
+            .checked_mul(elem_size)
+            .ok_or_else(|| crate::wire::invalid_payload::<Vector>("element offset overflowed"))?;
+        let end = offset
+            .checked_add(elem_size)
+            .ok_or_else(|| crate::wire::invalid_payload::<Vector>("element end overflowed"))?;
+        Ok(bytemuck::pod_read_unaligned(&self.data[offset..end]))
+    }
+
+    pub fn as_aligned_slice<T: bytemuck::Pod>(&self) -> Result<&'a [T], WireError> {
+        assert_element_size::<T>(self.header.element_size);
+        bytemuck::try_cast_slice(self.data)
+            .map_err(|error| crate::wire::invalid_payload::<Vector>(error.to_string()))
+    }
+}
+
+impl DataPodValidate for Vector {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        if header._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "reserved _pad field must be zero",
+            ));
+        }
+        if header.element_size == 0 {
+            return if payload.is_empty() {
+                Ok(())
+            } else {
+                Err(crate::wire::invalid_payload::<Self>(
+                    "zero element_size requires empty payload",
+                ))
+            };
+        }
+        if payload.len() % header.element_size as usize != 0 {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "{} bytes is not a multiple of element_size {}",
+                payload.len(),
+                header.element_size
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl DataPodAccess for Vector {
+    type View<'a> = VectorView<'a>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(VectorView {
+            header,
+            data: payload,
+        })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Self::View<'a> {
+        VectorView {
+            header,
+            data: payload,
+        }
     }
 }

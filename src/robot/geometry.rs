@@ -40,24 +40,40 @@ impl Default for MeshShape {
 }
 
 /// Tag for the active variant of a [`Geometry`] record.
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GeometryKind {
-    Box = 0,
-    Sphere = 1,
-    Cylinder = 2,
-    Mesh = 3,
-}
+///
+/// This is a transparent newtype instead of a Rust enum so untrusted wire
+/// bytes can be copied into a header and then semantically validated.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct GeometryKind(pub u32);
 
-impl Default for GeometryKind {
-    fn default() -> Self {
-        Self::Box
+#[allow(non_upper_case_globals)]
+impl GeometryKind {
+    pub const Box: Self = Self(0);
+    pub const Sphere: Self = Self(1);
+    pub const Cylinder: Self = Self(2);
+    pub const Mesh: Self = Self(3);
+
+    pub fn is_valid(self) -> bool {
+        self.0 <= Self::Mesh.0
     }
 }
 
 unsafe impl bytemuck::Zeroable for GeometryKind {}
 unsafe impl bytemuck::Pod for GeometryKind {}
 unsafe impl crate::ZeroCopySend for GeometryKind {}
+impl crate::LeWireHeader for GeometryKind {
+    const LE_WIRE_SIZE: usize = <u32 as crate::LeWireHeader>::LE_WIRE_SIZE;
+
+    fn write_le(&self, out: &mut Vec<u8>) {
+        <u32 as crate::LeWireHeader>::write_le(&self.0, out);
+    }
+
+    fn read_le(bytes: &[u8]) -> Result<Self, crate::WireError> {
+        Ok(Self(<u32 as crate::LeWireHeader>::read_le(bytes)?))
+    }
+}
+
 impl crate::DataPod for GeometryKind {
     type Header = GeometryKind;
     type Payload = ();
@@ -69,10 +85,55 @@ impl crate::DataPod for GeometryKind {
     }
 }
 
+impl crate::DataPodDecode for GeometryKind {
+    fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, &payload)?;
+        Ok(header)
+    }
+}
+
+impl crate::DataPodValidate for GeometryKind {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), crate::WireError> {
+        if !payload.is_empty() {
+            return Err(crate::WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        if !header.is_valid() {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "unknown geometry kind tag {}",
+                header.0
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl crate::DataPodAccess for GeometryKind {
+    type View<'a> = crate::FixedView<Self>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, payload)?;
+        Ok(crate::FixedView { value: header })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        _payload: &'a [u8],
+    ) -> Self::View<'a> {
+        crate::FixedView { value: header }
+    }
+}
+
 /// Geometry record — a tag plus all four variant payloads inline.
 /// Only the variant indicated by `kind` is meaningful; the others are
 /// zeroed. This is the Pod equivalent of the C++/Rust `enum` variants.
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Default)]
 pub struct Geometry {
     pub kind: GeometryKind,
@@ -81,6 +142,72 @@ pub struct Geometry {
     pub sphere: SphereShape,
     pub cylinder: CylinderShape,
     pub mesh: MeshShape,
+}
+
+impl crate::DataPodValidate for Geometry {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), crate::WireError> {
+        if !payload.is_empty() {
+            return Err(crate::WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        if header._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "reserved _pad field must be zero",
+            ));
+        }
+        if !header.kind.is_valid() {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "unknown geometry kind tag {}",
+                header.kind.0
+            )));
+        }
+        if header.sphere.radius < 0.0 || !header.sphere.radius.is_finite() {
+            return Err(crate::wire::invalid_header::<Self>(
+                "sphere radius must be finite and non-negative",
+            ));
+        }
+        if header.cylinder.radius < 0.0
+            || !header.cylinder.radius.is_finite()
+            || header.cylinder.length < 0.0
+            || !header.cylinder.length.is_finite()
+        {
+            return Err(crate::wire::invalid_header::<Self>(
+                "cylinder radius/length must be finite and non-negative",
+            ));
+        }
+        if header.mesh._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "mesh reserved _pad field must be zero",
+            ));
+        }
+        if header.mesh.scale.iter().any(|value| !value.is_finite()) {
+            return Err(crate::wire::invalid_header::<Self>(
+                "mesh scale must contain finite values",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl crate::DataPodAccess for Geometry {
+    type View<'a> = crate::FixedView<Self>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, payload)?;
+        Ok(crate::FixedView { value: header })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        _payload: &'a [u8],
+    ) -> Self::View<'a> {
+        crate::FixedView { value: header }
+    }
 }
 
 impl Geometry {

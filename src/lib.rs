@@ -14,10 +14,8 @@
 //! - [`id`]     — identifier primitives (Uuid, Ip, MacAddr, DpString)
 //! - [`wire`]   — the [`DataPod`] trait + transport envelope
 
-// The Rust port intentionally preserves several C++ datapod naming and
-// module-shape conventions while downstream crates migrate. Keep clippy's
-// strict CI gate useful without forcing those public compatibility names to
-// churn in this milestone.
+// Keep clippy's strict CI gate focused on real safety/ABI problems instead of
+// style churn in public robotics data-model names.
 #![allow(
     clippy::derivable_impls,
     clippy::manual_div_ceil,
@@ -46,8 +44,18 @@ pub use bytemuck;
 
 pub mod wire;
 pub use wire::{
-    DataPod, DataPodDecode, Encoding, Envelope, WireError, WireMessage, decode_payload_vec,
-    from_wire_message, to_wire_message,
+    BytePayloadView, DataPod, DataPodAccess, DataPodDecode, DataPodValidate, Encoding, Envelope,
+    FixedView, LeWireHeader, WireError, WireFrame, WireMessage, WireParts, WireSegmentedFrame,
+    access_wire, access_wire_bytes, access_wire_bytes_unchecked, access_wire_bytes_v1,
+    access_wire_frame, access_wire_frame_unchecked, access_wire_frame_v1, access_wire_unchecked,
+    decode_payload_vec, from_wire_frame, from_wire_frame_v1, from_wire_message,
+    from_wire_message_v1, read_le_field, split_wire_frame, split_wire_parts, to_wire_message,
+    to_wire_message_v1, to_wire_message_v1_named, validate_registered_wire,
+    validate_registered_wire_frame, validate_registered_wire_frame_v1, validate_registered_wire_v1,
+    validate_wire, validate_wire_bytes, validate_wire_bytes_v1, validate_wire_frame,
+    validate_wire_frame_v1, wire_frame_to_message, wire_segmented_frame_to_message,
+    with_segmented_wire_frame, with_segmented_wire_frame_named, with_wire_frame,
+    with_wire_frame_named, with_wire_frame_slices, with_wire_segmented_frame_slices,
 };
 
 pub mod bind;
@@ -58,6 +66,7 @@ pub mod python;
 pub mod assoc;
 pub mod geom;
 pub mod id;
+pub mod layout;
 pub mod motion;
 pub mod raster;
 pub mod registry;
@@ -70,30 +79,39 @@ pub mod world;
 // ---------------------------------------------------------------------------
 
 pub use geom::shapes::{
-    Aabb, BoundingSphere, Box, Bs, Circle, GaussianBox, GaussianCircle, GaussianPoint,
+    Aabb, BoundingSphere, Box, Circle, GaussianBox, GaussianCircle, GaussianPoint,
     GaussianRectangle, Line, Obb, Rectangle, Size, Square, Triangle,
 };
 pub use geom::{
-    Linestring, LinestringHeader, MultiPoint, MultiPointHeader, Path, PathHeader, Point, PointKey,
-    PointMap, PointSet, Polygon, PolygonHeader, Ring, RingHeader, Segment, Trajectory,
-    TrajectoryHeader,
+    Linestring, LinestringHeader, LinestringView, MultiPoint, MultiPointHeader, MultiPointView,
+    Path, PathHeader, PathView, Point, PointKey, PointMap, PointSet, Polygon, PolygonHeader,
+    PolygonView, Ring, RingHeader, RingView, Segment, Trajectory, TrajectoryHeader, TrajectoryView,
 };
 
 pub use motion::{Acceleration, Euler, Pose, Quaternion, State, Transform, Velocity};
 
 pub use world::{Geo, Loc, Utm};
 
-pub use raster::{Grid, GridHeader, Layer, LayerHeader};
+pub use raster::{Grid, GridHeader, GridView, Layer, LayerHeader, LayerView};
 
 pub use seq::{
-    BitVec, Bytes, Deque, DpStr, Fifo, ForwardList, Heap, HeapOrder, IndexedHeap, List, Matrix,
-    MatrixHeader, MaxHeap, MinHeap, PagedVecvec, PriorityQueue, Queue, Stack, Tensor, Vector,
-    Vecvec,
+    BitVec, BitVecHeader, BitVecView, Bytes, BytesHeader, BytesView, Deque, DequeHeader, DequeView,
+    DpStr, DpStrHeader, DpStrView, Fifo, ForwardList, ForwardListHeader, ForwardListView, Heap,
+    HeapHeader, HeapOrder, HeapView, IndexedHeap, IndexedHeapHeader, IndexedHeapView, List,
+    ListHeader, ListView, Matrix, MatrixHeader, MatrixView, MaxHeap, MinHeap, PagedVecvec,
+    PagedVecvecHeader, PagedVecvecView, PriorityQueue, Queue, QueueHeader, QueueView, Stack,
+    StackHeader, StackView, Tensor, TensorHeader, TensorView, Vector, VectorHeader, VectorView,
+    Vecvec, VecvecHeader, VecvecView,
 };
 
-pub use assoc::{Map, MapEntry, OMap, OSet, Set, SetEntry};
+pub use assoc::{Map, MapEntry, MapHeader, MapView, OMap, OSet, Set, SetEntry, SetHeader, SetView};
 
-pub use id::{DpString, IP, Ip, MacAddr, STRING_NONE, UUID, Uuid};
+pub use id::{DpString, DpStringHeader, DpStringView, IP, Ip, MacAddr, STRING_NONE, UUID, Uuid};
+
+pub use layout::{
+    PayloadLayoutBuilder, PayloadSection, SectionValidation, section_bytes, validate_sections,
+    validate_sections_with_policy,
+};
 
 pub use robot::{
     Accel, Actuator, BoxShape, Collision, CylinderShape, Geometry, GeometryKind, INVALID_ID,
