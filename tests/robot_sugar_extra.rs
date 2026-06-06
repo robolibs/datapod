@@ -4,8 +4,8 @@
 
 use datapod::{
     Actuator, Collision, Geometry, INVALID_ID, IP, Identity, Inertial, Joint, JointCalibration,
-    JointDynamics, JointLimits, JointMimic, JointSafetyController, JointType, Link, MacAddr,
-    Material, Model, Pose, Robot, Size, Transmission, TransmissionJoint, UUID, Visual,
+    JointDynamics, JointLimits, JointMimic, JointSafetyController, JointType, KV, Link, MacAddr,
+    Material, Model, Pose, Robot, Size, Transmission, TransmissionJoint, UUID, Visual, WireError,
 };
 
 #[test]
@@ -84,6 +84,34 @@ fn model_validity_queries_handle_unknown_ids() {
     let model = Model::default();
     assert!(!model.is_valid_link(0));
     assert!(!model.is_valid_joint(0));
+
+    let populated = Model {
+        link_count: 2,
+        joint_count: 1,
+        ..Model::default()
+    };
+    assert_eq!(populated.try_num_links().unwrap(), 2);
+    assert_eq!(populated.try_num_joints().unwrap(), 1);
+    assert_eq!(populated.num_links(), 2);
+    assert_eq!(populated.num_joints(), 1);
+
+    const MODEL_RS: &str = include_str!("../src/robot/model.rs");
+    for needle in [
+        "pub fn try_num_links(&self) -> Result<usize, WireError>",
+        "pub fn try_num_joints(&self) -> Result<usize, WireError>",
+        "usize::try_from(value)",
+    ] {
+        assert!(
+            MODEL_RS.contains(needle),
+            "Model count helpers should keep checked conversion path {needle:?}"
+        );
+    }
+    for forbidden in ["self.link_count as usize", "self.joint_count as usize"] {
+        assert!(
+            !MODEL_RS.contains(forbidden),
+            "Model count helpers should not retain unchecked count cast {forbidden:?}"
+        );
+    }
 }
 
 #[test]
@@ -130,4 +158,38 @@ fn sugar_parsers_reject_bad_inputs() {
     assert!(datapod::Uuid::from_string("not-a-uuid").is_err());
     assert!(datapod::MacAddr::from_string("00:11:22:33:44").is_err());
     assert!(datapod::Ip::from_string("999.1.1.1").is_err());
+}
+
+#[test]
+fn kv_string_helpers_have_fallible_utf8_accessors() {
+    let mut kv = KV::default();
+    kv.set_key("robot.name");
+    kv.set_value("arm");
+
+    assert_eq!(kv.try_key_str().unwrap(), "robot.name");
+    assert_eq!(kv.try_value_str().unwrap(), "arm");
+    assert_eq!(kv.key_str(), "robot.name");
+    assert_eq!(kv.value_str(), "arm");
+
+    kv.key = [0; 32];
+    kv.key[0] = 0xff;
+    assert!(matches!(
+        kv.try_key_str(),
+        Err(WireError::InvalidHeader { .. })
+    ));
+    assert_eq!(kv.key_str(), "");
+
+    kv.value = [0; 64];
+    kv.value[0] = 0xfe;
+    assert!(matches!(
+        kv.try_value_str(),
+        Err(WireError::InvalidHeader { .. })
+    ));
+    assert_eq!(kv.value_str(), "");
+
+    kv.key = [0; 32];
+    kv.key[0] = b'a';
+    kv.key[1] = 0;
+    kv.key[2] = 0xff;
+    assert_eq!(kv.try_key_str().unwrap(), "a");
 }

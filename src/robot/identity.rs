@@ -1,7 +1,7 @@
 use crate::id::{Ip, STRING_NONE, Uuid};
 
 /// Per-device identity record. The name is shipped separately as a
-/// [`DpString`](crate::spatial::sugar::DpString); `name_id` references it
+/// [`DpString`](crate::DpString); `name_id` references it
 /// via an application-side table. `STRING_NONE` marks "no name".
 #[datapod::datapod]
 #[derive(Eq, Default)]

@@ -1,4 +1,5 @@
 use super::INVALID_ID;
+use crate::WireError;
 
 /// Aggregate header for a robot model. The actual `Link` / `Joint` /
 /// `Transmission` records are shipped as separate messages and tracked
@@ -33,11 +34,19 @@ impl Model {
     }
 
     pub fn num_links(&self) -> usize {
-        self.link_count as usize
+        self.try_num_links().unwrap_or(0)
+    }
+
+    pub fn try_num_links(&self) -> Result<usize, WireError> {
+        u32_to_usize::<Self>(self.link_count, "link_count")
     }
 
     pub fn num_joints(&self) -> usize {
-        self.joint_count as usize
+        self.try_num_joints().unwrap_or(0)
+    }
+
+    pub fn try_num_joints(&self) -> Result<usize, WireError> {
+        u32_to_usize::<Self>(self.joint_count, "joint_count")
     }
 
     pub fn is_valid_link(&self, id: u32) -> bool {
@@ -51,4 +60,9 @@ impl Model {
     pub fn is_root(&self, link_id: u32) -> bool {
         link_id == self.root_link_id
     }
+}
+
+fn u32_to_usize<T: 'static>(value: u32, field: &'static str) -> Result<usize, WireError> {
+    usize::try_from(value)
+        .map_err(|_| crate::wire::invalid_header::<T>(format!("{field} exceeds usize")))
 }

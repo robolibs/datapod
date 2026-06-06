@@ -1,9 +1,6 @@
 use super::Aabb;
 use crate::geom::Point;
 
-/// Short alias — kept for back-compat with consumers that imported `Bs`.
-pub type Bs = BoundingSphere;
-
 #[datapod::datapod]
 #[derive(Default)]
 pub struct BoundingSphere {

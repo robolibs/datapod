@@ -1,4 +1,4 @@
-use datapod::{Euler, Geo, Linestring, Point, Polygon, Quaternion, Size};
+use datapod::{Euler, Geo, Linestring, Point, Polygon, Quaternion, Size, Utm, WireError};
 
 fn approx_eq(left: f64, right: f64, epsilon: f64) {
     assert!((left - right).abs() < epsilon, "{left} != {right}");
@@ -35,6 +35,46 @@ fn geo_is_set_and_validation_cover_edges() {
 fn geo_distance_to_self_is_zero() {
     let geo = Geo::new(52.0, 5.0, 1.0);
     approx_eq(geo.distance_to(geo), 0.0, 1e-9);
+}
+
+#[test]
+fn utm_band_helpers_validate_ascii_grid_zone_letters() {
+    let mut utm = Utm::default();
+    assert_eq!(utm.band_char(), 'N');
+    assert!(utm.is_valid_band());
+    assert!(utm.is_northern());
+
+    utm.try_set_band_char('C').unwrap();
+    assert_eq!(utm.band_char(), 'C');
+    assert!(utm.is_valid_band());
+    assert!(!utm.is_northern());
+
+    assert!(matches!(
+        utm.try_set_band_char('I'),
+        Err(WireError::InvalidHeader { .. })
+    ));
+    assert_eq!(
+        utm.band_char(),
+        'C',
+        "failed fallible UTM band update must not mutate the band"
+    );
+
+    utm.set_band_char('I');
+    assert_eq!(
+        utm.band_char(),
+        'I',
+        "legacy infallible UTM setter still stores the raw char"
+    );
+    assert!(!utm.is_valid_band());
+    assert!(!utm.is_northern());
+
+    let invalid_scalar = Utm {
+        band: 0x11_0000,
+        ..Utm::default()
+    };
+    assert_eq!(invalid_scalar.band_char(), '?');
+    assert!(!invalid_scalar.is_valid_band());
+    assert!(!invalid_scalar.is_northern());
 }
 
 #[test]

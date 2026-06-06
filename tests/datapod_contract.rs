@@ -11,7 +11,7 @@
 
 use bytemuck::Pod;
 use datapod::{
-    Aabb, Accel, Acceleration, Actuator, BoundingSphere, BoxShape, Bs, Circle, Collision,
+    Aabb, Accel, Acceleration, Actuator, BoundingSphere, BoxShape, Circle, Collision,
     CylinderShape, DataPod, Encoding, Envelope, Euler, GaussianBox, GaussianCircle, GaussianPoint,
     GaussianRectangle, Geo, Geometry, GeometryKind, Grid, Identity, Inertial, Ip, Joint,
     JointCalibration, JointDynamics, JointLimits, JointMimic, JointSafetyController, JointType, KV,
@@ -32,7 +32,6 @@ fn fixed_pod_types_are_their_own_header() {
     assert_fixed_pod::<Aabb>();
     assert_fixed_pod::<Acceleration>();
     assert_fixed_pod::<BoundingSphere>();
-    assert_fixed_pod::<Bs>();
     assert_fixed_pod::<Euler>();
     assert_fixed_pod::<Geo>();
     assert_fixed_pod::<Loc>();

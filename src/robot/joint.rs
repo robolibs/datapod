@@ -8,20 +8,21 @@ pub const INVALID_ID: u32 = u32::MAX;
 /// Max number of `(key, value)` URDF property pairs per joint.
 pub const JOINT_PROP_CAP: usize = 8;
 
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JointType {
-    Fixed = 0,
-    Revolute = 1,
-    Continuous = 2,
-    Prismatic = 3,
-    Floating = 4,
-    Planar = 5,
-}
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct JointType(pub u32);
 
-impl Default for JointType {
-    fn default() -> Self {
-        Self::Fixed
+#[allow(non_upper_case_globals)]
+impl JointType {
+    pub const Fixed: Self = Self(0);
+    pub const Revolute: Self = Self(1);
+    pub const Continuous: Self = Self(2);
+    pub const Prismatic: Self = Self(3);
+    pub const Floating: Self = Self(4);
+    pub const Planar: Self = Self(5);
+
+    pub fn is_valid(self) -> bool {
+        self.0 <= Self::Planar.0
     }
 }
 
@@ -31,6 +32,18 @@ impl Default for JointType {
 unsafe impl bytemuck::Zeroable for JointType {}
 unsafe impl bytemuck::Pod for JointType {}
 unsafe impl crate::ZeroCopySend for JointType {}
+impl crate::LeWireHeader for JointType {
+    const LE_WIRE_SIZE: usize = <u32 as crate::LeWireHeader>::LE_WIRE_SIZE;
+
+    fn write_le(&self, out: &mut Vec<u8>) {
+        <u32 as crate::LeWireHeader>::write_le(&self.0, out);
+    }
+
+    fn read_le(bytes: &[u8]) -> Result<Self, crate::WireError> {
+        Ok(Self(<u32 as crate::LeWireHeader>::read_le(bytes)?))
+    }
+}
+
 impl crate::DataPod for JointType {
     type Header = JointType;
     type Payload = ();
@@ -39,6 +52,50 @@ impl crate::DataPod for JointType {
     }
     fn payload_bytes(&self) -> &[u8] {
         &[]
+    }
+}
+
+impl crate::DataPodDecode for JointType {
+    fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, &payload)?;
+        Ok(header)
+    }
+}
+
+impl crate::DataPodValidate for JointType {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), crate::WireError> {
+        if !payload.is_empty() {
+            return Err(crate::WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        if !header.is_valid() {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "unknown joint type tag {}",
+                header.0
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl crate::DataPodAccess for JointType {
+    type View<'a> = crate::FixedView<Self>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, payload)?;
+        Ok(crate::FixedView { value: header })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        _payload: &'a [u8],
+    ) -> Self::View<'a> {
+        crate::FixedView { value: header }
     }
 }
 
@@ -99,8 +156,9 @@ pub struct JointCalibration {
 }
 
 #[datapod::datapod]
+#[dp(manual_access)]
 pub struct Joint {
-    /// Name as a [`DpString`](crate::spatial::sugar::DpString) ID.
+    /// Name as a [`DpString`](crate::DpString) ID.
     pub name_id: u32,
     /// Joint type tag.
     pub joint_type: JointType,
@@ -123,6 +181,99 @@ pub struct Joint {
     pub safety_controller: JointSafetyController,
     pub calibration: JointCalibration,
     pub props: [KV; JOINT_PROP_CAP],
+}
+
+impl crate::DataPodValidate for Joint {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), crate::WireError> {
+        if !payload.is_empty() {
+            return Err(crate::WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<Self>(),
+                message: format!("fixed datapod payload must be empty, got {}", payload.len()),
+            });
+        }
+        if !header.joint_type.is_valid() {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "unknown joint type tag {}",
+                header.joint_type.0
+            )));
+        }
+        for (name, value) in [
+            ("limits_present", header.limits_present),
+            ("dynamics_present", header.dynamics_present),
+            ("mimic_present", header.mimic_present),
+            ("safety_present", header.safety_present),
+            ("calibration_present", header.calibration_present),
+        ] {
+            if value > 1 {
+                return Err(crate::wire::invalid_header::<Self>(format!(
+                    "{name} must be 0 or 1"
+                )));
+            }
+        }
+        if header._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "reserved _pad field must be zero",
+            ));
+        }
+        if header.axis.iter().any(|value| !value.is_finite()) {
+            return Err(crate::wire::invalid_header::<Self>(
+                "axis must contain finite values",
+            ));
+        }
+        if header.mimic._pad != 0 {
+            return Err(crate::wire::invalid_header::<Self>(
+                "mimic reserved _pad field must be zero",
+            ));
+        }
+        for (name, value) in [
+            ("limits.lower", header.limits.lower),
+            ("limits.upper", header.limits.upper),
+            ("limits.effort", header.limits.effort),
+            ("limits.velocity", header.limits.velocity),
+            ("dynamics.damping", header.dynamics.damping),
+            ("dynamics.friction", header.dynamics.friction),
+            ("mimic.multiplier", header.mimic.multiplier),
+            ("mimic.offset", header.mimic.offset),
+            (
+                "safety.soft_lower_limit",
+                header.safety_controller.soft_lower_limit,
+            ),
+            (
+                "safety.soft_upper_limit",
+                header.safety_controller.soft_upper_limit,
+            ),
+            ("safety.k_position", header.safety_controller.k_position),
+            ("safety.k_velocity", header.safety_controller.k_velocity),
+            ("calibration.rising", header.calibration.rising),
+            ("calibration.falling", header.calibration.falling),
+        ] {
+            if !value.is_finite() {
+                return Err(crate::wire::invalid_header::<Self>(format!(
+                    "{name} must be finite"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl crate::DataPodAccess for Joint {
+    type View<'a> = crate::FixedView<Self>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, crate::WireError> {
+        <Self as crate::DataPodValidate>::validate_wire_parts(&header, payload)?;
+        Ok(crate::FixedView { value: header })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        _payload: &'a [u8],
+    ) -> Self::View<'a> {
+        crate::FixedView { value: header }
+    }
 }
 
 impl Default for Joint {

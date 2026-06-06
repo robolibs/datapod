@@ -13,11 +13,11 @@ mod trajectory;
 
 pub mod shapes;
 
-pub use linestring::{Linestring, LinestringHeader};
-pub use multi_point::{MultiPoint, MultiPointHeader};
-pub use path::{Path, PathHeader};
+pub use linestring::{Linestring, LinestringHeader, LinestringView};
+pub use multi_point::{MultiPoint, MultiPointHeader, MultiPointView};
+pub use path::{Path, PathHeader, PathView};
 pub use point::{Point, PointKey, PointMap, PointSet};
-pub use polygon::{Polygon, PolygonHeader};
-pub use ring::{Ring, RingHeader};
+pub use polygon::{Polygon, PolygonHeader, PolygonView};
+pub use ring::{Ring, RingHeader, RingView};
 pub use segment::Segment;
-pub use trajectory::{Trajectory, TrajectoryHeader};
+pub use trajectory::{Trajectory, TrajectoryHeader, TrajectoryView};

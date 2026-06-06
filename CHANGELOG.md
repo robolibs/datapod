@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0] - 2026-06-06
+
+### <!-- 0 -->⛰️  Features
+
+- Introduce Archive/View/Owned zero-copy API
+- Add `DataPodAccess` trait for zero-copy views
+
 ## [0.3.1] - 2026-06-02
 
 ### <!-- 0 -->⛰️  Features

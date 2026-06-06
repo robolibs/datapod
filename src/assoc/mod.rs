@@ -13,5 +13,5 @@
 mod map;
 mod set;
 
-pub use map::{Map, MapEntry, OMap};
-pub use set::{OSet, Set, SetEntry};
+pub use map::{Map, MapEntry, MapHeader, MapView, OMap};
+pub use set::{OSet, Set, SetEntry, SetHeader, SetView};
