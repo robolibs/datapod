@@ -26,7 +26,7 @@ impl MultiPoint {
         let first = *self.points.first()?;
         let mut min = first;
         let mut max = first;
-        for p in &self.points[1..] {
+        for p in self.points.iter().skip(1) {
             min.x = min.x.min(p.x);
             min.y = min.y.min(p.y);
             min.z = min.z.min(p.z);

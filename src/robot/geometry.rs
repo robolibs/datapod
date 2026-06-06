@@ -21,7 +21,7 @@ pub struct CylinderShape {
 }
 
 /// Mesh shape. The URI is shipped separately as a
-/// [`DpString`](crate::spatial::sugar::DpString); `uri_id` references it.
+/// [`DpString`](crate::DpString); `uri_id` references it.
 #[datapod::datapod]
 pub struct MeshShape {
     pub uri_id: u32,

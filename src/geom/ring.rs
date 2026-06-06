@@ -30,11 +30,11 @@ impl Ring {
         if self.points.len() < 3 {
             return 0.0;
         }
-        let mut sum = 0.0;
-        for i in 0..self.points.len() - 1 {
-            sum +=
-                self.points[i].x * self.points[i + 1].y - self.points[i + 1].x * self.points[i].y;
-        }
+        let sum: f64 = self
+            .points
+            .windows(2)
+            .map(|pair| pair[0].x * pair[1].y - pair[1].x * pair[0].y)
+            .sum();
         sum.abs() * 0.5
     }
 

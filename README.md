@@ -5,16 +5,16 @@ containers.
 
 The crate exposes:
 
-- Rust `DataPod` implementations and borrowed validation/access APIs.
-- A C ABI with owned handles, generic wire helpers, borrowed `DatapodWireFrame`,
-  and typed frame views.
+- Rust `DataPod` implementations and borrowed Archive/View/Owned APIs.
+- A C ABI with owned handles, generic wire helpers, borrowed
+  `DatapodArchiveFrame`, and typed archive views.
 - Python bindings with generic wire helpers and declarative schema decorators,
   including fixed-width annotation markers such as `datapod.u16`, plus
-  `WireFrame`/`memoryview` payload access.
+  `ArchiveFrame`/`memoryview` payload access.
 
 ## Zero-copy model
 
-Use `WireFrame` for the fast path:
+Use Archive/View for the fast path:
 
 ```rust
 #[datapod::datapod(name = "robolibs.camera_frame.v1")]
@@ -33,32 +33,48 @@ let camera = CameraFrame {
     data: frame_bytes,
 };
 
-camera.with_wire_frame(|frame| {
-    let _view = CameraFrame::view_from_wire_frame(frame)?;
-    publisher.publish_frame(frame)
+camera.archive(|archive| {
+    let _view = CameraFrame::view_archive(archive)?;
+    publisher.publish_archive(archive)
 })?;
+
+let msg = camera.to_wire_message(); // owned/copying convenience path
 ```
 
 For custom Rust types, `#[datapod(name = "...")]` sets the same canonical
 schema name model used by C/Python runtime schemas. The macro emits
 `CANONICAL_NAME`, `TYPE_HASH`, `register_schema`, `to_wire_message`,
-`with_wire_frame`, `view_from_wire_frame`, and `from_wire_frame` helpers for
-the type.
+`archive`, `segmented_archive`, `view_archive`, and `from_archive` helpers for
+the type. The older `with_wire_frame`, `view_from_wire_frame`, and
+`from_wire_frame` names remain as compatibility aliases.
 
-`WireFrame` borrows `header` and `payload` separately and does not allocate a
-joined payload buffer. `WireMessage { bytes: Vec<u8> }` remains the owned
-convenience path for files, tests, and transports that require contiguous bytes;
-it is not the performance path.
+`ArchiveFrame`/`WireFrame` borrows `header` and `payload` separately and does
+not allocate a joined payload buffer. `OwnedWireMessage`/`WireMessage { bytes:
+Vec<u8> }` remains the owned convenience path for files, tests, and transports
+that require contiguous bytes; it is not the performance path.
 
-C uses `DatapodWireFrame` plus `datapod_*_view_from_frame(...)`. Python uses
-`obj.to_wire_frame()`, `datapod.view_wire_frame(...)`, and typed
-`view_from_wire_frame(...)` helpers that expose payloads as `memoryview`.
+C uses `DatapodArchiveFrame`, generic `datapod_archive_split(...)` /
+`datapod_archive_to_message(...)`, and typed archive helpers for opaque owned
+handles such as `datapod_matrix_archive(...)`,
+`datapod_matrix_view_from_archive(...)`, and `datapod_matrix_from_archive(...)`.
+Python uses `obj.archive()`, `datapod.view_archive(...)`, and typed
+`view_archive(...)` helpers that expose payloads as `memoryview`.
 
 ## Wire format policy
 
 See [`docs/WIRE_FORMAT.md`](docs/WIRE_FORMAT.md) for the current
 `datapod-wire-v1/le` format, validation rules, and C/Python borrowed-view
 lifetime rules.
+
+## Fallible owned container APIs
+
+Rust byte-backed containers keep the historical ergonomic methods (`push`,
+`pop`, `get`, `insert`, etc.) as panic-on-invalid convenience wrappers, but the
+production path is the matching `try_*` API. Examples include
+`try_push`, `try_pop`, `try_get`, `try_set`, `try_insert`, `try_push_back`,
+`try_push_front`, and `try_from_bytes`. These fallible methods validate the
+current owned value before mutation, use checked wire-size arithmetic, and
+preserve no-mutate-on-error behavior for malformed owned buffers.
 
 ## Build and test
 

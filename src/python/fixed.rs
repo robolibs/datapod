@@ -1,8 +1,8 @@
-#![allow(non_snake_case, clippy::wrong_self_convention)]
+#![allow(deprecated, non_snake_case, clippy::wrong_self_convention)]
 
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyMemoryError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
+use pyo3::types::{PyAny, PyModule};
 
 use crate::wire::{Encoding, Envelope};
 use crate::{
@@ -16,14 +16,36 @@ use crate::{
 };
 
 fn fixed_header_bytes<T: crate::DataPod>(value: &T) -> PyResult<Vec<u8>> {
-    let mut out = vec![0_u8; crate::bind::header_size::<T>()];
+    let mut out = zeroed_bytes_for_python("fixed header", crate::bind::header_size::<T>())?;
     crate::bind::write_header(value, &mut out).map_err(PyValueError::new_err)?;
+    Ok(out)
+}
+
+fn zeroed_bytes_for_python(label: &str, len: usize) -> PyResult<Vec<u8>> {
+    let mut out = Vec::new();
+    out.try_reserve_exact(len).map_err(|error| {
+        PyMemoryError::new_err(format!("failed to reserve {len} {label} bytes: {error}"))
+    })?;
+    out.resize(len, 0);
+    Ok(out)
+}
+
+fn pod_bytes_for_python<T: bytemuck::Pod>(label: &str, value: &T) -> PyResult<Vec<u8>> {
+    let bytes = bytemuck::bytes_of(value);
+    let mut out = Vec::new();
+    out.try_reserve_exact(bytes.len()).map_err(|error| {
+        PyMemoryError::new_err(format!(
+            "failed to reserve {} {label} bytes: {error}",
+            bytes.len()
+        ))
+    })?;
+    out.extend_from_slice(bytes);
     Ok(out)
 }
 
 fn fixed_wire_message_v1<T>(value: &T) -> PyResult<(u64, Vec<u8>)>
 where
-    T: crate::DataPod,
+    T: crate::DataPod + crate::DataPodValidate,
     T::Header: crate::LeWireHeader,
 {
     let message = crate::to_wire_message_v1(value)
@@ -31,9 +53,63 @@ where
     Ok((message.type_hash, message.bytes))
 }
 
+fn fixed_wire_frame_object<T>(py: Python<'_>, owner: PyObject, value: &T) -> PyResult<PyObject>
+where
+    T: crate::DataPod + crate::DataPodValidate,
+{
+    T::validate_wire_parts(&value.header(), &[])
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
+    let module = PyModule::import(py, "datapod")?;
+    let frame_cls = module.getattr("ArchiveFrame")?;
+    let header = fixed_header_bytes(value)?;
+    let frame = frame_cls.call1((
+        crate::bind::type_hash::<T>(),
+        header,
+        Vec::<u8>::new(),
+        owner,
+    ))?;
+    Ok(frame.unbind())
+}
+
+fn fixed_frame_header_payload<'py>(
+    frame: &Bound<'py, PyAny>,
+    name: &str,
+    expected_hash: u64,
+) -> PyResult<(Vec<u8>, Vec<u8>)> {
+    let kind: u64 = frame
+        .getattr("type_hash")
+        .map_err(|_| PyValueError::new_err(format!("{name} frame must expose type_hash")))?
+        .extract()?;
+    if kind != expected_hash {
+        return Err(PyValueError::new_err(format!(
+            "wrong {name} archive type hash: got {kind}, expected {expected_hash}"
+        )));
+    }
+    let header: Vec<u8> = frame
+        .getattr("header")
+        .map_err(|_| PyValueError::new_err(format!("{name} frame must expose header")))?
+        .call_method0("tobytes")
+        .map_err(|_| PyValueError::new_err(format!("{name} frame header must support tobytes()")))?
+        .extract()
+        .map_err(|_| {
+            PyValueError::new_err(format!("{name} frame header tobytes() must return bytes"))
+        })?;
+    let payload: Vec<u8> = frame
+        .getattr("payload")
+        .map_err(|_| PyValueError::new_err(format!("{name} frame must expose payload")))?
+        .call_method0("tobytes")
+        .map_err(|_| PyValueError::new_err(format!("{name} frame payload must support tobytes()")))?
+        .extract()
+        .map_err(|_| {
+            PyValueError::new_err(format!("{name} frame payload tobytes() must return bytes"))
+        })?;
+    reject_payload(name, &payload)?;
+    Ok((header, payload))
+}
+
 fn decode_fixed_message<T>(kind: u64, data: Vec<u8>) -> PyResult<T>
 where
-    T: crate::DataPod + crate::DataPodDecode,
+    T: crate::DataPod + crate::DataPodDecode + crate::DataPodValidate,
     T::Header: crate::LeWireHeader,
 {
     let message = crate::WireMessage {
@@ -42,6 +118,22 @@ where
     };
     crate::from_wire_message::<T>(&message)
         .map_err(|error| PyValueError::new_err(error.to_string()))
+}
+
+fn decode_fixed_parts<T>(header: Vec<u8>, payload: Vec<u8>) -> PyResult<T>
+where
+    T: crate::DataPod + crate::DataPodDecode + crate::DataPodValidate,
+    T::Header: crate::LeWireHeader,
+{
+    let mut bytes = header;
+    bytes.try_reserve_exact(payload.len()).map_err(|error| {
+        PyMemoryError::new_err(format!(
+            "failed to reserve {} decoded payload bytes: {error}",
+            payload.len()
+        ))
+    })?;
+    bytes.extend_from_slice(&payload);
+    decode_fixed_message::<T>(crate::bind::emitted_type_hash::<T>(), bytes)
 }
 
 fn reject_payload(type_name: &str, payload: &[u8]) -> PyResult<()> {
@@ -109,10 +201,7 @@ macro_rules! py_fixed {
 
             #[staticmethod]
             fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
-                reject_payload($name, &payload)?;
-                crate::bind::read_fixed_header::<$rust>(&header)
-                    .map(Self::from)
-                    .map_err(PyValueError::new_err)
+                decode_fixed_parts::<$rust>(header, payload).map(Self::from)
             }
 
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
@@ -123,14 +212,84 @@ macro_rules! py_fixed {
                 fixed_wire_message_v1(&<$rust>::from(*self))
             }
 
+            fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                fixed_wire_frame_object(py, owner, &<$rust>::from(*slf))
+            }
+
+            fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame(slf, py)
+            }
+
+            fn archive(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame(slf, py)
+            }
+
+            fn archive_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame_v1(slf, py)
+            }
+
             #[staticmethod]
             fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
                 decode_fixed_message::<$rust>(kind, data).map(Self::from)
             }
 
+            #[staticmethod]
+            fn from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                let (header, payload) =
+                    fixed_frame_header_payload(frame, $name, crate::bind::type_hash::<$rust>())?;
+                Self::from_wire(header, payload)
+            }
+
+            #[staticmethod]
+            fn from_archive(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn from_archive_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_archive(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_archive_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
             fn __repr__(&self) -> String {
-                let fields = vec![$(format!("{}={:?}", stringify!($field), self.$field)),+];
-                format!("{}({})", $name, fields.join(", "))
+                use std::fmt::Write as _;
+
+                let mut out = String::new();
+                out.push_str($name);
+                out.push('(');
+                $(
+                    if !out.ends_with('(') {
+                        out.push_str(", ");
+                    }
+                    let _ = write!(&mut out, "{}={:?}", stringify!($field), self.$field);
+                )+
+                out.push(')');
+                out
             }
         }
     };
@@ -173,10 +332,7 @@ macro_rules! py_default_fixed {
 
             #[staticmethod]
             fn from_wire(header: Vec<u8>, payload: Vec<u8>) -> PyResult<Self> {
-                reject_payload($name, &payload)?;
-                crate::bind::read_fixed_header::<$rust>(&header)
-                    .map(|inner| Self { inner })
-                    .map_err(PyValueError::new_err)
+                decode_fixed_parts::<$rust>(header, payload).map(|inner| Self { inner })
             }
 
             fn to_wire_message(&self) -> PyResult<(u64, Vec<u8>)> {
@@ -187,9 +343,68 @@ macro_rules! py_default_fixed {
                 fixed_wire_message_v1(&self.inner)
             }
 
+            fn to_wire_frame(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                let owner = (&slf).into_py(py);
+                fixed_wire_frame_object(py, owner, &slf.inner)
+            }
+
+            fn to_wire_frame_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame(slf, py)
+            }
+
+            fn archive(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame(slf, py)
+            }
+
+            fn archive_v1(slf: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyObject> {
+                Self::to_wire_frame_v1(slf, py)
+            }
+
             #[staticmethod]
             fn from_wire_message(kind: u64, data: Vec<u8>) -> PyResult<Self> {
                 decode_fixed_message::<$rust>(kind, data).map(|inner| Self { inner })
+            }
+
+            #[staticmethod]
+            fn from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                let (header, payload) =
+                    fixed_frame_header_payload(frame, $name, crate::bind::type_hash::<$rust>())?;
+                Self::from_wire(header, payload)
+            }
+
+            #[staticmethod]
+            fn from_archive(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn from_archive_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_from_wire_frame(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_from_wire_frame_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_archive(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
+            }
+
+            #[staticmethod]
+            fn view_archive_v1(frame: &Bound<'_, PyAny>) -> PyResult<Self> {
+                Self::from_wire_frame_v1(frame)
             }
 
             fn __repr__(&self) -> String {
@@ -262,9 +477,9 @@ impl PyMapEntry {
         std::mem::size_of::<MapEntry>()
     }
 
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self) -> PyResult<Vec<u8>> {
         let value = MapEntry::from(*self);
-        bytemuck::bytes_of(&value).to_vec()
+        pod_bytes_for_python("MapEntry", &value)
     }
 
     #[staticmethod]
@@ -276,7 +491,10 @@ impl PyMapEntry {
                 data.len()
             )));
         }
-        Ok(bytemuck::pod_read_unaligned::<MapEntry>(&data[..size]).into())
+        let bytes = data
+            .get(..size)
+            .ok_or_else(|| PyValueError::new_err("MapEntry byte range is out of bounds"))?;
+        Ok(bytemuck::pod_read_unaligned::<MapEntry>(bytes).into())
     }
 
     fn __repr__(&self) -> String {
@@ -337,9 +555,9 @@ impl PySetEntry {
         std::mem::size_of::<SetEntry>()
     }
 
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self) -> PyResult<Vec<u8>> {
         let value = SetEntry::from(*self);
-        bytemuck::bytes_of(&value).to_vec()
+        pod_bytes_for_python("SetEntry", &value)
     }
 
     #[staticmethod]
@@ -351,7 +569,10 @@ impl PySetEntry {
                 data.len()
             )));
         }
-        Ok(bytemuck::pod_read_unaligned::<SetEntry>(&data[..size]).into())
+        let bytes = data
+            .get(..size)
+            .ok_or_else(|| PyValueError::new_err("SetEntry byte range is out of bounds"))?;
+        Ok(bytemuck::pod_read_unaligned::<SetEntry>(bytes).into())
     }
 
     fn __repr__(&self) -> String {

@@ -23,6 +23,10 @@ pub struct TypeInfo {
     pub validator: ValidatorKind,
     pub emitted_hash: u64,
     pub emitted_hash_kind: HashKind,
+    pub has_archive: bool,
+    pub has_view: bool,
+    pub has_owned_decode: bool,
+    pub archive_shape: ArchiveShape,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +78,25 @@ pub enum ValidatorKind {
     RuntimeSchema,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArchiveShape {
+    Fixed,
+    SinglePayload,
+    SegmentedPayload,
+    RuntimeSchema,
+}
+
+impl ArchiveShape {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Fixed => "fixed",
+            Self::SinglePayload => "single-payload",
+            Self::SegmentedPayload => "segmented-payload",
+            Self::RuntimeSchema => "runtime-schema",
+        }
+    }
+}
+
 pub const CURRENT_WIRE_FORMAT: WireFormat = WireFormat::DatapodWireV1Little;
 pub const BUILTIN_EMITTED_HASH_KIND: HashKind = HashKind::CanonicalName;
 pub const BUILTIN_HASH_POLICY: &str =
@@ -82,7 +105,19 @@ pub const BUILTIN_HASH_POLICY: &str =
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegistryError {
     EmptyCanonicalName,
+    InvalidCanonicalName {
+        canonical_name: String,
+        reason: &'static str,
+    },
     InvalidTypeHash,
+    HeaderSizeTooLarge {
+        header_size: usize,
+    },
+    TypeHashCanonicalNameMismatch {
+        canonical_name: String,
+        expected_hash: u64,
+        provided_hash: u64,
+    },
     HashConflict {
         type_hash: u64,
         existing_name: String,
@@ -98,13 +133,33 @@ pub enum RegistryError {
         existing: Box<TypeInfo>,
         new: Box<TypeInfo>,
     },
+    RegistryLockPoisoned,
 }
 
 impl fmt::Display for RegistryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyCanonicalName => write!(f, "datapod canonical name is empty"),
+            Self::InvalidCanonicalName {
+                canonical_name,
+                reason,
+            } => write!(
+                f,
+                "datapod canonical name {canonical_name:?} is invalid: {reason}"
+            ),
             Self::InvalidTypeHash => write!(f, "datapod type hash must be non-zero"),
+            Self::HeaderSizeTooLarge { header_size } => write!(
+                f,
+                "datapod header size {header_size} exceeds maximum supported slice length"
+            ),
+            Self::TypeHashCanonicalNameMismatch {
+                canonical_name,
+                expected_hash,
+                provided_hash,
+            } => write!(
+                f,
+                "datapod canonical name {canonical_name} hashes to {expected_hash}, not provided hash {provided_hash}"
+            ),
             Self::HashConflict {
                 type_hash,
                 existing_name,
@@ -129,6 +184,7 @@ impl fmt::Display for RegistryError {
                 f,
                 "datapod type hash {type_hash} metadata conflict: existing={existing:?}, new={new:?}"
             ),
+            Self::RegistryLockPoisoned => write!(f, "datapod custom registry lock is poisoned"),
         }
     }
 }
@@ -243,33 +299,51 @@ pub fn type_count() -> usize {
 pub fn all_type_infos() -> Vec<TypeInfo> {
     macro_rules! build {
         ($(($canonical:literal, $ty:ty)),* $(,)?) => {
-            vec![$(type_info::<$ty>($canonical)),*]
+            {
+                let mut infos = Vec::new();
+                let builtin_count = [$(($canonical, core::any::type_name::<$ty>())),*].len();
+                if infos.try_reserve_exact(builtin_count).is_err() {
+                    return Vec::new();
+                }
+                $(
+                    infos.push(type_info::<$ty>($canonical));
+                )*
+                infos
+            }
         };
     }
     let mut infos = datapod_types!(build);
     if let Ok(custom) = custom_registry().read() {
+        if infos.try_reserve_exact(custom.by_hash.len()).is_err() {
+            return infos;
+        }
         infos.extend(custom.by_hash.values().cloned());
     }
     infos
 }
 
 pub fn find_type_info(type_hash: u64) -> Option<TypeInfo> {
+    try_find_type_info(type_hash).unwrap_or(None)
+}
+
+pub fn try_find_type_info(type_hash: u64) -> Result<Option<TypeInfo>, RegistryError> {
     macro_rules! find {
         ($(($canonical:literal, $ty:ty)),* $(,)?) => {{
             $(
                 if crate::bind::type_hash::<$ty>() == type_hash {
-                    return Some(type_info::<$ty>($canonical));
+                    return Ok(Some(type_info::<$ty>($canonical)));
                 }
             )*
             None
         }};
     }
-    datapod_types!(find).or_else(|| {
-        custom_registry()
-            .read()
-            .ok()
-            .and_then(|r| r.by_hash.get(&type_hash).cloned())
-    })
+    if let Some(info) = datapod_types!(find) {
+        return Ok(Some(info));
+    }
+    let registry = custom_registry()
+        .read()
+        .map_err(|_| RegistryError::RegistryLockPoisoned)?;
+    Ok(registry.by_hash.get(&type_hash).cloned())
 }
 
 pub fn type_exists(type_hash: u64) -> bool {
@@ -315,18 +389,78 @@ pub fn validate_registered_wire_v1(type_hash: u64, bytes: &[u8]) -> Result<(), c
             got: bytes.len(),
         });
     }
+    if info.payload_kind == PayloadKind::Fixed && bytes.len() != info.header_size {
+        let payload_bytes = bytes.len().checked_sub(info.header_size).ok_or_else(|| {
+            crate::WireError::InvalidPayloadSize {
+                type_name: "registered datapod type",
+                message: "fixed payload byte count underflowed".to_string(),
+            }
+        })?;
+        return Err(crate::WireError::InvalidPayloadSize {
+            type_name: "registered datapod type",
+            message: format!(
+                "fixed-size registered datapod has {} payload bytes",
+                payload_bytes
+            ),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_registered_wire_frame_v1(
+    frame: crate::WireFrame<'_>,
+) -> Result<(), crate::WireError> {
+    macro_rules! validate {
+        ($(($canonical:literal, $ty:ty)),* $(,)?) => {{
+            $(
+                if crate::bind::type_hash::<$ty>() == frame.type_hash {
+                    return crate::validate_wire_frame_v1::<$ty>(frame);
+                }
+            )*
+        }};
+    }
+    datapod_types!(validate);
+
+    let Some(info) = find_type_info(frame.type_hash) else {
+        return Err(crate::WireError::UnknownTypeHash {
+            type_hash: frame.type_hash,
+        });
+    };
+    if frame.header.len() != info.header_size {
+        return Err(crate::WireError::ShortHeader {
+            type_name: "registered datapod type",
+            needed: info.header_size,
+            got: frame.header.len(),
+        });
+    }
+    if info.payload_kind == PayloadKind::Fixed && !frame.payload.is_empty() {
+        return Err(crate::WireError::InvalidPayloadSize {
+            type_name: "registered datapod type",
+            message: format!(
+                "fixed-size registered datapod archive has {} payload bytes",
+                frame.payload.len()
+            ),
+        });
+    }
     Ok(())
 }
 
 pub fn find_type_info_by_name(canonical_name: &str) -> Option<TypeInfo> {
-    find_static_type_by_name(canonical_name).or_else(|| {
-        custom_registry().read().ok().and_then(|r| {
-            r.by_name
-                .get(canonical_name)
-                .and_then(|hash| r.by_hash.get(hash))
-                .cloned()
-        })
-    })
+    try_find_type_info_by_name(canonical_name).unwrap_or(None)
+}
+
+pub fn try_find_type_info_by_name(canonical_name: &str) -> Result<Option<TypeInfo>, RegistryError> {
+    if let Some(info) = find_static_type_by_name(canonical_name) {
+        return Ok(Some(info));
+    }
+    let registry = custom_registry()
+        .read()
+        .map_err(|_| RegistryError::RegistryLockPoisoned)?;
+    Ok(registry
+        .by_name
+        .get(canonical_name)
+        .and_then(|hash| registry.by_hash.get(hash))
+        .cloned())
 }
 
 pub fn canonical_name<T: DataPod>() -> Option<&'static str> {
@@ -374,6 +508,10 @@ pub fn register_type(
         validator: ValidatorKind::RuntimeSchema,
         emitted_hash: type_hash,
         emitted_hash_kind: HashKind::CanonicalName,
+        has_archive: true,
+        has_view: true,
+        has_owned_decode: false,
+        archive_shape: ArchiveShape::RuntimeSchema,
     })
 }
 
@@ -386,6 +524,7 @@ pub fn register_type(
 pub fn register_datapod_type<T>(
     canonical_name: &'static str,
     payload_kind: PayloadKind,
+    archive_shape: ArchiveShape,
 ) -> Result<(), RegistryError>
 where
     T: DataPod,
@@ -406,17 +545,32 @@ where
         validator: ValidatorKind::RegistryOnly,
         emitted_hash: type_hash,
         emitted_hash_kind: HashKind::CanonicalName,
+        has_archive: true,
+        has_view: true,
+        has_owned_decode: true,
+        archive_shape,
     })
 }
 
 fn register_type_info(new: TypeInfo) -> Result<(), RegistryError> {
     let type_hash = new.type_hash;
     let canonical_name = new.canonical_name.clone();
-    if canonical_name.is_empty() {
-        return Err(RegistryError::EmptyCanonicalName);
-    }
+    validate_canonical_name(&canonical_name)?;
     if type_hash == 0 {
         return Err(RegistryError::InvalidTypeHash);
+    }
+    if new.header_size > isize::MAX as usize {
+        return Err(RegistryError::HeaderSizeTooLarge {
+            header_size: new.header_size,
+        });
+    }
+    let expected_hash = type_hash_name(&canonical_name);
+    if type_hash != expected_hash {
+        return Err(RegistryError::TypeHashCanonicalNameMismatch {
+            canonical_name,
+            expected_hash,
+            provided_hash: type_hash,
+        });
     }
 
     if let Some(existing) = find_static_type_info(type_hash) {
@@ -450,7 +604,7 @@ fn register_type_info(new: TypeInfo) -> Result<(), RegistryError> {
 
     let mut registry = custom_registry()
         .write()
-        .expect("custom datapod registry lock poisoned");
+        .map_err(|_| RegistryError::RegistryLockPoisoned)?;
     if let Some(existing) = registry.by_hash.get(&type_hash) {
         if existing == &new {
             return Ok(());
@@ -478,6 +632,51 @@ fn register_type_info(new: TypeInfo) -> Result<(), RegistryError> {
 
 pub fn type_hash_name(canonical_name: &str) -> u64 {
     crate::bind::type_hash_name(canonical_name)
+}
+
+pub fn validate_canonical_name(canonical_name: &str) -> Result<(), RegistryError> {
+    if canonical_name.is_empty() {
+        return Err(RegistryError::EmptyCanonicalName);
+    }
+
+    let mut previous_was_dot = true;
+    for byte in canonical_name.bytes() {
+        match byte {
+            0 => {
+                return Err(RegistryError::InvalidCanonicalName {
+                    canonical_name: canonical_name.to_string(),
+                    reason: "must not contain NUL bytes",
+                });
+            }
+            b'.' if previous_was_dot => {
+                return Err(RegistryError::InvalidCanonicalName {
+                    canonical_name: canonical_name.to_string(),
+                    reason: "must not contain empty dot-separated segments",
+                });
+            }
+            b'.' => {
+                previous_was_dot = true;
+            }
+            b'a'..=b'z' | b'0'..=b'9' | b'_' => {
+                previous_was_dot = false;
+            }
+            _ => {
+                return Err(RegistryError::InvalidCanonicalName {
+                    canonical_name: canonical_name.to_string(),
+                    reason: "must contain only ASCII lowercase letters, digits, underscores, and dots",
+                });
+            }
+        }
+    }
+
+    if previous_was_dot {
+        return Err(RegistryError::InvalidCanonicalName {
+            canonical_name: canonical_name.to_string(),
+            reason: "must not contain empty dot-separated segments",
+        });
+    }
+
+    Ok(())
 }
 
 pub fn current_wire_format_name() -> &'static str {
@@ -547,6 +746,10 @@ where
         validator: ValidatorKind::BuiltIn,
         emitted_hash: type_hash,
         emitted_hash_kind: BUILTIN_EMITTED_HASH_KIND,
+        has_archive: true,
+        has_view: true,
+        has_owned_decode: true,
+        archive_shape: archive_shape::<T>(),
     }
 }
 
@@ -554,5 +757,12 @@ fn payload_kind<T: DataPod>() -> PayloadKind {
     match core::any::type_name::<T::Payload>() {
         "()" => PayloadKind::Fixed,
         _ => PayloadKind::Bytes,
+    }
+}
+
+fn archive_shape<T: DataPod>() -> ArchiveShape {
+    match payload_kind::<T>() {
+        PayloadKind::Fixed => ArchiveShape::Fixed,
+        PayloadKind::Bytes => ArchiveShape::SinglePayload,
     }
 }

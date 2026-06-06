@@ -6,6 +6,46 @@
 int main(void) {
     uint8_t payload[4] = {1, 2, 3, 4};
 
+    const char *c_name = "acme.c_byte_slice_runtime.v1";
+    const uint8_t *name_bytes = (const uint8_t *)c_name;
+    uintptr_t name_len = (uintptr_t)strlen(c_name);
+    uint64_t c_name_hash = datapod_type_hash_name(c_name);
+    uint64_t bytes_name_hash = datapod_type_hash_name_bytes(name_bytes, name_len);
+    if (c_name_hash == 0 || bytes_name_hash != c_name_hash) {
+        return 250;
+    }
+    if (!datapod_register_type_bytes(
+            bytes_name_hash,
+            name_bytes,
+            name_len,
+            0,
+            datapod_payload_kind_bytes())) {
+        return 251;
+    }
+    if (!datapod_type_exists_name_bytes(name_bytes, name_len)) {
+        return 252;
+    }
+    const char *named_c_name = "acme.c_byte_slice_named_runtime.v1";
+    const uint8_t *named_bytes = (const uint8_t *)named_c_name;
+    uintptr_t named_len = (uintptr_t)strlen(named_c_name);
+    if (datapod_register_type_name_bytes(
+            named_bytes,
+            named_len,
+            0,
+            datapod_payload_kind_bytes()) == 0) {
+        return 253;
+    }
+    const uint8_t embedded_nul_name[3] = {'a', 0, 'b'};
+    if (datapod_type_hash_name_bytes(embedded_nul_name, sizeof(embedded_nul_name)) != 0) {
+        return 254;
+    }
+    if (datapod_type_exists_name_bytes(embedded_nul_name, sizeof(embedded_nul_name))) {
+        return 255;
+    }
+    if (datapod_type_hash_name_bytes((const uint8_t *)0, 0) != 0) {
+        return 256;
+    }
+
     DatapodPoint point = datapod_point_new(1.0, 2.0, 3.0);
     DatapodOwnedBytes point_wire = {0};
     if (!datapod_point_to_wire(point, &point_wire)) {
@@ -75,8 +115,73 @@ int main(void) {
         bytes_frame_view.payload.len != bytes_frame.payload_len) {
         return 132;
     }
+    DatapodArchiveFrame bytes_archive = {0};
+    if (!datapod_bytes_value_archive(bytes_value, &bytes_archive)) {
+        return 222;
+    }
+    if (bytes_archive.header_len != 0 ||
+        bytes_archive.payload != datapod_bytes_value_payload(bytes_value).ptr ||
+        bytes_archive.payload_len != sizeof(payload)) {
+        return 223;
+    }
+    DatapodBytesView bytes_archive_view = {0};
+    if (!datapod_bytes_value_view_from_archive(bytes_archive, &bytes_archive_view)) {
+        return 224;
+    }
+    if (bytes_archive_view.payload.ptr != bytes_archive.payload ||
+        bytes_archive_view.payload.len != bytes_archive.payload_len) {
+        return 225;
+    }
+    DatapodBytesValue *bytes_archive_owned = datapod_bytes_value_from_archive(bytes_archive);
+    if (!bytes_archive_owned) {
+        return 226;
+    }
+    if (datapod_bytes_value_payload(bytes_archive_owned).len != sizeof(payload)) {
+        datapod_bytes_value_free(bytes_archive_owned);
+        return 227;
+    }
+    datapod_bytes_value_free(bytes_archive_owned);
     datapod_bytes_value_free(bytes_value);
     datapod_owned_bytes_free(bytes_wire);
+
+    DatapodBytesValue *empty_bytes = datapod_bytes_value_new(0, 0);
+    if (!empty_bytes) {
+        return 260;
+    }
+    DatapodArchiveFrame empty_bytes_archive = {0};
+    if (!datapod_bytes_value_archive(empty_bytes, &empty_bytes_archive)) {
+        datapod_bytes_value_free(empty_bytes);
+        return 261;
+    }
+    DatapodBytes empty_bytes_payload = datapod_bytes_value_payload(empty_bytes);
+    if (empty_bytes_archive.header_len != 0 ||
+        empty_bytes_archive.payload != empty_bytes_payload.ptr ||
+        empty_bytes_archive.payload_len != 0) {
+        datapod_bytes_value_free(empty_bytes);
+        return 262;
+    }
+    DatapodBytesView empty_bytes_view = {0};
+    if (!datapod_bytes_value_view_from_archive(empty_bytes_archive, &empty_bytes_view)) {
+        datapod_bytes_value_free(empty_bytes);
+        return 263;
+    }
+    if (empty_bytes_view.payload.ptr != empty_bytes_archive.payload ||
+        empty_bytes_view.payload.len != 0) {
+        datapod_bytes_value_free(empty_bytes);
+        return 264;
+    }
+    DatapodBytesValue *empty_bytes_owned = datapod_bytes_value_from_archive(empty_bytes_archive);
+    if (!empty_bytes_owned) {
+        datapod_bytes_value_free(empty_bytes);
+        return 265;
+    }
+    if (datapod_bytes_value_payload(empty_bytes_owned).len != 0) {
+        datapod_bytes_value_free(empty_bytes_owned);
+        datapod_bytes_value_free(empty_bytes);
+        return 266;
+    }
+    datapod_bytes_value_free(empty_bytes_owned);
+    datapod_bytes_value_free(empty_bytes);
 
     const uint8_t text_payload[5] = {'h', 'e', 'l', 'l', 'o'};
     DatapodDpStr *text = datapod_dpstr_new(text_payload, sizeof(text_payload));
@@ -114,6 +219,128 @@ int main(void) {
     datapod_dpstr_free(text);
     datapod_owned_bytes_free(text_wire);
 
+    DatapodDpString *dpstring = datapod_dpstring_new(text_payload, sizeof(text_payload));
+    if (!dpstring) {
+        return 240;
+    }
+    DatapodOwnedBytes dpstring_wire = {0};
+    if (!datapod_dpstring_to_wire(dpstring, &dpstring_wire)) {
+        return 241;
+    }
+    DatapodDpStringView dpstring_wire_view = {0};
+    if (!datapod_dpstring_view_from_wire(
+            dpstring_wire.ptr,
+            dpstring_wire.len,
+            &dpstring_wire_view)) {
+        return 242;
+    }
+    if (dpstring_wire_view.bytes.len != sizeof(text_payload) ||
+        memcmp(dpstring_wire_view.bytes.ptr, text_payload, sizeof(text_payload)) != 0) {
+        return 243;
+    }
+    DatapodArchiveFrame dpstring_archive = {0};
+    if (!datapod_dpstring_archive(dpstring, &dpstring_archive)) {
+        return 244;
+    }
+    if (dpstring_archive.payload != datapod_dpstring_payload(dpstring).ptr ||
+        dpstring_archive.payload_len != sizeof(text_payload)) {
+        return 245;
+    }
+    DatapodDpStringView dpstring_archive_view = {0};
+    if (!datapod_dpstring_view_from_archive(dpstring_archive, &dpstring_archive_view)) {
+        return 246;
+    }
+    if (dpstring_archive_view.bytes.ptr != dpstring_archive.payload ||
+        dpstring_archive_view.bytes.len != dpstring_archive.payload_len) {
+        return 247;
+    }
+    DatapodDpString *dpstring_owned = datapod_dpstring_from_archive(dpstring_archive);
+    if (!dpstring_owned) {
+        return 248;
+    }
+    if (datapod_dpstring_payload(dpstring_owned).len != sizeof(text_payload)) {
+        datapod_dpstring_free(dpstring_owned);
+        return 249;
+    }
+    datapod_dpstring_free(dpstring_owned);
+    datapod_dpstring_free(dpstring);
+    datapod_owned_bytes_free(dpstring_wire);
+
+    DatapodDpStr *empty_dpstr = datapod_dpstr_new(0, 0);
+    if (!empty_dpstr) {
+        return 267;
+    }
+    DatapodArchiveFrame empty_dpstr_archive = {0};
+    if (!datapod_dpstr_archive(empty_dpstr, &empty_dpstr_archive)) {
+        datapod_dpstr_free(empty_dpstr);
+        return 268;
+    }
+    if (empty_dpstr_archive.payload != datapod_dpstr_payload(empty_dpstr).ptr ||
+        empty_dpstr_archive.payload_len != 0) {
+        datapod_dpstr_free(empty_dpstr);
+        return 269;
+    }
+    DatapodDpStrView empty_dpstr_view = {0};
+    if (!datapod_dpstr_view_from_archive(empty_dpstr_archive, &empty_dpstr_view)) {
+        datapod_dpstr_free(empty_dpstr);
+        return 270;
+    }
+    if (empty_dpstr_view.utf8.ptr != empty_dpstr_archive.payload ||
+        empty_dpstr_view.utf8.len != 0) {
+        datapod_dpstr_free(empty_dpstr);
+        return 271;
+    }
+    DatapodDpStr *empty_dpstr_owned = datapod_dpstr_from_archive(empty_dpstr_archive);
+    if (!empty_dpstr_owned) {
+        datapod_dpstr_free(empty_dpstr);
+        return 272;
+    }
+    if (datapod_dpstr_payload(empty_dpstr_owned).len != 0) {
+        datapod_dpstr_free(empty_dpstr_owned);
+        datapod_dpstr_free(empty_dpstr);
+        return 273;
+    }
+    datapod_dpstr_free(empty_dpstr_owned);
+    datapod_dpstr_free(empty_dpstr);
+
+    DatapodDpString *empty_dpstring = datapod_dpstring_new(0, 0);
+    if (!empty_dpstring) {
+        return 274;
+    }
+    DatapodArchiveFrame empty_dpstring_archive = {0};
+    if (!datapod_dpstring_archive(empty_dpstring, &empty_dpstring_archive)) {
+        datapod_dpstring_free(empty_dpstring);
+        return 275;
+    }
+    if (empty_dpstring_archive.payload != datapod_dpstring_payload(empty_dpstring).ptr ||
+        empty_dpstring_archive.payload_len != 0) {
+        datapod_dpstring_free(empty_dpstring);
+        return 276;
+    }
+    DatapodDpStringView empty_dpstring_view = {0};
+    if (!datapod_dpstring_view_from_archive(empty_dpstring_archive, &empty_dpstring_view)) {
+        datapod_dpstring_free(empty_dpstring);
+        return 277;
+    }
+    if (empty_dpstring_view.bytes.ptr != empty_dpstring_archive.payload ||
+        empty_dpstring_view.bytes.len != 0) {
+        datapod_dpstring_free(empty_dpstring);
+        return 278;
+    }
+    DatapodDpString *empty_dpstring_owned =
+        datapod_dpstring_from_archive(empty_dpstring_archive);
+    if (!empty_dpstring_owned) {
+        datapod_dpstring_free(empty_dpstring);
+        return 279;
+    }
+    if (datapod_dpstring_payload(empty_dpstring_owned).len != 0) {
+        datapod_dpstring_free(empty_dpstring_owned);
+        datapod_dpstring_free(empty_dpstring);
+        return 280;
+    }
+    datapod_dpstring_free(empty_dpstring_owned);
+    datapod_dpstring_free(empty_dpstring);
+
     DatapodMatrix *matrix = datapod_matrix_from_bytes(2, 2, 1, payload, sizeof(payload));
     if (!matrix) {
         return 4;
@@ -149,11 +376,31 @@ int main(void) {
     if (!datapod_wire_frame_validate(matrix_frame)) {
         return 112;
     }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 283;
+    }
+    if (!datapod_wire_frame_validate_v1(matrix_frame) ||
+        datapod_last_error_message() != 0) {
+        return 284;
+    }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 285;
+    }
     if (!datapod_wire_frame_validate_as(matrix_msg.type_hash, matrix_frame)) {
         return 210;
     }
+    if (datapod_last_error_message() != 0) {
+        return 286;
+    }
     if (datapod_wire_frame_validate_as(matrix_msg.type_hash ^ 1, matrix_frame)) {
         return 211;
+    }
+    const char *frame_validate_error = datapod_last_error_message();
+    if (frame_validate_error == 0 ||
+        strstr(frame_validate_error, "wrong datapod frame type hash") == 0) {
+        return 287;
     }
     if (matrix_frame.header_len != datapod_matrix_header_size() ||
         matrix_frame.payload_len != sizeof(payload)) {
@@ -167,6 +414,81 @@ int main(void) {
         matrix_frame_view.payload.len != matrix_frame.payload_len) {
         return 115;
     }
+    DatapodArchiveFrame matrix_archive = {0};
+    if (!datapod_matrix_archive(matrix, &matrix_archive)) {
+        return 212;
+    }
+    if (!datapod_archive_validate(matrix_archive)) {
+        return 213;
+    }
+    if (matrix_archive.payload != datapod_matrix_payload(matrix).ptr ||
+        matrix_archive.payload_len != sizeof(payload)) {
+        return 214;
+    }
+    DatapodMatrixView matrix_archive_view = {0};
+    if (!datapod_matrix_view_from_archive(matrix_archive, &matrix_archive_view)) {
+        return 215;
+    }
+    if (matrix_archive_view.payload.ptr != matrix_archive.payload ||
+        matrix_archive_view.payload.len != matrix_archive.payload_len) {
+        return 216;
+    }
+    DatapodArchiveFrame invalid_matrix_archive = matrix_archive;
+    invalid_matrix_archive.payload_len = matrix_archive.payload_len - 1;
+    DatapodMatrixView stale_matrix_archive_view = {
+        99,
+        100,
+        101,
+        {
+            (const uint8_t *)1,
+            2,
+        },
+    };
+    if (datapod_matrix_view_from_archive(
+            invalid_matrix_archive,
+            &stale_matrix_archive_view)) {
+        return 117;
+    }
+    const char *matrix_archive_error = datapod_last_error_message();
+    if (matrix_archive_error == 0 ||
+        strstr(matrix_archive_error, "payload size") == 0) {
+        return 118;
+    }
+    if (stale_matrix_archive_view.rows != 0 ||
+        stale_matrix_archive_view.cols != 0 ||
+        stale_matrix_archive_view.element_size != 0 ||
+        stale_matrix_archive_view.payload.ptr != 0 ||
+        stale_matrix_archive_view.payload.len != 0) {
+        return 119;
+    }
+    DatapodMatrix *matrix_archive_owned = datapod_matrix_from_archive(matrix_archive);
+    if (!matrix_archive_owned) {
+        return 217;
+    }
+    if (datapod_matrix_payload(matrix_archive_owned).len != sizeof(payload)) {
+        datapod_matrix_free(matrix_archive_owned);
+        return 218;
+    }
+    datapod_matrix_free(matrix_archive_owned);
+    DatapodOwnedBytes matrix_archive_wire = {0};
+    if (!datapod_archive_to_message(matrix_archive, &matrix_archive_wire)) {
+        return 219;
+    }
+    DatapodArchiveFrame matrix_archive_split = {0};
+    if (!datapod_archive_split(
+            matrix_archive.type_hash,
+            matrix_archive_wire.ptr,
+            matrix_archive_wire.len,
+            &matrix_archive_split)) {
+        datapod_owned_bytes_free(matrix_archive_wire);
+        return 220;
+    }
+    if (matrix_archive_split.header_len != matrix_archive.header_len ||
+        matrix_archive_split.payload_len != matrix_archive.payload_len) {
+        datapod_owned_bytes_free(matrix_archive_wire);
+        return 221;
+    }
+    datapod_owned_bytes_free(matrix_archive_wire);
     if (datapod_matrix_payload(matrix_out).len != sizeof(payload)) {
         return 7;
     }
@@ -1015,6 +1337,29 @@ int main(void) {
     if (datapod_wire_message_payload_v1(custom_msg).len != sizeof(custom_payload)) {
         return 48;
     }
+    DatapodArchiveFrame custom_archive = {0};
+    if (!datapod_archive_frame_from_message(custom_msg, &custom_archive)) {
+        return 53;
+    }
+    if (!datapod_archive_validate_as(custom_hash, custom_archive)) {
+        return 54;
+    }
+    if (datapod_archive_validate_as(custom_hash ^ 1u, custom_archive)) {
+        return 55;
+    }
+    if (custom_archive.header != custom_wire.ptr ||
+        custom_archive.payload != custom_wire.ptr + sizeof(custom_header)) {
+        return 56;
+    }
+    DatapodOwnedBytes custom_archive_joined = {0};
+    if (!datapod_archive_to_message(custom_archive, &custom_archive_joined)) {
+        return 57;
+    }
+    if (custom_archive_joined.len != custom_wire.len ||
+        memcmp(custom_archive_joined.ptr, custom_wire.ptr, custom_wire.len) != 0) {
+        return 58;
+    }
+    datapod_owned_bytes_free(custom_archive_joined);
     DatapodBytes custom_header_view = datapod_wire_message_header(custom_msg);
     DatapodBytes custom_payload_view = datapod_wire_message_payload(custom_msg);
     if (custom_header_view.len != sizeof(custom_header) ||
@@ -1025,7 +1370,183 @@ int main(void) {
         memcmp(custom_payload_view.ptr, custom_payload, sizeof(custom_payload)) != 0) {
         return 30;
     }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 120;
+    }
+    custom_header_view = datapod_wire_message_header(custom_msg);
+    if (datapod_last_error_message() != 0 ||
+        custom_header_view.len != sizeof(custom_header)) {
+        return 121;
+    }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 122;
+    }
+    custom_payload_view = datapod_wire_message_payload(custom_msg);
+    if (datapod_last_error_message() != 0 ||
+        custom_payload_view.len != sizeof(custom_payload)) {
+        return 123;
+    }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 126;
+    }
+    custom_header_view = datapod_wire_message_header_v1(custom_msg);
+    if (datapod_last_error_message() != 0 ||
+        custom_header_view.len != sizeof(custom_header)) {
+        return 127;
+    }
+    (void)datapod_header_size(UINT64_MAX);
+    if (datapod_last_error_message() == 0) {
+        return 128;
+    }
+    custom_payload_view = datapod_wire_message_payload_v1(custom_msg);
+    if (datapod_last_error_message() != 0 ||
+        custom_payload_view.len != sizeof(custom_payload)) {
+        return 129;
+    }
+    DatapodWireMessage invalid_null_message =
+        datapod_wire_message_borrow(custom_hash, 0, sizeof(custom_header));
+    custom_header_view = datapod_wire_message_header(invalid_null_message);
+    const char *message_view_error = datapod_last_error_message();
+    if (custom_header_view.ptr != 0 ||
+        custom_header_view.len != 0 ||
+        message_view_error == 0 ||
+        strstr(message_view_error, "null") == 0) {
+        return 124;
+    }
+    custom_payload_view = datapod_wire_message_payload(invalid_null_message);
+    message_view_error = datapod_last_error_message();
+    if (custom_payload_view.ptr != 0 ||
+        custom_payload_view.len != 0 ||
+        message_view_error == 0 ||
+        strstr(message_view_error, "null") == 0) {
+        return 125;
+    }
+    custom_header_view = datapod_wire_message_header_v1(invalid_null_message);
+    message_view_error = datapod_last_error_message();
+    if (custom_header_view.ptr != 0 ||
+        custom_header_view.len != 0 ||
+        message_view_error == 0 ||
+        strstr(message_view_error, "null") == 0) {
+        return 281;
+    }
+    custom_payload_view = datapod_wire_message_payload_v1(invalid_null_message);
+    message_view_error = datapod_last_error_message();
+    if (custom_payload_view.ptr != 0 ||
+        custom_payload_view.len != 0 ||
+        message_view_error == 0 ||
+        strstr(message_view_error, "null") == 0) {
+        return 282;
+    }
     datapod_owned_bytes_free(custom_wire);
+
+    DatapodOwnedBytes stale_join_output = {
+        (uint8_t *)1,
+        2,
+        3,
+    };
+    if (datapod_wire_message_join(
+            point_wire_hash,
+            header,
+            datapod_point_header_size(),
+            custom_payload,
+            1,
+            &stale_join_output)) {
+        return 250;
+    }
+    const char *last_error = datapod_last_error_message();
+    if (last_error == 0 || strstr(last_error, "fixed-size") == 0) {
+        return 256;
+    }
+    if (stale_join_output.ptr != 0 ||
+        stale_join_output.len != 0 ||
+        stale_join_output.capacity != 0) {
+        return 251;
+    }
+    if (datapod_wire_message_join(
+            point_wire_hash,
+            header,
+            datapod_point_header_size(),
+            0,
+            0,
+            0)) {
+        return 254;
+    }
+    last_error = datapod_last_error_message();
+    if (last_error == 0 || strstr(last_error, "null") == 0) {
+        return 257;
+    }
+
+    DatapodWireMessage too_short_point_msg =
+        datapod_wire_message_borrow(point_wire_hash, header, 1);
+    DatapodArchiveFrame stale_archive_output = {
+        123,
+        (const uint8_t *)1,
+        2,
+        (const uint8_t *)3,
+        4,
+    };
+    if (datapod_archive_frame_from_message(
+            too_short_point_msg,
+            &stale_archive_output)) {
+        return 252;
+    }
+    last_error = datapod_last_error_message();
+    if (last_error == 0 || strstr(last_error, "short") == 0) {
+        return 258;
+    }
+    if (stale_archive_output.type_hash != 0 ||
+        stale_archive_output.header != 0 ||
+        stale_archive_output.header_len != 0 ||
+        stale_archive_output.payload != 0 ||
+        stale_archive_output.payload_len != 0) {
+        return 253;
+    }
+    if (datapod_archive_frame_from_message(too_short_point_msg, 0)) {
+        return 255;
+    }
+    last_error = datapod_last_error_message();
+    if (last_error == 0 || strstr(last_error, "null") == 0) {
+        return 259;
+    }
+
+    DatapodOwnedBytes success_after_error = {0};
+    if (!datapod_wire_message_join(
+            point_wire_hash,
+            header,
+            datapod_point_header_size(),
+            0,
+            0,
+            &success_after_error)) {
+        return 260;
+    }
+    if (datapod_last_error_message() != 0) {
+        datapod_owned_bytes_free(success_after_error);
+        return 261;
+    }
+    datapod_owned_bytes_free(success_after_error);
+
+    DatapodOwnedBytes invalid_owned_bytes = {
+        (uint8_t *)1,
+        2,
+        1,
+    };
+    datapod_owned_bytes_free(invalid_owned_bytes);
+    last_error = datapod_last_error_message();
+    if (last_error == 0 || strstr(last_error, "exceeds capacity") == 0) {
+        return 262;
+    }
+    DatapodOwnedBytes harmless_empty_owned_bytes = {
+        (uint8_t *)1,
+        0,
+        0,
+    };
+    datapod_owned_bytes_free(harmless_empty_owned_bytes);
+    if (datapod_last_error_message() != 0) {
+        return 263;
+    }
 
     return 0;
 }

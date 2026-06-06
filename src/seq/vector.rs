@@ -5,7 +5,6 @@
 //! and a width); the user picks `T` at access time and we runtime-check
 //! that `size_of::<T>()` matches the stored element_size.
 
-use crate::seq::assert_element_size;
 use crate::{DataPodAccess, DataPodValidate, WireError};
 
 #[datapod::datapod]
@@ -21,49 +20,99 @@ pub struct Vector {
 impl Vector {
     /// Construct an empty vector sized for elements of type `T`.
     pub fn new<T: bytemuck::Pod>() -> Self {
-        Self {
-            element_size: std::mem::size_of::<T>() as u32,
+        Self::try_new::<T>().unwrap_or_default()
+    }
+
+    /// Fallible constructor that rejects element types too wide for the
+    /// stable u32 wire header before truncating their size.
+    pub fn try_new<T: bytemuck::Pod>() -> Result<Self, WireError> {
+        let vector = Self {
+            element_size: super::checked_pod_element_size::<Self, T>()?,
             _pad: 0,
             data: Vec::new(),
-        }
+        };
+        vector.validate_owned()?;
+        Ok(vector)
     }
 
     pub fn with_capacity<T: bytemuck::Pod>(element_capacity: usize) -> Self {
-        let es = std::mem::size_of::<T>();
-        Self {
-            element_size: es as u32,
-            _pad: 0,
-            data: Vec::with_capacity(element_capacity * es),
-        }
+        Self::try_with_capacity::<T>(element_capacity).unwrap_or_else(|_| Self::new::<T>())
     }
 
-    /// Construct from already-bytes-encoded payload. The caller asserts
-    /// `data.len() % size_of::<T>() == 0`.
-    pub fn from_bytes<T: bytemuck::Pod>(data: Vec<u8>) -> Self {
+    pub fn try_with_capacity<T: bytemuck::Pod>(element_capacity: usize) -> Result<Self, WireError> {
         let es = std::mem::size_of::<T>();
-        debug_assert_eq!(
-            data.len() % es,
-            0,
-            "Vector::from_bytes data not aligned to T"
-        );
-        Self {
-            element_size: es as u32,
+        let element_size = super::checked_pod_element_size::<Self, T>()?;
+        let byte_capacity = element_capacity.checked_mul(es).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("vector byte capacity overflowed")
+        })?;
+        let mut data = Vec::new();
+        data.try_reserve_exact(byte_capacity).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!("vector payload allocation failed: {err}"))
+        })?;
+        let vector = Self {
+            element_size,
             _pad: 0,
             data,
+        };
+        vector.validate_owned()?;
+        Ok(vector)
+    }
+
+    /// Construct from already-bytes-encoded payload. Invalid byte lengths
+    /// fall back to an empty vector; use [`Self::try_from_bytes`] to get the
+    /// validation error.
+    pub fn from_bytes<T: bytemuck::Pod>(data: Vec<u8>) -> Self {
+        Self::try_from_bytes::<T>(data).unwrap_or_else(|_| Self::new::<T>())
+    }
+
+    pub fn try_from_bytes<T: bytemuck::Pod>(data: Vec<u8>) -> Result<Self, WireError> {
+        let es = std::mem::size_of::<T>();
+        let element_size = super::checked_pod_element_size::<Self, T>()?;
+        if es == 0 && !data.is_empty() {
+            return Err(crate::wire::invalid_payload::<Self>(
+                "zero element_size requires empty payload",
+            ));
         }
+        if es != 0 && data.len() % es != 0 {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "{} bytes is not a multiple of element_size {es}",
+                data.len()
+            )));
+        }
+        let vector = Self {
+            element_size,
+            _pad: 0,
+            data,
+        };
+        vector.validate_owned()?;
+        Ok(vector)
     }
 
     /// Number of logical elements.
     pub fn size(&self) -> usize {
-        if self.element_size == 0 {
-            0
+        self.try_size().unwrap_or(0)
+    }
+
+    /// Fallible logical element count for callers handling potentially
+    /// malformed owned buffers.
+    pub fn try_size(&self) -> Result<usize, WireError> {
+        self.validate_owned()?;
+        let element_size = self.try_element_size()?;
+        if element_size == 0 {
+            Ok(0)
         } else {
-            self.data.len() / self.element_size as usize
+            Ok(self.data.len() / element_size)
         }
     }
 
     pub fn empty(&self) -> bool {
-        self.data.is_empty()
+        self.try_empty().unwrap_or(true)
+    }
+
+    /// Fallible emptiness check for callers handling potentially malformed
+    /// owned buffers.
+    pub fn try_empty(&self) -> Result<bool, WireError> {
+        Ok(self.try_size()? == 0)
     }
 
     pub fn clear(&mut self) {
@@ -71,38 +120,130 @@ impl Vector {
     }
 
     pub fn as_slice<T: bytemuck::Pod>(&self) -> &[T] {
-        assert_element_size::<T>(self.element_size);
-        bytemuck::cast_slice(&self.data)
+        self.try_as_slice::<T>().unwrap_or(&[])
+    }
+
+    pub fn try_as_slice<T: bytemuck::Pod>(&self) -> Result<&[T], WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        bytemuck::try_cast_slice(&self.data)
+            .map_err(|error| crate::wire::invalid_payload::<Self>(error.to_string()))
     }
 
     pub fn as_mut_slice<T: bytemuck::Pod>(&mut self) -> &mut [T] {
-        assert_element_size::<T>(self.element_size);
-        bytemuck::cast_slice_mut(&mut self.data)
+        self.try_as_mut_slice::<T>().unwrap_or(&mut [])
+    }
+
+    pub fn try_as_mut_slice<T: bytemuck::Pod>(&mut self) -> Result<&mut [T], WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        bytemuck::try_cast_slice_mut(&mut self.data)
+            .map_err(|error| crate::wire::invalid_payload::<Self>(error.to_string()))
     }
 
     pub fn get<T: bytemuck::Pod>(&self, i: usize) -> T {
-        self.as_slice::<T>()[i]
+        self.try_get::<T>(i)
+            .unwrap_or_else(|_| bytemuck::Zeroable::zeroed())
+    }
+
+    pub fn try_get<T: bytemuck::Pod>(&self, i: usize) -> Result<T, WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        let size = self.try_size()?;
+        if i >= size {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "vector index out of bounds: {i} for len {size}",
+            )));
+        }
+        let es = core::mem::size_of::<T>();
+        let start = i
+            .checked_mul(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("element offset overflowed"))?;
+        let end = start
+            .checked_add(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("element end overflowed"))?;
+        let bytes = self.data.get(start..end).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("element range is out of bounds")
+        })?;
+        Ok(bytemuck::pod_read_unaligned(bytes))
     }
 
     pub fn set<T: bytemuck::Pod>(&mut self, i: usize, value: T) {
-        self.as_mut_slice::<T>()[i] = value;
+        let _ = self.try_set(i, value);
+    }
+
+    pub fn try_set<T: bytemuck::Pod>(&mut self, i: usize, value: T) -> Result<(), WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        let size = self.try_size()?;
+        if i >= size {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "vector index out of bounds: {i} for len {size}",
+            )));
+        }
+        let es = core::mem::size_of::<T>();
+        let start = i
+            .checked_mul(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("element offset overflowed"))?;
+        let end = start
+            .checked_add(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("element end overflowed"))?;
+        let slot = self.data.get_mut(start..end).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("element range is out of bounds")
+        })?;
+        slot.copy_from_slice(bytemuck::bytes_of(&value));
+        Ok(())
     }
 
     pub fn push<T: bytemuck::Pod>(&mut self, value: T) {
-        assert_element_size::<T>(self.element_size);
+        let _ = self.try_push(value);
+    }
+
+    pub fn try_push<T: bytemuck::Pod>(&mut self, value: T) -> Result<(), WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        let bytes = bytemuck::bytes_of(&value);
+        self.data.try_reserve_exact(bytes.len()).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!("vector payload allocation failed: {err}"))
+        })?;
         self.data.extend_from_slice(bytemuck::bytes_of(&value));
+        Ok(())
     }
 
     pub fn pop<T: bytemuck::Pod>(&mut self) -> Option<T> {
-        assert_element_size::<T>(self.element_size);
-        let es = self.element_size as usize;
+        self.try_pop().unwrap_or(None)
+    }
+
+    pub fn try_pop<T: bytemuck::Pod>(&mut self) -> Result<Option<T>, WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        let es = self.try_element_size()?;
         if self.data.len() < es {
-            return None;
+            return Ok(None);
         }
-        let start = self.data.len() - es;
-        let value: T = *bytemuck::from_bytes(&self.data[start..]);
+        let start = self.data.len().checked_sub(es).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("last element offset underflowed")
+        })?;
+        let bytes = self.data.get(start..).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("last element range is out of bounds")
+        })?;
+        let value: T = bytemuck::pod_read_unaligned(bytes);
         self.data.truncate(start);
-        Some(value)
+        Ok(Some(value))
+    }
+
+    fn validate_owned(&self) -> Result<(), WireError> {
+        <Self as DataPodValidate>::validate_wire_parts(
+            &VectorHeader {
+                element_size: self.element_size,
+                _pad: self._pad,
+            },
+            &self.data,
+        )
+    }
+
+    fn try_element_size(&self) -> Result<usize, WireError> {
+        super::checked_u32_to_usize::<Self>(self.element_size, "element_size")
     }
 }
 
@@ -111,6 +252,22 @@ impl Vector {
 pub struct VectorView<'a> {
     pub header: VectorHeader,
     pub data: &'a [u8],
+}
+
+fn check_element_size<P: 'static, T>(stored: u32) -> Result<(), WireError> {
+    let actual = std::mem::size_of::<T>();
+    if actual == 0 {
+        return Err(crate::wire::invalid_header::<P>(
+            "zero-sized Pod elements cannot be represented in byte-counted datapod containers",
+        ));
+    }
+    let stored = super::checked_u32_to_usize::<P>(stored, "element_size")?;
+    if actual != stored {
+        return Err(crate::wire::invalid_header::<P>(format!(
+            "element size mismatch: T is {actual}, container expects {stored}"
+        )));
+    }
+    Ok(())
 }
 
 impl<'a> VectorView<'a> {
@@ -123,19 +280,26 @@ impl<'a> VectorView<'a> {
     }
 
     pub fn size(&self) -> usize {
-        if self.header.element_size == 0 {
-            0
+        self.try_size().unwrap_or(0)
+    }
+
+    pub fn try_size(&self) -> Result<usize, WireError> {
+        Vector::validate_wire_parts(&self.header, self.data)?;
+        let element_size =
+            super::checked_u32_to_usize::<Vector>(self.header.element_size, "element_size")?;
+        if element_size == 0 {
+            Ok(0)
         } else {
-            self.data.len() / self.header.element_size as usize
+            Ok(self.data.len() / element_size)
         }
     }
 
     pub fn get_unaligned<T: bytemuck::Pod + Copy>(&self, index: usize) -> Result<T, WireError> {
-        assert_element_size::<T>(self.header.element_size);
-        if index >= self.size() {
+        check_element_size::<Vector, T>(self.header.element_size)?;
+        let size = self.try_size()?;
+        if index >= size {
             return Err(crate::wire::invalid_header::<Vector>(format!(
-                "vector index out of bounds: {index} for len {}",
-                self.size()
+                "vector index out of bounds: {index} for len {size}",
             )));
         }
         let elem_size = core::mem::size_of::<T>();
@@ -145,11 +309,15 @@ impl<'a> VectorView<'a> {
         let end = offset
             .checked_add(elem_size)
             .ok_or_else(|| crate::wire::invalid_payload::<Vector>("element end overflowed"))?;
-        Ok(bytemuck::pod_read_unaligned(&self.data[offset..end]))
+        let bytes = self.data.get(offset..end).ok_or_else(|| {
+            crate::wire::invalid_payload::<Vector>("element range is out of bounds")
+        })?;
+        Ok(bytemuck::pod_read_unaligned(bytes))
     }
 
     pub fn as_aligned_slice<T: bytemuck::Pod>(&self) -> Result<&'a [T], WireError> {
-        assert_element_size::<T>(self.header.element_size);
+        check_element_size::<Vector, T>(self.header.element_size)?;
+        Vector::validate_wire_parts(&self.header, self.data)?;
         bytemuck::try_cast_slice(self.data)
             .map_err(|error| crate::wire::invalid_payload::<Vector>(error.to_string()))
     }
@@ -171,7 +339,9 @@ impl DataPodValidate for Vector {
                 ))
             };
         }
-        if payload.len() % header.element_size as usize != 0 {
+        let element_size =
+            super::checked_u32_to_usize::<Self>(header.element_size, "element_size")?;
+        if payload.len() % element_size != 0 {
             return Err(crate::wire::invalid_payload::<Self>(format!(
                 "{} bytes is not a multiple of element_size {}",
                 payload.len(),

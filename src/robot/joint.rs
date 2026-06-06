@@ -158,7 +158,7 @@ pub struct JointCalibration {
 #[datapod::datapod]
 #[dp(manual_access)]
 pub struct Joint {
-    /// Name as a [`DpString`](crate::spatial::sugar::DpString) ID.
+    /// Name as a [`DpString`](crate::DpString) ID.
     pub name_id: u32,
     /// Joint type tag.
     pub joint_type: JointType,

@@ -1,6 +1,6 @@
 use datapod::{
     DataPod, LeWireHeader, Point, access_wire_bytes_v1, from_wire_message_v1, to_wire_message_v1,
-    to_wire_message_v1_named, validate_wire_bytes_v1,
+    to_wire_message_v1_named, try_to_wire_message_v1_named, validate_wire_bytes_v1,
 };
 
 #[datapod::datapod]
@@ -39,6 +39,11 @@ fn v1_header_codec_drops_native_struct_padding() {
     };
     let stable_hash = datapod::bind::type_hash_name("test.padded_fixed.v1");
     let stable = to_wire_message_v1_named(stable_hash, &value);
+    assert_eq!(
+        stable,
+        try_to_wire_message_v1_named(stable_hash, &value)
+            .expect("fallible named v1 collection succeeds")
+    );
 
     assert!(core::mem::size_of::<PaddedFixed>() > stable.bytes.len());
     assert_eq!(stable.type_hash, stable_hash);

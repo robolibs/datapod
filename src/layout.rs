@@ -46,9 +46,15 @@ impl crate::LeWireHeader for PayloadSection {
                 Self::LE_WIRE_SIZE
             )));
         }
+        let offset = bytes.get(..4).ok_or_else(|| {
+            crate::wire::invalid_header::<Self>("payload section offset range is out of bounds")
+        })?;
+        let len = bytes.get(4..8).ok_or_else(|| {
+            crate::wire::invalid_header::<Self>("payload section length range is out of bounds")
+        })?;
         Ok(Self {
-            offset: <u32 as LeWireHeader>::read_le(&bytes[..4])?,
-            len: <u32 as LeWireHeader>::read_le(&bytes[4..8])?,
+            offset: <u32 as LeWireHeader>::read_le(offset)?,
+            len: <u32 as LeWireHeader>::read_le(len)?,
         })
     }
 }
@@ -70,8 +76,16 @@ impl PayloadSection {
 
     pub fn range(self) -> Result<std::ops::Range<usize>, WireError> {
         let end = self.end()?;
-        Ok(self.offset as usize..end as usize)
+        let start = section_u32_to_usize(self.offset, "section offset")?;
+        let end = section_u32_to_usize(end, "section end")?;
+        Ok(start..end)
     }
+}
+
+fn section_u32_to_usize(value: u32, field: &'static str) -> Result<usize, WireError> {
+    usize::try_from(value).map_err(|_| {
+        crate::wire::invalid_payload::<PayloadSection>(format!("{field} exceeds usize"))
+    })
 }
 
 /// Validation policy for a list of [`PayloadSection`] entries.
@@ -107,10 +121,35 @@ impl PayloadLayoutBuilder {
     }
 
     pub fn with_capacity(section_capacity: usize, payload_capacity: usize) -> Self {
-        Self {
-            sections: Vec::with_capacity(section_capacity),
-            payload: Vec::with_capacity(payload_capacity),
+        match Self::try_with_capacity(section_capacity, payload_capacity) {
+            Ok(builder) => builder,
+            Err(_) => Self::new(),
         }
+    }
+
+    pub fn try_with_capacity(
+        section_capacity: usize,
+        payload_capacity: usize,
+    ) -> Result<Self, WireError> {
+        let mut sections = Vec::new();
+        sections
+            .try_reserve_exact(section_capacity)
+            .map_err(|error| {
+                crate::wire::invalid_payload::<PayloadSection>(format!(
+                    "failed to reserve {section_capacity} payload sections: {error}"
+                ))
+            })?;
+
+        let mut payload = Vec::new();
+        payload
+            .try_reserve_exact(payload_capacity)
+            .map_err(|error| {
+                crate::wire::invalid_payload::<PayloadSection>(format!(
+                    "failed to reserve {payload_capacity} payload bytes: {error}"
+                ))
+            })?;
+
+        Ok(Self { sections, payload })
     }
 
     pub fn push_section(&mut self, bytes: &[u8]) -> Result<PayloadSection, WireError> {
@@ -120,6 +159,19 @@ impl PayloadLayoutBuilder {
             .map_err(|_| crate::wire::invalid_payload::<PayloadSection>("section exceeds u32"))?;
         let section = PayloadSection { offset, len };
         section.end()?;
+        self.payload
+            .try_reserve_exact(bytes.len())
+            .map_err(|error| {
+                crate::wire::invalid_payload::<PayloadSection>(format!(
+                    "failed to reserve {} section payload bytes: {error}",
+                    bytes.len()
+                ))
+            })?;
+        self.sections.try_reserve_exact(1).map_err(|error| {
+            crate::wire::invalid_payload::<PayloadSection>(format!(
+                "failed to reserve one payload section: {error}"
+            ))
+        })?;
         self.payload.extend_from_slice(bytes);
         self.sections.push(section);
         Ok(section)

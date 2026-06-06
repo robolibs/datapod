@@ -44,17 +44,20 @@ pub use bytemuck;
 
 pub mod wire;
 pub use wire::{
-    BytePayloadView, DataPod, DataPodAccess, DataPodDecode, DataPodValidate, Encoding, Envelope,
-    FixedView, LeWireHeader, WireError, WireFrame, WireMessage, WireParts, WireSegmentedFrame,
-    access_wire, access_wire_bytes, access_wire_bytes_unchecked, access_wire_bytes_v1,
-    access_wire_frame, access_wire_frame_unchecked, access_wire_frame_v1, access_wire_unchecked,
-    decode_payload_vec, from_wire_frame, from_wire_frame_v1, from_wire_message,
-    from_wire_message_v1, read_le_field, split_wire_frame, split_wire_parts, to_wire_message,
-    to_wire_message_v1, to_wire_message_v1_named, validate_registered_wire,
+    ArchiveFrame, Archived, BytePayloadView, DataPod, DataPodAccess, DataPodDecode,
+    DataPodValidate, Encoding, Envelope, FixedView, LeWireHeader, OwnedWireMessage,
+    SegmentedArchiveFrame, SegmentedArchived, WireError, WireFrame, WireMessage, WireParts,
+    WireSegmentedFrame, access_wire, access_wire_bytes, access_wire_bytes_unchecked,
+    access_wire_bytes_v1, access_wire_frame, access_wire_frame_unchecked, access_wire_frame_v1,
+    access_wire_unchecked, archive, decode_payload_vec, from_archive, from_wire_frame,
+    from_wire_frame_v1, from_wire_message, from_wire_message_v1, read_le_field, segmented_archive,
+    split_wire_frame, split_wire_parts, to_wire_message, to_wire_message_v1,
+    to_wire_message_v1_named, try_to_wire_message, try_to_wire_message_v1_named,
+    try_wire_frame_to_message, try_wire_segmented_frame_to_message, validate_registered_wire,
     validate_registered_wire_frame, validate_registered_wire_frame_v1, validate_registered_wire_v1,
     validate_wire, validate_wire_bytes, validate_wire_bytes_v1, validate_wire_frame,
-    validate_wire_frame_v1, wire_frame_to_message, wire_segmented_frame_to_message,
-    with_segmented_wire_frame, with_segmented_wire_frame_named, with_wire_frame,
+    validate_wire_frame_v1, view_archive, wire_frame_to_message, wire_segmented_frame_to_message,
+    with_archive, with_segmented_wire_frame, with_segmented_wire_frame_named, with_wire_frame,
     with_wire_frame_named, with_wire_frame_slices, with_wire_segmented_frame_slices,
 };
 

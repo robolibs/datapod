@@ -1,7 +1,10 @@
 use std::fmt;
 use std::str::FromStr;
 
+use crate::{DataPodAccess, DataPodValidate, FixedView, WireError};
+
 #[datapod::datapod]
+#[dp(manual_access)]
 #[derive(Eq, Hash, Default)]
 pub struct MacAddr {
     pub bytes: [u8; 6],
@@ -52,23 +55,62 @@ impl FromStr for MacAddr {
             return Err("MacAddr parse error: expected ':' or '-' separator".into());
         };
 
-        let parts: Vec<_> = trimmed.split(separator).collect();
-        if parts.len() != 6 {
-            return Err("MacAddr parse error: expected 6 octets".into());
-        }
-
         let mut bytes = [0_u8; 6];
-        for (index, part) in parts.into_iter().enumerate() {
+        let mut count = 0usize;
+        for part in trimmed.split(separator) {
+            if count >= bytes.len() {
+                return Err("MacAddr parse error: expected 6 octets".into());
+            }
             if part.len() != 2 {
                 return Err("MacAddr parse error: each octet must have 2 hex digits".into());
             }
-            bytes[index] = u8::from_str_radix(part, 16)
+            bytes[count] = u8::from_str_radix(part, 16)
                 .map_err(|_| "MacAddr parse error: invalid hex digit".to_string())?;
+            count += 1;
+        }
+        if count != bytes.len() {
+            return Err("MacAddr parse error: expected 6 octets".into());
         }
 
         Ok(Self {
             bytes,
             _pad: [0; 2],
         })
+    }
+}
+
+impl DataPodValidate for MacAddr {
+    fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
+        if !payload.is_empty() {
+            return Err(crate::wire::invalid_payload::<Self>(format!(
+                "fixed datapod payload must be empty, got {}",
+                payload.len()
+            )));
+        }
+        if header._pad != [0; 2] {
+            return Err(crate::wire::invalid_header::<Self>(
+                "reserved _pad field must be zero",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl DataPodAccess for MacAddr {
+    type View<'a> = FixedView<Self>;
+
+    fn access_wire_parts<'a>(
+        header: Self::Header,
+        payload: &'a [u8],
+    ) -> Result<Self::View<'a>, WireError> {
+        Self::validate_wire_parts(&header, payload)?;
+        Ok(FixedView { value: header })
+    }
+
+    unsafe fn access_wire_parts_unchecked<'a>(
+        header: Self::Header,
+        _payload: &'a [u8],
+    ) -> Self::View<'a> {
+        FixedView { value: header }
     }
 }

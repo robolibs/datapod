@@ -124,12 +124,15 @@ fn expand_fixed(
     let name = input.ident.clone();
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let le_wire_impl = le_wire_impl_for_item_struct(&name, &input.generics, &input.fields)?;
+    let reserved_field_validation = fixed_reserved_field_validation(&input.fields, &name);
     let datapod_canonical_const = datapod_canonical_const(args);
+    let inherent_archive_api = inherent_archive_api(&name, &input.generics);
     let inherent_canonical_api = inherent_canonical_api(
         &name,
         &input.generics,
         args.canonical_name.as_ref(),
         quote!(::datapod::registry::PayloadKind::Fixed),
+        quote!(::datapod::registry::ArchiveShape::Fixed),
     );
 
     if !has_repr_c(&input.attrs) {
@@ -140,7 +143,24 @@ fn expand_fixed(
         quote! {}
     } else {
         quote! {
-            impl #impl_generics ::datapod::DataPodValidate for #name #ty_generics #where_clause {}
+            impl #impl_generics ::datapod::DataPodValidate for #name #ty_generics #where_clause {
+                fn validate_wire_parts(
+                    header: &<Self as ::datapod::DataPod>::Header,
+                    payload: &[u8],
+                ) -> ::core::result::Result<(), ::datapod::WireError> {
+                    if !payload.is_empty() {
+                        return Err(::datapod::WireError::InvalidPayloadSize {
+                            type_name: ::core::any::type_name::<Self>(),
+                            message: ::std::format!(
+                                "fixed datapod payload must be empty, got {}",
+                                payload.len()
+                            ),
+                        });
+                    }
+                    #reserved_field_validation
+                    Ok(())
+                }
+            }
 
             impl #impl_generics ::datapod::DataPodAccess for #name #ty_generics #where_clause {
                 type View<'a> = ::datapod::FixedView<Self> where Self: 'a;
@@ -162,22 +182,8 @@ fn expand_fixed(
             }
         }
     };
-    let decode_validation = if manual_access {
-        quote! {
-            <Self as ::datapod::DataPodValidate>::validate_wire_parts(&header, &payload)?;
-        }
-    } else {
-        quote! {
-            if !payload.is_empty() {
-                return Err(::datapod::WireError::InvalidPayloadSize {
-                    type_name: ::core::any::type_name::<Self>(),
-                    message: ::std::format!(
-                        "fixed datapod payload must be empty, got {}",
-                        payload.len()
-                    ),
-                });
-            }
-        }
+    let decode_validation = quote! {
+        <Self as ::datapod::DataPodValidate>::validate_wire_parts(&header, &payload)?;
     };
 
     Ok(quote! {
@@ -221,6 +227,8 @@ fn expand_fixed(
 
         #le_wire_impl
 
+        #inherent_archive_api
+
         #inherent_canonical_api
 
         #access_impl
@@ -242,11 +250,13 @@ fn expand_heap(
     let header_name = format_ident!("{}Header", name);
     let view_name = format_ident!("{}View", name);
     let datapod_canonical_const = datapod_canonical_const(args);
+    let inherent_archive_api = inherent_archive_api(name, &input.generics);
     let inherent_canonical_api = inherent_canonical_api(
         name,
         &input.generics,
         args.canonical_name.as_ref(),
         quote!(::datapod::registry::PayloadKind::Bytes),
+        quote!(::datapod::registry::ArchiveShape::SinglePayload),
     );
 
     // Strip the `#[dp(bytes)]` attribute from the bytes field on the user
@@ -254,10 +264,21 @@ fn expand_heap(
     // its meaning).
     let (bytes_field_ident, bytes_field_ty): (syn::Ident, Type) = match &mut input.fields {
         Fields::Named(named) => {
-            let f = named.named.iter_mut().nth(bytes_field_index).unwrap();
+            let f = named
+                .named
+                .iter_mut()
+                .nth(bytes_field_index)
+                .ok_or_else(|| {
+                    Error::new(name.span(), "#[dp(bytes)] field index is out of bounds")
+                })?;
             let ty = f.ty.clone();
             f.attrs.retain(|a| !a.path().is_ident("dp"));
-            (f.ident.clone().unwrap(), ty)
+            (
+                f.ident
+                    .clone()
+                    .ok_or_else(|| Error::new(f.span(), "#[dp(bytes)] field must be named"))?,
+                ty,
+            )
         }
         _ => {
             return Err(Error::new(
@@ -276,34 +297,53 @@ fn expand_heap(
             .filter(|(i, _)| *i != bytes_field_index)
             .map(|(_, f)| f)
             .collect(),
-        _ => unreachable!(),
+        _ => {
+            return Err(Error::new(
+                input.span(),
+                "#[datapod] heap-bearing structs require named fields.",
+            ));
+        }
     };
+    let reserved_field_validation =
+        reserved_field_validation_for_fields(header_fields.iter().copied());
     let header_le_fields: Vec<(syn::Ident, Type)> = header_fields
         .iter()
-        .map(|f| (f.ident.clone().unwrap(), f.ty.clone()))
-        .collect();
+        .map(|f| {
+            Ok((
+                f.ident
+                    .clone()
+                    .ok_or_else(|| Error::new(f.span(), "datapod header field must be named"))?,
+                f.ty.clone(),
+            ))
+        })
+        .collect::<Result<_, Error>>()?;
     let header_le_impl =
         le_wire_impl_for_type(&header_name, &Generics::default(), &header_le_fields);
+    let header_field_idents: Vec<syn::Ident> = header_le_fields
+        .iter()
+        .map(|(ident, _)| ident.clone())
+        .collect();
 
     // Build the generated header struct: same fields (cleaned of `#[dp(...)]`),
     // public visibility, #[repr(C)] + Pod derives.
-    let header_field_defs = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
-        let ty = &f.ty;
-        let vis = match &f.vis {
-            Visibility::Public(_) => quote!(pub),
-            _ => quote!(pub),
-        };
-        quote! { #vis #ident: #ty }
-    });
+    let header_field_defs =
+        header_field_idents
+            .iter()
+            .zip(header_fields.iter())
+            .map(|(ident, f)| {
+                let ty = &f.ty;
+                let vis = match &f.vis {
+                    Visibility::Public(_) => quote!(pub),
+                    _ => quote!(pub),
+                };
+                quote! { #vis #ident: #ty }
+            });
 
     // header() method body: copy each non-bytes field by value.
-    let header_field_copies = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
+    let header_field_copies = header_field_idents.iter().map(|ident| {
         quote! { #ident: self.#ident }
     });
-    let header_field_decodes = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
+    let header_field_decodes = header_field_idents.iter().map(|ident| {
         quote! { #ident: header.#ident }
     });
     let section_field_idents: Vec<syn::Ident> = header_fields
@@ -371,6 +411,7 @@ fn expand_heap(
                             ),
                         });
                     }
+                    #reserved_field_validation
                     #section_validation
                     Ok(())
                 }
@@ -426,6 +467,8 @@ fn expand_heap(
 
         #header_le_impl
 
+        #inherent_archive_api
+
         #inherent_canonical_api
 
         impl ::datapod::DataPod for #name {
@@ -447,6 +490,7 @@ fn expand_heap(
                 header: <Self as ::datapod::DataPod>::Header,
                 payload: ::std::vec::Vec<u8>,
             ) -> ::core::result::Result<Self, ::datapod::WireError> {
+                <Self as ::datapod::DataPodValidate>::validate_wire_parts(&header, &payload)?;
                 Ok(Self {
                     #(#header_field_decodes,)*
                     #bytes_field_ident: ::datapod::decode_payload_vec::<#bytes_element_ty>(&payload)?,
@@ -468,20 +512,27 @@ fn expand_sectioned_heap(
     let header_name = format_ident!("{}Header", name);
     let view_name = format_ident!("{}View", name);
     let datapod_canonical_const = datapod_canonical_const(args);
+    let inherent_archive_api = inherent_archive_api(name, &input.generics);
     let inherent_canonical_api = inherent_canonical_api(
         name,
         &input.generics,
         args.canonical_name.as_ref(),
         quote!(::datapod::registry::PayloadKind::Bytes),
+        quote!(::datapod::registry::ArchiveShape::SegmentedPayload),
     );
 
     let bytes_indices: Vec<usize> = bytes_infos.iter().map(|info| info.index).collect();
     let mut bytes_fields = Vec::new();
     if let Fields::Named(named) = &mut input.fields {
         for info in bytes_infos {
-            let field = named.named.iter_mut().nth(info.index).unwrap();
+            let field = named.named.iter_mut().nth(info.index).ok_or_else(|| {
+                Error::new(name.span(), "#[dp(bytes)] field index is out of bounds")
+            })?;
             field.attrs.retain(|attr| !attr.path().is_ident("dp"));
-            let ident = field.ident.clone().unwrap();
+            let ident = field
+                .ident
+                .clone()
+                .ok_or_else(|| Error::new(field.span(), "#[dp(bytes)] field must be named"))?;
             let ty = field.ty.clone();
             let elem_ty = vec_element_type(&ty)?;
             bytes_fields.push((ident, ty, elem_ty));
@@ -500,21 +551,35 @@ fn expand_sectioned_heap(
             .filter(|(i, _)| !bytes_indices.contains(i))
             .map(|(_, f)| f)
             .collect(),
-        _ => unreachable!(),
+        _ => {
+            return Err(Error::new(
+                input.span(),
+                "#[datapod] heap-bearing structs require named fields.",
+            ));
+        }
     };
+    let reserved_field_validation =
+        reserved_field_validation_for_fields(header_fields.iter().copied());
 
-    let regular_header_field_defs = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
-        let ty = &f.ty;
+    let regular_header_fields: Vec<(syn::Ident, Type)> = header_fields
+        .iter()
+        .map(|f| {
+            Ok((
+                f.ident
+                    .clone()
+                    .ok_or_else(|| Error::new(f.span(), "datapod header field must be named"))?,
+                f.ty.clone(),
+            ))
+        })
+        .collect::<Result<_, Error>>()?;
+
+    let regular_header_field_defs = regular_header_fields.iter().map(|(ident, ty)| {
         quote! { pub #ident: #ty }
     });
     let section_header_field_defs = bytes_fields.iter().map(|(ident, _, _)| {
         quote! { pub #ident: ::datapod::PayloadSection }
     });
-    let mut header_le_fields: Vec<(syn::Ident, Type)> = header_fields
-        .iter()
-        .map(|f| (f.ident.clone().unwrap(), f.ty.clone()))
-        .collect();
+    let mut header_le_fields: Vec<(syn::Ident, Type)> = regular_header_fields.clone();
     header_le_fields.extend(
         bytes_fields
             .iter()
@@ -523,12 +588,10 @@ fn expand_sectioned_heap(
     let header_le_impl =
         le_wire_impl_for_type(&header_name, &Generics::default(), &header_le_fields);
 
-    let regular_header_decodes = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
+    let regular_header_decodes = regular_header_fields.iter().map(|(ident, _)| {
         quote! { #ident: header.#ident }
     });
-    let regular_header_copies = header_fields.iter().map(|f| {
-        let ident = f.ident.as_ref().unwrap();
+    let regular_header_copies = regular_header_fields.iter().map(|(ident, _)| {
         quote! { #ident: self.#ident }
     });
 
@@ -556,14 +619,29 @@ fn expand_sectioned_heap(
         .map(|(((ident, _, _), section_var), bytes_var)| {
             quote! {
                 let #bytes_var: &[u8] = ::datapod::bytemuck::cast_slice(&self.#ident);
-                let __dp_len: u32 = #bytes_var
-                    .len()
-                    .try_into()
-                    .expect("datapod section payload length exceeds u32");
+                let __dp_len: u32 = match #bytes_var.len().try_into() {
+                    ::core::result::Result::Ok(__dp_len) => __dp_len,
+                    ::core::result::Result::Err(_) => {
+                        return ::core::result::Result::Err(::datapod::WireError::InvalidPayloadSize {
+                            type_name: ::core::any::type_name::<Self>(),
+                            message: ::std::format!(
+                                "section {} has {} bytes, exceeds u32::MAX",
+                                ::core::stringify!(#ident),
+                                #bytes_var.len()
+                            ),
+                        });
+                    }
+                };
                 let #section_var = ::datapod::PayloadSection::new(__dp_offset, __dp_len);
-                __dp_offset = __dp_offset
-                    .checked_add(__dp_len)
-                    .expect("datapod section payload offset exceeds u32");
+                __dp_offset = match __dp_offset.checked_add(__dp_len) {
+                    ::core::option::Option::Some(__dp_offset) => __dp_offset,
+                    ::core::option::Option::None => {
+                        return ::core::result::Result::Err(::datapod::WireError::InvalidPayloadSize {
+                            type_name: ::core::any::type_name::<Self>(),
+                            message: "section payload offsets exceed u32::MAX".to_string(),
+                        });
+                    }
+                };
             }
         });
 
@@ -574,17 +652,35 @@ fn expand_sectioned_heap(
     let payload_len_steps = section_idents.iter().map(|ident| {
         quote! {
             let __dp_section_payload: &[u8] = ::datapod::bytemuck::cast_slice(&self.#ident);
-            __dp_len = __dp_len
-                .checked_add(__dp_section_payload.len())
-                .expect("datapod sectioned payload length overflows usize");
+            __dp_len = match __dp_len.checked_add(__dp_section_payload.len()) {
+                ::core::option::Option::Some(__dp_len) => __dp_len,
+                ::core::option::Option::None => {
+                    return ::core::result::Result::Err(::datapod::WireError::InvalidPayloadSize {
+                        type_name: ::core::any::type_name::<Self>(),
+                        message: "sectioned payload length overflows usize".to_string(),
+                    });
+                }
+            };
         }
     });
-    let payload_write_steps = section_idents.iter().map(|ident| {
-        quote! {
-            let __dp_section_payload: &[u8] = ::datapod::bytemuck::cast_slice(&self.#ident);
-            out.extend_from_slice(__dp_section_payload);
-        }
-    });
+    let payload_write_steps: Vec<_> = section_idents
+        .iter()
+        .map(|ident| {
+            quote! {
+                let __dp_section_payload: &[u8] = ::datapod::bytemuck::cast_slice(&self.#ident);
+                out.extend_from_slice(__dp_section_payload);
+            }
+        })
+        .collect();
+    let payload_try_write_steps: Vec<_> = section_idents
+        .iter()
+        .map(|ident| {
+            quote! {
+                let __dp_section_payload: &[u8] = ::datapod::bytemuck::cast_slice(&self.#ident);
+                out.extend_from_slice(__dp_section_payload);
+            }
+        })
+        .collect();
     let section_decodes =
         section_idents
             .iter()
@@ -661,6 +757,7 @@ fn expand_sectioned_heap(
                 ) -> ::core::result::Result<(), ::datapod::WireError> {
                     let sections = [#(header.#section_idents),*];
                     ::datapod::validate_sections(payload.len(), &sections)?;
+                    #reserved_field_validation
                     #(#section_validation_items)*
                     Ok(())
                 }
@@ -711,6 +808,8 @@ fn expand_sectioned_heap(
 
         #header_le_impl
 
+        #inherent_archive_api
+
         #inherent_canonical_api
 
         impl ::datapod::DataPod for #name {
@@ -719,13 +818,17 @@ fn expand_sectioned_heap(
             type Payload = [u8];
 
             fn header(&self) -> #header_name {
+                self.try_header().unwrap_or_default()
+            }
+
+            fn try_header(&self) -> ::core::result::Result<#header_name, ::datapod::WireError> {
                 let mut __dp_offset: u32 = 0;
                 #(#section_header_build)*
                 let _ = __dp_offset;
-                #header_name {
+                ::core::result::Result::Ok(#header_name {
                     #(#regular_header_copies,)*
                     #(#section_header_copies),*
-                }
+                })
             }
 
             fn payload_bytes(&self) -> &[u8] {
@@ -733,13 +836,35 @@ fn expand_sectioned_heap(
             }
 
             fn payload_len(&self) -> usize {
+                self.try_payload_len().unwrap_or(0)
+            }
+
+            fn try_payload_len(&self) -> ::core::result::Result<usize, ::datapod::WireError> {
                 let mut __dp_len = 0usize;
                 #(#payload_len_steps)*
-                __dp_len
+                ::core::result::Result::Ok(__dp_len)
             }
 
             fn write_payload_bytes(&self, out: &mut ::std::vec::Vec<u8>) {
                 #(#payload_write_steps)*
+            }
+
+            fn try_write_payload_bytes(
+                &self,
+                out: &mut ::std::vec::Vec<u8>,
+            ) -> ::core::result::Result<(), ::datapod::WireError> {
+                let __dp_len = self.try_payload_len()?;
+                out.try_reserve_exact(__dp_len).map_err(|err| {
+                    ::datapod::WireError::InvalidPayloadSize {
+                        type_name: ::core::any::type_name::<Self>(),
+                        message: ::std::format!(
+                            "failed to reserve {} sectioned payload bytes: {err}",
+                            __dp_len
+                        ),
+                    }
+                })?;
+                #(#payload_try_write_steps)*
+                ::core::result::Result::Ok(())
             }
 
             fn with_payload_segments<R>(&self, f: impl FnOnce(&[&[u8]]) -> R) -> R {
@@ -780,11 +905,74 @@ fn datapod_canonical_const(args: &DatapodArgs) -> TokenStream2 {
     }
 }
 
+fn inherent_archive_api(name: &syn::Ident, generics: &Generics) -> TokenStream2 {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    quote! {
+        impl #impl_generics #name #ty_generics #where_clause {
+            pub fn archive<R>(
+                &self,
+                f: impl FnOnce(::datapod::Archived<'_, Self>) -> R,
+            ) -> ::core::result::Result<R, ::datapod::WireError>
+            where
+                Self: ::datapod::DataPodValidate,
+                <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
+            {
+                ::datapod::archive(self, f)
+            }
+
+            pub fn with_archive<R>(
+                &self,
+                f: impl FnOnce(::datapod::Archived<'_, Self>) -> R,
+            ) -> ::core::result::Result<R, ::datapod::WireError>
+            where
+                Self: ::datapod::DataPodValidate,
+                <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
+            {
+                ::datapod::with_archive(self, f)
+            }
+
+            pub fn segmented_archive<R>(
+                &self,
+                f: impl FnOnce(::datapod::SegmentedArchived<'_, Self>) -> R,
+            ) -> ::core::result::Result<R, ::datapod::WireError>
+            where
+                <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
+            {
+                ::datapod::segmented_archive(self, f)
+            }
+
+            pub fn view_archive<'a>(
+                archive: ::datapod::Archived<'a, Self>,
+            ) -> ::core::result::Result<
+                <Self as ::datapod::DataPodAccess>::View<'a>,
+                ::datapod::WireError,
+            >
+            where
+                Self: ::datapod::DataPodAccess,
+                <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
+            {
+                ::datapod::view_archive::<Self>(archive)
+            }
+
+            pub fn from_archive(
+                archive: ::datapod::Archived<'_, Self>,
+            ) -> ::core::result::Result<Self, ::datapod::WireError>
+            where
+                Self: ::datapod::DataPodDecode + ::datapod::DataPodValidate,
+                <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
+            {
+                ::datapod::from_archive::<Self>(archive)
+            }
+        }
+    }
+}
+
 fn inherent_canonical_api(
     name: &syn::Ident,
     generics: &Generics,
     canonical_name: Option<&LitStr>,
     payload_kind: TokenStream2,
+    archive_shape: TokenStream2,
 ) -> TokenStream2 {
     let Some(canonical_name) = canonical_name else {
         return quote! {};
@@ -803,6 +991,7 @@ fn inherent_canonical_api(
                 ::datapod::registry::register_datapod_type::<Self>(
                     Self::CANONICAL_NAME,
                     #payload_kind,
+                    #archive_shape,
                 )
             }
 
@@ -816,7 +1005,10 @@ fn inherent_canonical_api(
             pub fn with_wire_frame<R>(
                 &self,
                 f: impl FnOnce(::datapod::WireFrame<'_>) -> R,
-            ) -> ::core::result::Result<R, ::datapod::WireError> {
+            ) -> ::core::result::Result<R, ::datapod::WireError>
+            where
+                Self: ::datapod::DataPodValidate,
+            {
                 ::datapod::with_wire_frame(self, f)
             }
 
@@ -847,7 +1039,7 @@ fn inherent_canonical_api(
                 frame: ::datapod::WireFrame<'_>,
             ) -> ::core::result::Result<Self, ::datapod::WireError>
             where
-                Self: ::datapod::DataPodDecode,
+                Self: ::datapod::DataPodDecode + ::datapod::DataPodValidate,
                 <Self as ::datapod::DataPod>::Header: ::datapod::LeWireHeader,
             {
                 ::datapod::from_wire_frame::<Self>(frame)
@@ -867,6 +1059,38 @@ fn fnv1a_64(bytes: &[u8]) -> u64 {
     hash
 }
 
+fn fixed_reserved_field_validation(fields: &Fields, _type_name: &syn::Ident) -> TokenStream2 {
+    let Fields::Named(FieldsNamed { named, .. }) = fields else {
+        return quote! {};
+    };
+    reserved_field_validation_for_fields(named.iter())
+}
+
+fn reserved_field_validation_for_fields<'a>(
+    fields: impl IntoIterator<Item = &'a Field>,
+) -> TokenStream2 {
+    let checks = fields.into_iter().filter_map(|field| {
+        let ident = field.ident.as_ref()?;
+        if ident == "_pad" {
+            let ty = &field.ty;
+            Some(quote! {
+                let __dp_reserved_zero: #ty = ::core::default::Default::default();
+                if header.#ident != __dp_reserved_zero {
+                    return Err(::datapod::WireError::InvalidHeader {
+                        type_name: ::core::any::type_name::<Self>(),
+                        message: "reserved _pad field must be zero".to_string(),
+                    });
+                }
+            })
+        } else {
+            None
+        }
+    });
+    quote! {
+        #(#checks)*
+    }
+}
+
 fn le_wire_impl_for_item_struct(
     name: &syn::Ident,
     generics: &Generics,
@@ -875,8 +1099,15 @@ fn le_wire_impl_for_item_struct(
     let fields = match fields {
         Fields::Named(FieldsNamed { named, .. }) => named
             .iter()
-            .map(|field| (field.ident.clone().unwrap(), field.ty.clone()))
-            .collect::<Vec<_>>(),
+            .map(|field| {
+                Ok((
+                    field.ident.clone().ok_or_else(|| {
+                        Error::new(field.span(), "#[datapod] header field must be named")
+                    })?,
+                    field.ty.clone(),
+                ))
+            })
+            .collect::<Result<Vec<_>, Error>>()?,
         Fields::Unit => Vec::new(),
         Fields::Unnamed(_) => {
             return Err(Error::new(
@@ -1115,8 +1346,11 @@ fn expand_derive(input: &DeriveInput) -> Result<TokenStream2, Error> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let le_wire_impl = match &input.data {
-        Data::Struct(data) => le_wire_impl_for_item_struct(name, &input.generics, &data.fields)?,
+    let (le_wire_impl, reserved_field_validation) = match &input.data {
+        Data::Struct(data) => (
+            le_wire_impl_for_item_struct(name, &input.generics, &data.fields)?,
+            fixed_reserved_field_validation(&data.fields, name),
+        ),
         Data::Enum(e) => {
             return Err(Error::new(
                 e.enum_token.span(),
@@ -1146,6 +1380,16 @@ fn expand_derive(input: &DeriveInput) -> Result<TokenStream2, Error> {
                 header: <Self as ::datapod::DataPod>::Header,
                 payload: ::std::vec::Vec<u8>,
             ) -> ::core::result::Result<Self, ::datapod::WireError> {
+                <Self as ::datapod::DataPodValidate>::validate_wire_parts(&header, &payload)?;
+                Ok(header)
+            }
+        }
+
+        impl #impl_generics ::datapod::DataPodValidate for #name #ty_generics #where_clause {
+            fn validate_wire_parts(
+                header: &<Self as ::datapod::DataPod>::Header,
+                payload: &[u8],
+            ) -> ::core::result::Result<(), ::datapod::WireError> {
                 if !payload.is_empty() {
                     return Err(::datapod::WireError::InvalidPayloadSize {
                         type_name: ::core::any::type_name::<Self>(),
@@ -1155,11 +1399,10 @@ fn expand_derive(input: &DeriveInput) -> Result<TokenStream2, Error> {
                         ),
                     });
                 }
-                Ok(header)
+                #reserved_field_validation
+                Ok(())
             }
         }
-
-        impl #impl_generics ::datapod::DataPodValidate for #name #ty_generics #where_clause {}
 
         #le_wire_impl
 

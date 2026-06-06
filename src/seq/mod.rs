@@ -10,16 +10,22 @@
 //!
 //! ## Pattern
 //!
-//! ```ignore
+//! ```
+//! use datapod::{Point, Vector};
+//!
 //! let mut v = Vector::new::<Point>();        // sets element_size = 24
 //! v.push(Point::new(1.0, 2.0, 3.0));
-//! let p: Point = v.get(0);
-//! let slice: &[Point] = v.as_slice::<Point>();
+//! let p: Point = v.try_get(0)?;
+//! let slice: &[Point] = v.try_as_slice::<Point>()?;
+//!
+//! assert_eq!(p, Point::new(1.0, 2.0, 3.0));
+//! assert_eq!(slice, &[Point::new(1.0, 2.0, 3.0)]);
+//! # Ok::<(), datapod::WireError>(())
 //! ```
 //!
-//! Linked lists (`List`, `ForwardList`) lay out their nodes as
-//! `[value: element_size bytes][prev: u32, next: u32]` so the value slot
-//! grows to fit any Pod.
+//! Linked lists grow the value slot to fit any Pod. `List` nodes use
+//! `[value: element_size bytes][prev: u32][next: u32]`; `ForwardList`
+//! nodes use `[value: element_size bytes][next: u32]`.
 
 mod bitvec;
 mod bytes;
@@ -65,18 +71,14 @@ pub type PagedVecvecView<'a> = BytePayloadView<'a, PagedVecvecHeader>;
 pub type QueueView<'a> = BytePayloadView<'a, QueueHeader>;
 pub type StackView<'a> = BytePayloadView<'a, StackHeader>;
 
-/// Assert at runtime (debug builds) that `T`'s size matches the container's
-/// stored element_size. Use in every typed accessor / mutator.
-#[inline]
-#[track_caller]
-pub(crate) fn assert_element_size<T>(stored: u32) {
-    debug_assert_eq!(
-        std::mem::size_of::<T>(),
-        stored as usize,
-        "element size mismatch: T is {}, container expects {}",
-        std::mem::size_of::<T>(),
-        stored
-    );
+pub(crate) fn checked_pod_element_size<Container: 'static, T: bytemuck::Pod>()
+-> Result<u32, WireError> {
+    let size = std::mem::size_of::<T>();
+    u32::try_from(size).map_err(|_| {
+        crate::wire::invalid_payload::<Container>(format!(
+            "element size {size} exceeds u32 wire header field"
+        ))
+    })
 }
 
 macro_rules! impl_byte_payload_access {
@@ -118,7 +120,8 @@ impl_byte_payload_access!(Stack, StackHeader);
 impl DataPodValidate for Queue {
     fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
         let raw_len = validate_sized_payload::<Self>(header.element_size, payload)?;
-        if header.front as usize > raw_len {
+        let front = checked_u32_to_usize::<Self>(header.front, "front")?;
+        if front > raw_len {
             return Err(crate::wire::invalid_header::<Self>(format!(
                 "front index {} exceeds raw element count {raw_len}",
                 header.front
@@ -133,14 +136,15 @@ impl_byte_payload_access!(Queue, QueueHeader);
 impl DataPodValidate for Deque {
     fn validate_wire_parts(header: &Self::Header, payload: &[u8]) -> Result<(), WireError> {
         validate_sized_payload::<Self>(header.element_size, payload)?;
-        let split = header.split_byte as usize;
+        let split = checked_u32_to_usize::<Self>(header.split_byte, "split_byte")?;
         if split > payload.len() {
             return Err(crate::wire::invalid_header::<Self>(format!(
                 "split_byte {split} exceeds payload length {}",
                 payload.len()
             )));
         }
-        if header.element_size != 0 && split % header.element_size as usize != 0 {
+        let element_size = checked_u32_to_usize::<Self>(header.element_size, "element_size")?;
+        if element_size != 0 && split % element_size != 0 {
             return Err(crate::wire::invalid_header::<Self>(format!(
                 "split_byte {split} is not a multiple of element_size {}",
                 header.element_size
@@ -194,8 +198,9 @@ impl DataPodValidate for IndexedHeap {
                 ))
             };
         }
+        let priority_size = checked_u32_to_usize::<Self>(header.priority_size, "priority_size")?;
         let entry_size = 8usize
-            .checked_add(header.priority_size as usize)
+            .checked_add(priority_size)
             .ok_or_else(|| crate::wire::invalid_payload::<Self>("entry size overflowed"))?;
         if payload.len() % entry_size != 0 {
             return Err(crate::wire::invalid_payload::<Self>(format!(
@@ -203,9 +208,15 @@ impl DataPodValidate for IndexedHeap {
                 payload.len()
             )));
         }
+        let entry_count = payload.len() / entry_size;
         let mut keys = HashSet::new();
+        keys.try_reserve(entry_count).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!(
+                "failed to reserve {entry_count} indexed heap key slots: {err}"
+            ))
+        })?;
         for entry in payload.chunks_exact(entry_size) {
-            let key = read_u64_le(entry, 0);
+            let key = read_checked_u64_le::<Self>(entry, 0)?;
             if !keys.insert(key) {
                 return Err(crate::wire::invalid_payload::<Self>(format!(
                     "duplicate indexed heap key {key}"
@@ -231,7 +242,7 @@ impl DataPodValidate for List {
             header.head,
             Some(header.tail),
             header.free_head,
-            header.size_ as usize,
+            checked_u32_to_usize::<Self>(header.size_, "size_")?,
             true,
         )
     }
@@ -247,7 +258,7 @@ impl DataPodValidate for ForwardList {
             header.head,
             None,
             header.free_head,
-            header.size_ as usize,
+            checked_u32_to_usize::<Self>(header.size_, "size_")?,
             false,
         )
     }
@@ -281,13 +292,19 @@ fn validate_sized_payload<T: 'static>(
             ))
         };
     }
-    if payload.len() % element_size as usize != 0 {
+    let element_size = checked_u32_to_usize::<T>(element_size, "element_size")?;
+    if payload.len() % element_size != 0 {
         return Err(crate::wire::invalid_payload::<T>(format!(
             "{} bytes is not a multiple of element_size {element_size}",
             payload.len()
         )));
     }
-    Ok(payload.len() / element_size as usize)
+    Ok(payload.len() / element_size)
+}
+
+fn checked_u32_to_usize<T: 'static>(value: u32, field: &'static str) -> Result<usize, WireError> {
+    usize::try_from(value)
+        .map_err(|_| crate::wire::invalid_header::<T>(format!("{field} does not fit in usize")))
 }
 
 fn validate_linked_list_payload<T: 'static>(
@@ -314,8 +331,9 @@ fn validate_linked_list_payload<T: 'static>(
         return Ok(());
     }
 
+    let element_size = checked_u32_to_usize::<T>(element_size, "element_size")?;
     let link_bytes = 8usize;
-    let node_size = (element_size as usize)
+    let node_size = element_size
         .checked_add(link_bytes)
         .ok_or_else(|| crate::wire::invalid_payload::<T>("node size overflowed"))?;
     if payload.len() % node_size != 0 {
@@ -348,13 +366,13 @@ fn validate_linked_list_payload<T: 'static>(
         ));
     }
 
-    let mut seen = vec![false; slots];
+    let mut seen = bool_scratch::<T>(slots, "active linked-list slots")?;
     let mut cursor = head;
     let mut previous = nil;
     let mut count = 0usize;
     let mut last = nil;
     while cursor != nil {
-        let index = cursor as usize;
+        let index = checked_u32_to_usize::<T>(cursor, "node index")?;
         if index >= slots {
             return Err(crate::wire::invalid_payload::<T>(format!(
                 "node index {index} exceeds slot count {slots}"
@@ -367,22 +385,32 @@ fn validate_linked_list_payload<T: 'static>(
         }
         seen[index] = true;
         if has_prev {
-            let prev = read_u32_le(
+            let prev = read_checked_u32_le::<T>(
                 payload,
-                node_offset(index, node_size, element_size as usize),
-            );
+                node_offset::<T>(index, node_size, element_size)?,
+            )?;
             if prev != previous {
                 return Err(crate::wire::invalid_payload::<T>(format!(
                     "node {index} prev link {prev} does not match previous {previous}"
                 )));
             }
+        } else {
+            let pad = read_checked_u32_le::<T>(
+                payload,
+                node_link_offset::<T>(index, node_size, element_size, 4)?,
+            )?;
+            if pad != 0 {
+                return Err(crate::wire::invalid_payload::<T>(format!(
+                    "node {index} reserved pad field must be zero"
+                )));
+            }
         }
         previous = cursor;
         last = cursor;
-        cursor = read_u32_le(
+        cursor = read_checked_u32_le::<T>(
             payload,
-            node_offset(index, node_size, element_size as usize) + if has_prev { 4 } else { 0 },
-        );
+            node_link_offset::<T>(index, node_size, element_size, if has_prev { 4 } else { 0 })?,
+        )?;
         validate_index_or_nil::<T>(cursor, slots, "next")?;
         count += 1;
         if count > size {
@@ -404,10 +432,11 @@ fn validate_linked_list_payload<T: 'static>(
         )));
     }
 
-    let mut free_seen = vec![false; slots];
+    let mut free_seen = bool_scratch::<T>(slots, "free linked-list slots")?;
     let mut cursor = free_head;
+    let mut free_count = 0usize;
     while cursor != nil {
-        let index = cursor as usize;
+        let index = checked_u32_to_usize::<T>(cursor, "free node index")?;
         if index >= slots {
             return Err(crate::wire::invalid_payload::<T>(format!(
                 "free node index {index} exceeds slot count {slots}"
@@ -424,14 +453,51 @@ fn validate_linked_list_payload<T: 'static>(
             ));
         }
         free_seen[index] = true;
-        cursor = read_u32_le(
+        if has_prev {
+            let prev = read_checked_u32_le::<T>(
+                payload,
+                node_offset::<T>(index, node_size, element_size)?,
+            )?;
+            if prev != 0 {
+                return Err(crate::wire::invalid_payload::<T>(format!(
+                    "free node {index} reserved prev field must be zero"
+                )));
+            }
+        } else {
+            let pad = read_checked_u32_le::<T>(
+                payload,
+                node_link_offset::<T>(index, node_size, element_size, 4)?,
+            )?;
+            if pad != 0 {
+                return Err(crate::wire::invalid_payload::<T>(format!(
+                    "free node {index} reserved pad field must be zero"
+                )));
+            }
+        }
+        cursor = read_checked_u32_le::<T>(
             payload,
-            node_offset(index, node_size, element_size as usize) + if has_prev { 4 } else { 0 },
-        );
+            node_link_offset::<T>(index, node_size, element_size, if has_prev { 4 } else { 0 })?,
+        )?;
         validate_index_or_nil::<T>(cursor, slots, "free next")?;
+        free_count += 1;
+    }
+
+    if count.checked_add(free_count) != Some(slots) {
+        return Err(crate::wire::invalid_payload::<T>(format!(
+            "active ({count}) plus free ({free_count}) slots do not cover slot count {slots}"
+        )));
     }
 
     Ok(())
+}
+
+fn bool_scratch<T: 'static>(slots: usize, label: &'static str) -> Result<Vec<bool>, WireError> {
+    let mut scratch = Vec::new();
+    scratch.try_reserve_exact(slots).map_err(|err| {
+        crate::wire::invalid_payload::<T>(format!("failed to reserve {slots} {label}: {err}"))
+    })?;
+    scratch.resize(slots, false);
+    Ok(scratch)
 }
 
 fn validate_index_or_nil<T: 'static>(
@@ -439,7 +505,11 @@ fn validate_index_or_nil<T: 'static>(
     slots: usize,
     field: &'static str,
 ) -> Result<(), WireError> {
-    if value == u32::MAX || (slots > 0 && (value as usize) < slots) {
+    if value == u32::MAX {
+        return Ok(());
+    }
+    let value = checked_u32_to_usize::<T>(value, field)?;
+    if slots > 0 && value < slots {
         Ok(())
     } else {
         Err(crate::wire::invalid_header::<T>(format!(
@@ -448,8 +518,60 @@ fn validate_index_or_nil<T: 'static>(
     }
 }
 
-fn node_offset(index: usize, node_size: usize, element_size: usize) -> usize {
-    index * node_size + element_size
+fn node_offset<T: 'static>(
+    index: usize,
+    node_size: usize,
+    element_size: usize,
+) -> Result<usize, WireError> {
+    index
+        .checked_mul(node_size)
+        .and_then(|base| base.checked_add(element_size))
+        .ok_or_else(|| {
+            crate::wire::invalid_payload::<T>(format!("node {index} link offset overflowed"))
+        })
+}
+
+fn node_link_offset<T: 'static>(
+    index: usize,
+    node_size: usize,
+    element_size: usize,
+    link_offset: usize,
+) -> Result<usize, WireError> {
+    node_offset::<T>(index, node_size, element_size)?
+        .checked_add(link_offset)
+        .ok_or_else(|| {
+            crate::wire::invalid_payload::<T>(format!("node {index} link field offset overflowed"))
+        })
+}
+
+fn read_checked_u32_le<T: 'static>(bytes: &[u8], offset: usize) -> Result<u32, WireError> {
+    let end = offset
+        .checked_add(4)
+        .ok_or_else(|| crate::wire::invalid_payload::<T>("u32 offset overflowed"))?;
+    let Some(raw) = bytes.get(offset..end) else {
+        return Err(crate::wire::invalid_payload::<T>(format!(
+            "need 4 bytes at offset {offset}, payload has {} bytes",
+            bytes.len()
+        )));
+    };
+    let mut le = [0u8; 4];
+    le.copy_from_slice(raw);
+    Ok(u32::from_le_bytes(le))
+}
+
+fn read_checked_u64_le<T: 'static>(bytes: &[u8], offset: usize) -> Result<u64, WireError> {
+    let end = offset
+        .checked_add(8)
+        .ok_or_else(|| crate::wire::invalid_payload::<T>("u64 offset overflowed"))?;
+    let Some(raw) = bytes.get(offset..end) else {
+        return Err(crate::wire::invalid_payload::<T>(format!(
+            "need 8 bytes at offset {offset}, payload has {} bytes",
+            bytes.len()
+        )));
+    };
+    let mut le = [0u8; 8];
+    le.copy_from_slice(raw);
+    Ok(u64::from_le_bytes(le))
 }
 
 fn validate_vecvec_payload<T: 'static>(element_size: u32, payload: &[u8]) -> Result<(), WireError> {
@@ -458,7 +580,8 @@ fn validate_vecvec_payload<T: 'static>(element_size: u32, payload: &[u8]) -> Res
             "payload must contain bucket count and at least one offset",
         ));
     }
-    let bucket_count = read_u32_le(payload, 0) as usize;
+    let bucket_count =
+        checked_u32_to_usize::<T>(read_checked_u32_le::<T>(payload, 0)?, "bucket_count")?;
     let header_bytes = 4usize
         .checked_add(
             bucket_count
@@ -475,10 +598,18 @@ fn validate_vecvec_payload<T: 'static>(element_size: u32, payload: &[u8]) -> Res
             payload.len()
         )));
     }
-    let data_len = payload.len() - header_bytes;
+    let data_len = payload
+        .len()
+        .checked_sub(header_bytes)
+        .ok_or_else(|| crate::wire::invalid_payload::<T>("data length underflowed"))?;
     let mut previous = None;
     for index in 0..=bucket_count {
-        let offset = read_u32_le(payload, 4 + index * 4) as usize;
+        let offset_start = index
+            .checked_mul(4)
+            .and_then(|offset| 4usize.checked_add(offset))
+            .ok_or_else(|| crate::wire::invalid_payload::<T>("offset slot overflowed"))?;
+        let offset =
+            checked_u32_to_usize::<T>(read_checked_u32_le::<T>(payload, offset_start)?, "offset")?;
         if offset > data_len {
             return Err(crate::wire::invalid_payload::<T>(format!(
                 "bucket offset {offset} exceeds data length {data_len}"
@@ -513,22 +644,28 @@ fn validate_vecvec_payload<T: 'static>(element_size: u32, payload: &[u8]) -> Res
             ))
         };
     }
+    let element_size = checked_u32_to_usize::<T>(element_size, "element_size")?;
     for index in 0..bucket_count {
-        let start = read_u32_le(payload, 4 + index * 4) as usize;
-        let end = read_u32_le(payload, 4 + (index + 1) * 4) as usize;
-        if (end - start) % element_size as usize != 0 {
+        let start_offset = index
+            .checked_mul(4)
+            .and_then(|offset| 4usize.checked_add(offset))
+            .ok_or_else(|| crate::wire::invalid_payload::<T>("bucket start offset overflowed"))?;
+        let end_offset = index
+            .checked_add(1)
+            .and_then(|next| next.checked_mul(4))
+            .and_then(|offset| 4usize.checked_add(offset))
+            .ok_or_else(|| crate::wire::invalid_payload::<T>("bucket end offset overflowed"))?;
+        let start =
+            checked_u32_to_usize::<T>(read_checked_u32_le::<T>(payload, start_offset)?, "start")?;
+        let end = checked_u32_to_usize::<T>(read_checked_u32_le::<T>(payload, end_offset)?, "end")?;
+        let bucket_len = end
+            .checked_sub(start)
+            .ok_or_else(|| crate::wire::invalid_payload::<T>("bucket length underflowed"))?;
+        if bucket_len % element_size != 0 {
             return Err(crate::wire::invalid_payload::<T>(format!(
                 "bucket {index} byte length is not a multiple of element_size {element_size}",
             )));
         }
     }
     Ok(())
-}
-
-fn read_u32_le(bytes: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
-
-fn read_u64_le(bytes: &[u8], offset: usize) -> u64 {
-    u64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap())
 }

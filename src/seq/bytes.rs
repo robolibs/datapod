@@ -23,9 +23,19 @@ impl Bytes {
     }
 
     pub fn from_slice(slice: &[u8]) -> Self {
-        Self {
-            data: slice.to_vec(),
-        }
+        Self::try_from_slice(slice).unwrap_or_default()
+    }
+
+    pub fn try_from_slice(slice: &[u8]) -> Result<Self, WireError> {
+        let mut data = Vec::new();
+        data.try_reserve_exact(slice.len()).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!(
+                "failed to reserve {} bytes: {err}",
+                slice.len()
+            ))
+        })?;
+        data.extend_from_slice(slice);
+        Ok(Self { data })
     }
 
     pub fn size(&self) -> usize {
@@ -45,7 +55,18 @@ impl Bytes {
     }
 
     pub fn append(&mut self, slice: &[u8]) {
+        let _ = self.try_append(slice);
+    }
+
+    pub fn try_append(&mut self, slice: &[u8]) -> Result<(), WireError> {
+        self.data.try_reserve_exact(slice.len()).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!(
+                "failed to reserve {} appended bytes: {err}",
+                slice.len()
+            ))
+        })?;
         self.data.extend_from_slice(slice);
+        Ok(())
     }
 
     pub fn fill_byte(&mut self, value: u8) {
@@ -62,17 +83,28 @@ impl Bytes {
         if from >= self.data.len() {
             return BYTES_NPOS;
         }
-        self.data[from..]
-            .iter()
+        let Some(hay) = self.data.get(from..) else {
+            return BYTES_NPOS;
+        };
+        hay.iter()
             .position(|b| *b == needle)
             .map(|i| i + from)
             .unwrap_or(BYTES_NPOS)
     }
 
     pub fn rfind(&self, needle: u8, from: usize) -> usize {
-        let upper = from.min(self.data.len().saturating_sub(1));
+        if self.data.is_empty() {
+            return BYTES_NPOS;
+        }
+        let Some(last) = self.data.len().checked_sub(1) else {
+            return BYTES_NPOS;
+        };
+        let upper = from.min(last);
         for i in (0..=upper).rev() {
-            if self.data[i] == needle {
+            let Some(byte) = self.data.get(i) else {
+                return BYTES_NPOS;
+            };
+            if *byte == needle {
                 return i;
             }
         }
@@ -92,11 +124,29 @@ impl Bytes {
     }
 
     pub fn substr(&self, pos: usize, count: usize) -> Vec<u8> {
+        self.try_substr(pos, count).unwrap_or_default()
+    }
+
+    pub fn try_substr(&self, pos: usize, count: usize) -> Result<Vec<u8>, WireError> {
         if pos >= self.data.len() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        let end = (pos + count).min(self.data.len());
-        self.data[pos..end].to_vec()
+        let end = pos
+            .checked_add(count)
+            .unwrap_or(self.data.len())
+            .min(self.data.len());
+        let slice = self.data.get(pos..end).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("substring range is out of bounds")
+        })?;
+        let mut out = Vec::new();
+        out.try_reserve_exact(slice.len()).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!(
+                "failed to reserve {} substring bytes: {err}",
+                slice.len()
+            ))
+        })?;
+        out.extend_from_slice(slice);
+        Ok(out)
     }
 }
 

@@ -1,8 +1,9 @@
 //! Smoke tests for `#[datapod]` and `#[derive(DataPod)]`.
 
 use datapod::{
-    DataPod, Encoding, Envelope, PayloadLayoutBuilder, PayloadSection, WireError, access_wire,
-    access_wire_frame, bind, datapod, from_wire_message, to_wire_message, validate_wire,
+    DataPod, DataPodDecode, Encoding, Envelope, PayloadLayoutBuilder, PayloadSection, WireError,
+    access_wire, access_wire_frame, bind, datapod, from_wire_message, to_wire_message,
+    to_wire_message_v1, validate_wire,
 };
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,26 @@ pub struct SplitImage {
     pub pixels: Vec<u8>,
     #[dp(bytes, section = "metadata")]
     pub metadata: Vec<u16>,
+}
+
+#[datapod]
+#[derive(Default)]
+pub struct PaddedBlob {
+    pub id: u32,
+    pub _pad: u32,
+    #[dp(bytes)]
+    pub data: Vec<u8>,
+}
+
+#[datapod]
+#[derive(Default)]
+pub struct PaddedSplit {
+    pub id: u32,
+    pub _pad: u32,
+    #[dp(bytes, section = "left")]
+    pub left: Vec<u8>,
+    #[dp(bytes, section = "right")]
+    pub right: Vec<u16>,
 }
 
 #[datapod(name = "robolibs.camera_frame.v1")]
@@ -186,6 +207,17 @@ fn variable_datapod_attr_validates_payload_section_fields() {
         validate_wire::<ImageWithMeta>(&bad),
         Err(WireError::InvalidPayloadSize { .. })
     ));
+
+    let invalid_header = ImageWithMetaHeader {
+        width: 2,
+        height: 1,
+        pixels: PayloadSection::new(2, 4),
+        metadata: PayloadSection::new(0, 2),
+    };
+    assert!(matches!(
+        <ImageWithMeta as DataPodDecode>::from_wire_parts(invalid_header, b"abcdef".to_vec()),
+        Err(WireError::InvalidPayloadSize { .. })
+    ));
 }
 
 #[test]
@@ -198,9 +230,21 @@ fn variable_datapod_attr_supports_direct_multi_vec_sections() {
     };
     let msg = to_wire_message(&image);
     let header_len = core::mem::size_of::<SplitImageHeader>();
+    assert_eq!(
+        image.try_header().expect("sectioned try_header succeeds"),
+        image.header()
+    );
+    assert_eq!(
+        image
+            .try_payload_len()
+            .expect("sectioned try_payload_len succeeds"),
+        image.payload_len()
+    );
 
     assert_eq!(msg.bytes.len(), header_len + 2 + 4);
     validate_wire::<SplitImage>(&msg).expect("sectioned multi-vec payload validates");
+    let v1_msg = to_wire_message_v1(&image).expect("sectioned v1 encode validates joined payload");
+    assert_eq!(v1_msg, msg);
     let view = access_wire::<SplitImage>(&msg).expect("sectioned view");
     let _: SplitImageView<'_> = view;
     assert_eq!(view.header.width, 2);
@@ -225,6 +269,26 @@ fn variable_datapod_attr_supports_direct_multi_vec_sections() {
     assert!(matches!(
         validate_wire::<SplitImage>(&bad),
         Err(WireError::InvalidPayloadSize { .. })
+    ));
+}
+
+#[test]
+fn variable_datapod_attr_rejects_nonzero_reserved_header_padding() {
+    let bad_blob_header = PaddedBlobHeader { id: 1, _pad: 1 };
+    assert!(matches!(
+        <PaddedBlob as DataPodDecode>::from_wire_parts(bad_blob_header, b"abc".to_vec()),
+        Err(WireError::InvalidHeader { .. })
+    ));
+
+    let bad_split_header = PaddedSplitHeader {
+        id: 1,
+        _pad: 1,
+        left: PayloadSection::new(0, 1),
+        right: PayloadSection::new(1, 2),
+    };
+    assert!(matches!(
+        <PaddedSplit as DataPodDecode>::from_wire_parts(bad_split_header, vec![1, 2, 0]),
+        Err(WireError::InvalidHeader { .. })
     ));
 }
 
@@ -258,6 +322,13 @@ fn datapod_attr_name_sets_custom_rust_canonical_wire_hash() {
     assert_eq!(
         info.validator,
         datapod::registry::ValidatorKind::RegistryOnly
+    );
+    assert!(info.has_archive);
+    assert!(info.has_view);
+    assert!(info.has_owned_decode);
+    assert_eq!(
+        info.archive_shape,
+        datapod::registry::ArchiveShape::SinglePayload
     );
 
     let msg = image.to_wire_message();
@@ -315,6 +386,15 @@ pub struct ManualPoint {
     pub z: f64,
 }
 
+#[repr(C)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ZeroCopySend, datapod::DataPod,
+)]
+pub struct ManualPadded {
+    pub value: u32,
+    pub _pad: u32,
+}
+
 #[test]
 fn explicit_derive_form_emits_only_impl() {
     let p = ManualPoint {
@@ -328,6 +408,23 @@ fn explicit_derive_form_emits_only_impl() {
 
     fn _assert<T: DataPod<Header = T, Payload = ()>>() {}
     _assert::<ManualPoint>();
+}
+
+#[test]
+fn explicit_derive_form_rejects_nonzero_reserved_padding() {
+    let bad = ManualPadded { value: 1, _pad: 1 };
+    let bad = to_wire_message(&bad);
+    assert!(matches!(
+        validate_wire::<ManualPadded>(&bad),
+        Err(WireError::InvalidHeader { .. })
+    ));
+    assert!(matches!(
+        <ManualPadded as DataPodDecode>::from_wire_parts(
+            ManualPadded { value: 1, _pad: 1 },
+            vec![]
+        ),
+        Err(WireError::InvalidHeader { .. })
+    ));
 }
 
 // ---------------------------------------------------------------------------

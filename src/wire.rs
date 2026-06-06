@@ -58,6 +58,16 @@ pub trait DataPod: Debug + 'static {
     /// Build the Pod header value from this instance.
     fn header(&self) -> Self::Header;
 
+    /// Fallible header builder for datapods whose compact header contains
+    /// length/offset fields with smaller on-wire bounds than `usize`.
+    ///
+    /// The default keeps existing hand-written datapods source-compatible.
+    /// Generated sectioned datapods override this so production callers can
+    /// receive [`WireError`] instead of panicking on oversized sections.
+    fn try_header(&self) -> Result<Self::Header, WireError> {
+        Ok(self.header())
+    }
+
     /// Byte view of the variable-length payload. Empty slice for fixed-Pod
     /// types (where `Payload = ()`).
     ///
@@ -71,9 +81,34 @@ pub trait DataPod: Debug + 'static {
         self.payload_bytes().len()
     }
 
+    /// Fallible payload length calculation.
+    ///
+    /// The default delegates to [`DataPod::payload_len`]. Generated sectioned
+    /// datapods override this to report checked `usize` overflow.
+    fn try_payload_len(&self) -> Result<usize, WireError> {
+        Ok(self.payload_len())
+    }
+
     /// Append this datapod's payload bytes to `out`.
     fn write_payload_bytes(&self, out: &mut Vec<u8>) {
         out.extend_from_slice(self.payload_bytes());
+    }
+
+    /// Fallible payload writer for production owned-message collection.
+    ///
+    /// The default reserves space before appending a single contiguous payload.
+    /// Generated sectioned datapods override this to keep fallible collection on
+    /// the checked path end-to-end across multiple payload vectors.
+    fn try_write_payload_bytes(&self, out: &mut Vec<u8>) -> Result<(), WireError> {
+        let payload = self.payload_bytes();
+        out.try_reserve_exact(payload.len()).map_err(|err| {
+            invalid_payload_for(
+                core::any::type_name::<Self>(),
+                format!("failed to reserve {} payload bytes: {err}", payload.len()),
+            )
+        })?;
+        out.extend_from_slice(payload);
+        Ok(())
     }
 
     /// Borrow payload as one or more contiguous byte segments.
@@ -197,7 +232,16 @@ pub struct WireFrame<'a> {
 
 impl<'a> WireFrame<'a> {
     pub fn joined_len(&self) -> usize {
-        self.header.len() + self.payload.len()
+        self.header.len().saturating_add(self.payload.len())
+    }
+
+    pub fn try_joined_len(&self) -> Result<usize, WireError> {
+        checked_wire_len(
+            "WireFrame",
+            self.header.len(),
+            self.payload.len(),
+            "joined header + payload length overflows usize",
+        )
     }
 
     pub fn is_empty_payload(&self) -> bool {
@@ -231,11 +275,35 @@ pub struct WireSegmentedFrame<'a> {
 
 impl<'a> WireSegmentedFrame<'a> {
     pub fn payload_len(&self) -> usize {
-        self.payloads.iter().map(|payload| payload.len()).sum()
+        self.payloads
+            .iter()
+            .fold(0usize, |total, payload| total.saturating_add(payload.len()))
+    }
+
+    pub fn try_payload_len(&self) -> Result<usize, WireError> {
+        let mut total = 0usize;
+        for payload in self.payloads {
+            total = checked_wire_len(
+                "WireSegmentedFrame",
+                total,
+                payload.len(),
+                "joined payload segment length overflows usize",
+            )?;
+        }
+        Ok(total)
     }
 
     pub fn joined_len(&self) -> usize {
-        self.header.len() + self.payload_len()
+        self.header.len().saturating_add(self.payload_len())
+    }
+
+    pub fn try_joined_len(&self) -> Result<usize, WireError> {
+        checked_wire_len(
+            "WireSegmentedFrame",
+            self.header.len(),
+            self.try_payload_len()?,
+            "joined header + payload segments length overflows usize",
+        )
     }
 
     pub fn payload_segment_count(&self) -> usize {
@@ -271,7 +339,16 @@ pub struct WireParts<'a> {
 
 impl<'a> WireParts<'a> {
     pub fn joined_len(&self) -> usize {
-        self.header.len() + self.payload.len()
+        self.header.len().saturating_add(self.payload.len())
+    }
+
+    pub fn try_joined_len(&self) -> Result<usize, WireError> {
+        checked_wire_len(
+            "WireParts",
+            self.header.len(),
+            self.payload.len(),
+            "joined header + payload length overflows usize",
+        )
     }
 }
 
@@ -384,7 +461,12 @@ where
                 Self::LE_WIRE_SIZE
             )));
         }
-        let mut items = Vec::with_capacity(N);
+        let mut items = Vec::new();
+        items.try_reserve_exact(N).map_err(|err| {
+            invalid_header::<Self>(format!(
+                "failed to reserve {N} little-endian array field items: {err}"
+            ))
+        })?;
         for chunk in bytes.chunks_exact(T::LE_WIRE_SIZE) {
             items.push(T::read_le(chunk)?);
         }
@@ -415,7 +497,12 @@ where
             got: bytes.len(),
         });
     }
-    let value = T::read_le(&bytes[*offset..end])?;
+    let field = bytes.get(*offset..end).ok_or(WireError::ShortHeader {
+        type_name,
+        needed: end,
+        got: bytes.len(),
+    })?;
+    let value = T::read_le(field)?;
     *offset = end;
     Ok(value)
 }
@@ -472,6 +559,158 @@ pub trait DataPodAccess: DataPodValidate {
     ) -> Self::View<'a>;
 }
 
+/// Archive/View/Owned terminology aliases for the public zero-copy model.
+///
+/// `WireFrame` and `WireMessage` remain available as compatibility names. New
+/// code should prefer the Archive/View/Owned names when describing lifecycle:
+/// `ArchiveFrame` for borrowed ABI data, `T::View<'a>` for typed borrowed
+/// access, and `OwnedWireMessage` for the explicit contiguous/copying lane.
+pub type ArchiveFrame<'a> = WireFrame<'a>;
+pub type SegmentedArchiveFrame<'a> = WireSegmentedFrame<'a>;
+pub type OwnedWireMessage = WireMessage;
+
+/// Typed borrowed archive over a single-payload datapod frame.
+///
+/// This wrapper makes the type parameter explicit without changing the
+/// underlying ABI representation. It is still just borrowed `type_hash +
+/// header + payload`; it does not allocate and it does not join payload bytes.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Archived<'a, T: DataPod> {
+    frame: ArchiveFrame<'a>,
+    _marker: core::marker::PhantomData<T>,
+}
+
+impl<'a, T: DataPod> Copy for Archived<'a, T> {}
+
+impl<'a, T: DataPod> Clone for Archived<'a, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T> Archived<'a, T>
+where
+    T: DataPod,
+{
+    pub fn from_frame(frame: ArchiveFrame<'a>) -> Self {
+        Self {
+            frame,
+            _marker: core::marker::PhantomData,
+        }
+    }
+
+    pub fn frame(&self) -> ArchiveFrame<'a> {
+        self.frame
+    }
+
+    pub fn type_hash(&self) -> u64 {
+        self.frame.type_hash
+    }
+
+    pub fn header_bytes(&self) -> &'a [u8] {
+        self.frame.header
+    }
+
+    pub fn payload_bytes(&self) -> &'a [u8] {
+        self.frame.payload
+    }
+}
+
+impl<'a, T> Archived<'a, T>
+where
+    T: DataPodAccess,
+    T::Header: LeWireHeader,
+{
+    pub fn validate(&self) -> Result<(), WireError> {
+        validate_wire_frame::<T>(self.frame)
+    }
+
+    pub fn view(&self) -> Result<T::View<'a>, WireError> {
+        access_wire_frame::<T>(self.frame)
+    }
+}
+
+impl<'a, T> Archived<'a, T>
+where
+    T: DataPodDecode + DataPodValidate,
+    T::Header: LeWireHeader,
+{
+    pub fn to_owned(&self) -> Result<T, WireError> {
+        from_wire_frame_v1::<T>(self.frame)
+    }
+}
+
+/// Typed borrowed archive over a segmented datapod frame.
+///
+/// This preserves the original payload segments for scatter/gather transports.
+/// It must not be converted to a single-payload archive unless there is exactly
+/// one segment, because joining segments would be a hidden payload copy.
+#[derive(Debug, PartialEq, Eq)]
+pub struct SegmentedArchived<'a, T: DataPod> {
+    frame: SegmentedArchiveFrame<'a>,
+    _marker: core::marker::PhantomData<T>,
+}
+
+impl<'a, T: DataPod> Copy for SegmentedArchived<'a, T> {}
+
+impl<'a, T: DataPod> Clone for SegmentedArchived<'a, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T> SegmentedArchived<'a, T>
+where
+    T: DataPod,
+{
+    pub fn from_frame(frame: SegmentedArchiveFrame<'a>) -> Self {
+        Self {
+            frame,
+            _marker: core::marker::PhantomData,
+        }
+    }
+
+    pub fn frame(&self) -> SegmentedArchiveFrame<'a> {
+        self.frame
+    }
+
+    pub fn type_hash(&self) -> u64 {
+        self.frame.type_hash
+    }
+
+    pub fn header_bytes(&self) -> &'a [u8] {
+        self.frame.header
+    }
+
+    pub fn payload_segments(&self) -> &'a [&'a [u8]] {
+        self.frame.payloads
+    }
+
+    pub fn payload_len(&self) -> usize {
+        self.frame.payload_len()
+    }
+
+    pub fn as_single_payload_archive(&self) -> Result<Archived<'a, T>, WireError> {
+        match self.frame.payloads {
+            [payload] => Ok(Archived {
+                frame: ArchiveFrame {
+                    type_hash: self.frame.type_hash,
+                    header: self.frame.header,
+                    payload,
+                },
+                _marker: core::marker::PhantomData,
+            }),
+            payloads => Err(WireError::InvalidPayloadSize {
+                type_name: core::any::type_name::<T>(),
+                message: format!(
+                    "segmented archive has {} payload segments; refusing to join them implicitly",
+                    payloads.len()
+                ),
+            }),
+        }
+    }
+}
+
 /// Borrow a zero-copy frame for a datapod with an explicit type hash.
 ///
 /// This is callback-based because heap datapods build their compact header on
@@ -487,17 +726,18 @@ pub fn with_wire_frame_named<T, R>(
     f: impl FnOnce(WireFrame<'_>) -> R,
 ) -> Result<R, WireError>
 where
-    T: DataPod,
+    T: DataPod + DataPodValidate,
 {
     let payload = value.payload_bytes();
-    if payload.len() != value.payload_len() {
+    let payload_len = value.try_payload_len()?;
+    if payload.len() != payload_len {
         return Err(WireError::InvalidPayloadSize {
             type_name: core::any::type_name::<T>(),
             message: format!(
                 "datapod exposes {} contiguous payload bytes but reports {} payload bytes; \
                  use a segmented frame API for multi-payload datapods",
                 payload.len(),
-                value.payload_len()
+                payload_len
             ),
         });
     }
@@ -513,7 +753,8 @@ where
 
     #[cfg(target_endian = "little")]
     {
-        let header = value.header();
+        let header = value.try_header()?;
+        T::validate_wire_parts(&header, payload)?;
         let header_bytes = bytemuck::bytes_of(&header);
         Ok(f(WireFrame {
             type_hash,
@@ -526,9 +767,25 @@ where
 /// Borrow a zero-copy frame for a datapod using the current canonical type hash.
 pub fn with_wire_frame<T, R>(value: &T, f: impl FnOnce(WireFrame<'_>) -> R) -> Result<R, WireError>
 where
-    T: DataPod,
+    T: DataPod + DataPodValidate,
 {
     with_wire_frame_named(crate::bind::type_hash::<T>(), value, f)
+}
+
+/// Borrow a typed archive for a datapod using the current canonical type hash.
+pub fn archive<T, R>(value: &T, f: impl FnOnce(Archived<'_, T>) -> R) -> Result<R, WireError>
+where
+    T: DataPod + DataPodValidate,
+{
+    with_wire_frame(value, |frame| f(Archived::from_frame(frame)))
+}
+
+/// Alias for [`archive`] for callers that prefer the callback-oriented name.
+pub fn with_archive<T, R>(value: &T, f: impl FnOnce(Archived<'_, T>) -> R) -> Result<R, WireError>
+where
+    T: DataPod + DataPodValidate,
+{
+    archive(value, f)
 }
 
 /// Borrow a scatter/gather zero-copy frame for a datapod with an explicit type
@@ -539,7 +796,7 @@ pub fn with_segmented_wire_frame_named<T, R>(
     f: impl FnOnce(WireSegmentedFrame<'_>) -> R,
 ) -> Result<R, WireError>
 where
-    T: DataPod,
+    T: DataPod + DataPodValidate,
 {
     #[cfg(not(target_endian = "little"))]
     {
@@ -552,15 +809,36 @@ where
 
     #[cfg(target_endian = "little")]
     {
-        let header = value.header();
+        let header = value.try_header()?;
+        let reported_payload_len = value.try_payload_len()?;
         let header_bytes = bytemuck::bytes_of(&header);
-        Ok(value.with_payload_segments(|payloads| {
-            f(WireSegmentedFrame {
+        value.with_payload_segments(|payloads| {
+            let mut segmented_payload_len = 0usize;
+            for payload in payloads {
+                segmented_payload_len = checked_wire_len(
+                    core::any::type_name::<T>(),
+                    segmented_payload_len,
+                    payload.len(),
+                    "segmented payload length overflows usize",
+                )?;
+            }
+            if segmented_payload_len != reported_payload_len {
+                return Err(WireError::InvalidPayloadSize {
+                    type_name: core::any::type_name::<T>(),
+                    message: format!(
+                        "datapod exposes {segmented_payload_len} segmented payload bytes but reports {reported_payload_len} payload bytes"
+                    ),
+                });
+            }
+            if let [payload] = payloads {
+                T::validate_wire_parts(&header, payload)?;
+            }
+            Ok(f(WireSegmentedFrame {
                 type_hash,
                 header: header_bytes,
                 payloads,
-            })
-        }))
+            }))
+        })
     }
 }
 
@@ -571,34 +849,79 @@ pub fn with_segmented_wire_frame<T, R>(
     f: impl FnOnce(WireSegmentedFrame<'_>) -> R,
 ) -> Result<R, WireError>
 where
-    T: DataPod,
+    T: DataPod + DataPodValidate,
 {
     with_segmented_wire_frame_named(crate::bind::type_hash::<T>(), value, f)
 }
 
+/// Borrow a typed segmented archive for a datapod using the current canonical
+/// type hash.
+pub fn segmented_archive<T, R>(
+    value: &T,
+    f: impl FnOnce(SegmentedArchived<'_, T>) -> R,
+) -> Result<R, WireError>
+where
+    T: DataPod + DataPodValidate,
+{
+    with_segmented_wire_frame(value, |frame| f(SegmentedArchived::from_frame(frame)))
+}
+
 /// Collect a borrowed frame into the owned/copying [`WireMessage`] shape.
-pub fn wire_frame_to_message(frame: WireFrame<'_>) -> WireMessage {
-    let mut bytes = Vec::with_capacity(frame.joined_len());
+pub fn try_wire_frame_to_message(frame: WireFrame<'_>) -> Result<WireMessage, WireError> {
+    let total = frame.try_joined_len()?;
+    let mut bytes = Vec::new();
+    try_reserve_wire_bytes(&mut bytes, total, "WireFrame")?;
     bytes.extend_from_slice(frame.header);
     bytes.extend_from_slice(frame.payload);
-    WireMessage {
+    Ok(WireMessage {
         type_hash: frame.type_hash,
         bytes,
-    }
+    })
+}
+
+/// Collect a borrowed frame into the owned/copying [`WireMessage`] shape.
+///
+/// This compatibility helper returns an empty byte buffer if the owned
+/// collection cannot be represented or allocated. Prefer
+/// [`try_wire_frame_to_message`] for production error propagation.
+pub fn wire_frame_to_message(frame: WireFrame<'_>) -> WireMessage {
+    let type_hash = frame.type_hash;
+    try_wire_frame_to_message(frame).unwrap_or_else(|_| WireMessage {
+        type_hash,
+        bytes: Vec::new(),
+    })
 }
 
 /// Collect a borrowed scatter/gather frame into the owned/copying
 /// [`WireMessage`] shape.
-pub fn wire_segmented_frame_to_message(frame: WireSegmentedFrame<'_>) -> WireMessage {
-    let mut bytes = Vec::with_capacity(frame.joined_len());
+pub fn try_wire_segmented_frame_to_message(
+    frame: WireSegmentedFrame<'_>,
+) -> Result<WireMessage, WireError> {
+    let total = frame.try_joined_len()?;
+    let mut bytes = Vec::new();
+    try_reserve_wire_bytes(&mut bytes, total, "WireSegmentedFrame")?;
     bytes.extend_from_slice(frame.header);
     for payload in frame.payloads {
         bytes.extend_from_slice(payload);
     }
-    WireMessage {
+    Ok(WireMessage {
         type_hash: frame.type_hash,
         bytes,
-    }
+    })
+}
+
+/// Collect a borrowed scatter/gather frame into the owned/copying
+/// [`WireMessage`] shape.
+///
+/// This compatibility helper returns an empty byte buffer if the owned
+/// collection cannot be represented or allocated. Prefer
+/// [`try_wire_segmented_frame_to_message`] for production error propagation.
+pub fn wire_segmented_frame_to_message(frame: WireSegmentedFrame<'_>) -> WireMessage {
+    let type_hash = frame.type_hash;
+    try_wire_segmented_frame_to_message(frame).unwrap_or_else(|_| WireMessage {
+        type_hash,
+        bytes: Vec::new(),
+    })
 }
 
 /// Encode any datapod value as the current canonical owned wire message.
@@ -606,12 +929,29 @@ pub fn wire_segmented_frame_to_message(frame: WireSegmentedFrame<'_>) -> WireMes
 /// The current default is `datapod-wire-v1/le`: headers are written
 /// field-by-field in little-endian order without native struct padding. Built-in
 /// registered types emit their canonical-name hash.
+pub fn try_to_wire_message<T>(value: &T) -> Result<WireMessage, WireError>
+where
+    T: DataPod,
+    T::Header: LeWireHeader,
+{
+    try_to_wire_message_v1_named(crate::bind::type_hash::<T>(), value)
+}
+
+/// Encode any datapod value as the current canonical owned wire message.
+///
+/// This compatibility helper returns an empty byte buffer if the owned message
+/// cannot be represented or allocated. Prefer [`try_to_wire_message`] for
+/// production error propagation.
 pub fn to_wire_message<T>(value: &T) -> WireMessage
 where
     T: DataPod,
     T::Header: LeWireHeader,
 {
-    to_wire_message_v1_named(crate::bind::type_hash::<T>(), value)
+    let type_hash = crate::bind::type_hash::<T>();
+    try_to_wire_message(value).unwrap_or_else(|_| WireMessage {
+        type_hash,
+        bytes: Vec::new(),
+    })
 }
 
 /// Encode a datapod in the stable `datapod-wire-v1/le` form.
@@ -620,10 +960,12 @@ where
 /// format in the name.
 pub fn to_wire_message_v1<T>(value: &T) -> Result<WireMessage, WireError>
 where
-    T: DataPod,
+    T: DataPod + DataPodValidate,
     T::Header: LeWireHeader,
 {
-    Ok(to_wire_message(value))
+    let message = try_to_wire_message_v1_named(crate::bind::type_hash::<T>(), value)?;
+    validate_wire::<T>(&message)?;
+    Ok(message)
 }
 
 /// Encode a datapod in `datapod-wire-v1/le` form with an explicit canonical
@@ -631,16 +973,46 @@ where
 ///
 /// This is useful for custom Rust datapods that are not in datapod's built-in
 /// registry but still have an application-level canonical schema name.
+pub fn try_to_wire_message_v1_named<T>(type_hash: u64, value: &T) -> Result<WireMessage, WireError>
+where
+    T: DataPod,
+    T::Header: LeWireHeader,
+{
+    let total = checked_wire_len(
+        core::any::type_name::<T>(),
+        T::Header::LE_WIRE_SIZE,
+        value.try_payload_len()?,
+        "little-endian header + payload length overflows usize",
+    )?;
+    let header = value.try_header()?;
+    let mut bytes = Vec::new();
+    try_reserve_wire_bytes(&mut bytes, total, core::any::type_name::<T>())?;
+    header.write_le(&mut bytes);
+    value.try_write_payload_bytes(&mut bytes)?;
+    if bytes.len() != total {
+        return Err(invalid_payload::<T>(format!(
+            "datapod wrote {} bytes, expected {total}",
+            bytes.len()
+        )));
+    }
+    Ok(WireMessage { type_hash, bytes })
+}
+
+/// Encode a datapod in `datapod-wire-v1/le` form with an explicit canonical
+/// type hash.
+///
+/// This compatibility helper returns an empty byte buffer if the owned message
+/// cannot be represented or allocated. Prefer [`try_to_wire_message_v1_named`]
+/// for production error propagation.
 pub fn to_wire_message_v1_named<T>(type_hash: u64, value: &T) -> WireMessage
 where
     T: DataPod,
     T::Header: LeWireHeader,
 {
-    let header = value.header();
-    let mut bytes = Vec::with_capacity(T::Header::LE_WIRE_SIZE + value.payload_len());
-    header.write_le(&mut bytes);
-    value.write_payload_bytes(&mut bytes);
-    WireMessage { type_hash, bytes }
+    try_to_wire_message_v1_named(type_hash, value).unwrap_or_else(|_| WireMessage {
+        type_hash,
+        bytes: Vec::new(),
+    })
 }
 
 /// Validate typed `datapod-wire-v1/le` bytes without constructing an owned
@@ -693,7 +1065,17 @@ where
 {
     let (header, payload) = typed_wire_parts_v1::<T>(msg.type_hash, &msg.bytes)?;
     T::validate_wire_parts(&header, payload)?;
-    T::from_wire_parts(header, payload.to_vec())
+    let mut owned_payload = Vec::new();
+    owned_payload
+        .try_reserve_exact(payload.len())
+        .map_err(|err| {
+            invalid_payload::<T>(format!(
+                "failed to reserve {} decoded payload bytes: {err}",
+                payload.len()
+            ))
+        })?;
+    owned_payload.extend_from_slice(payload);
+    T::from_wire_parts(header, owned_payload)
 }
 
 /// Decode a concrete datapod type from a borrowed `datapod-wire-v1/le` frame.
@@ -707,7 +1089,17 @@ where
 {
     let (header, payload) = typed_wire_frame_parts_v1::<T>(frame)?;
     T::validate_wire_parts(&header, payload)?;
-    T::from_wire_parts(header, payload.to_vec())
+    let mut owned_payload = Vec::new();
+    owned_payload
+        .try_reserve_exact(payload.len())
+        .map_err(|err| {
+            invalid_payload::<T>(format!(
+                "failed to reserve {} decoded frame payload bytes: {err}",
+                payload.len()
+            ))
+        })?;
+    owned_payload.extend_from_slice(payload);
+    T::from_wire_parts(header, owned_payload)
 }
 
 /// Split a registered datapod wire body into borrowed header and payload bytes.
@@ -722,10 +1114,35 @@ pub fn split_wire_parts(type_hash: u64, bytes: &[u8]) -> Result<WireParts<'_>, W
             got: bytes.len(),
         });
     }
+    if info.payload_kind == crate::registry::PayloadKind::Fixed && bytes.len() != info.header_size {
+        let payload_bytes = bytes.len().checked_sub(info.header_size).ok_or_else(|| {
+            invalid_payload_for(
+                "registered datapod type",
+                "fixed payload byte count underflowed",
+            )
+        })?;
+        return Err(WireError::InvalidPayloadSize {
+            type_name: "registered datapod type",
+            message: format!(
+                "fixed-size datapod wire message cannot carry payload bytes: got {}",
+                payload_bytes
+            ),
+        });
+    }
+    let header = bytes
+        .get(..info.header_size)
+        .ok_or(WireError::ShortHeader {
+            type_name: "registered datapod type",
+            needed: info.header_size,
+            got: bytes.len(),
+        })?;
+    let payload = bytes.get(info.header_size..).ok_or_else(|| {
+        invalid_payload_for("registered datapod type", "payload range is out of bounds")
+    })?;
     Ok(WireParts {
         type_hash,
-        header: &bytes[..info.header_size],
-        payload: &bytes[info.header_size..],
+        header,
+        payload,
     })
 }
 
@@ -778,44 +1195,7 @@ where
 /// C/Python ABI only have registry metadata, so validation falls back to
 /// proving that the type hash is known and the message contains a full header.
 pub fn validate_registered_wire(type_hash: u64, bytes: &[u8]) -> Result<(), WireError> {
-    macro_rules! validate_builtin {
-        ($($ty:ty),* $(,)?) => {
-            $(
-                if crate::bind::is_type_hash_for::<$ty>(type_hash) {
-                    return validate_wire_bytes::<$ty>(type_hash, bytes);
-                }
-            )*
-        };
-    }
-
-    validate_builtin!(
-        crate::Bytes,
-        crate::BitVec,
-        crate::Encoding,
-        crate::DpStr,
-        crate::Deque,
-        crate::ForwardList,
-        crate::Geometry,
-        crate::GeometryKind,
-        crate::Grid,
-        crate::Heap,
-        crate::IndexedHeap,
-        crate::Joint,
-        crate::JointType,
-        crate::Layer,
-        crate::List,
-        crate::Map,
-        crate::Matrix,
-        crate::PagedVecvec,
-        crate::Queue,
-        crate::Set,
-        crate::Stack,
-        crate::Tensor,
-        crate::Vector,
-        crate::Vecvec,
-    );
-
-    split_wire_parts(type_hash, bytes).map(|_| ())
+    validate_registered_wire_v1(type_hash, bytes)
 }
 
 /// Validate a registered `datapod-wire-v1/le` message using the strongest
@@ -838,56 +1218,7 @@ pub fn validate_registered_wire_frame(frame: WireFrame<'_>) -> Result<(), WireEr
 /// Validate a registered borrowed `datapod-wire-v1/le` frame using the
 /// strongest validator known to this crate.
 pub fn validate_registered_wire_frame_v1(frame: WireFrame<'_>) -> Result<(), WireError> {
-    macro_rules! validate_builtin {
-        ($($ty:ty),* $(,)?) => {
-            $(
-                if crate::bind::is_type_hash_for::<$ty>(frame.type_hash) {
-                    return validate_wire_frame_v1::<$ty>(frame);
-                }
-            )*
-        };
-    }
-
-    validate_builtin!(
-        crate::Bytes,
-        crate::BitVec,
-        crate::Encoding,
-        crate::DpStr,
-        crate::Deque,
-        crate::ForwardList,
-        crate::Geometry,
-        crate::GeometryKind,
-        crate::Grid,
-        crate::Heap,
-        crate::IndexedHeap,
-        crate::Joint,
-        crate::JointType,
-        crate::Layer,
-        crate::List,
-        crate::Map,
-        crate::Matrix,
-        crate::PagedVecvec,
-        crate::Queue,
-        crate::Set,
-        crate::Stack,
-        crate::Tensor,
-        crate::Vector,
-        crate::Vecvec,
-    );
-
-    let Some(info) = crate::registry::find_type_info(frame.type_hash) else {
-        return Err(WireError::UnknownTypeHash {
-            type_hash: frame.type_hash,
-        });
-    };
-    if frame.header.len() != info.header_size {
-        return Err(WireError::ShortHeader {
-            type_name: "registered datapod type",
-            needed: info.header_size,
-            got: frame.header.len(),
-        });
-    }
-    Ok(())
+    crate::registry::validate_registered_wire_frame_v1(frame)
 }
 
 /// Access a typed borrowed view from an owned wire message.
@@ -918,6 +1249,15 @@ where
     access_wire_frame_v1::<T>(frame)
 }
 
+/// Access a typed borrowed view from a typed archive.
+pub fn view_archive<T>(archive: Archived<'_, T>) -> Result<T::View<'_>, WireError>
+where
+    T: DataPodAccess,
+    T::Header: LeWireHeader,
+{
+    archive.view()
+}
+
 /// Access a typed borrowed view without validating the bytes.
 ///
 /// # Safety
@@ -928,7 +1268,7 @@ where
 pub unsafe fn access_wire_unchecked<T>(msg: &WireMessage) -> T::View<'_>
 where
     T: DataPodAccess,
-    T::Header: LeWireHeader,
+    T::Header: LeWireHeader + Default,
 {
     unsafe { access_wire_bytes_unchecked::<T>(msg.type_hash, &msg.bytes) }
 }
@@ -941,19 +1281,18 @@ where
 pub unsafe fn access_wire_bytes_unchecked<T>(type_hash: u64, bytes: &[u8]) -> T::View<'_>
 where
     T: DataPodAccess,
-    T::Header: LeWireHeader,
+    T::Header: LeWireHeader + Default,
 {
-    assert!(
-        crate::bind::is_type_hash_for::<T>(type_hash),
-        "wrong datapod type hash"
-    );
-    assert!(
-        bytes.len() >= T::Header::LE_WIRE_SIZE,
-        "short datapod header"
-    );
-    let header = T::Header::read_le(&bytes[..T::Header::LE_WIRE_SIZE])
-        .expect("invalid little-endian datapod header");
-    let payload = &bytes[T::Header::LE_WIRE_SIZE..];
+    if !crate::bind::is_type_hash_for::<T>(type_hash) || bytes.len() < T::Header::LE_WIRE_SIZE {
+        return unsafe { T::access_wire_parts_unchecked(T::Header::default(), &[]) };
+    }
+    let Some(header_bytes) = bytes.get(..T::Header::LE_WIRE_SIZE) else {
+        return unsafe { T::access_wire_parts_unchecked(T::Header::default(), &[]) };
+    };
+    let header = T::Header::read_le(header_bytes).unwrap_or_else(|_| T::Header::default());
+    let Some(payload) = bytes.get(T::Header::LE_WIRE_SIZE..) else {
+        return unsafe { T::access_wire_parts_unchecked(T::Header::default(), &[]) };
+    };
     unsafe { T::access_wire_parts_unchecked(header, payload) }
 }
 
@@ -967,17 +1306,14 @@ where
 pub unsafe fn access_wire_frame_unchecked<T>(frame: WireFrame<'_>) -> T::View<'_>
 where
     T: DataPodAccess,
-    T::Header: LeWireHeader,
+    T::Header: LeWireHeader + Default,
 {
-    assert!(
-        crate::bind::is_type_hash_for::<T>(frame.type_hash),
-        "wrong datapod type hash"
-    );
-    assert!(
-        frame.header.len() == T::Header::LE_WIRE_SIZE,
-        "invalid datapod header length"
-    );
-    let header = T::Header::read_le(frame.header).expect("invalid little-endian datapod header");
+    if !crate::bind::is_type_hash_for::<T>(frame.type_hash)
+        || frame.header.len() != T::Header::LE_WIRE_SIZE
+    {
+        return unsafe { T::access_wire_parts_unchecked(T::Header::default(), &[]) };
+    }
+    let header = T::Header::read_le(frame.header).unwrap_or_else(|_| T::Header::default());
     unsafe { T::access_wire_parts_unchecked(header, frame.payload) }
 }
 
@@ -985,11 +1321,10 @@ where
 ///
 pub fn from_wire_message<T>(msg: &WireMessage) -> Result<T, WireError>
 where
-    T: DataPodDecode,
+    T: DataPodDecode + DataPodValidate,
     T::Header: LeWireHeader,
 {
-    let (header, payload) = typed_wire_parts_v1::<T>(msg.type_hash, &msg.bytes)?;
-    T::from_wire_parts(header, payload.to_vec())
+    from_wire_message_v1::<T>(msg)
 }
 
 /// Decode a concrete datapod type from a borrowed current-format frame.
@@ -998,11 +1333,22 @@ where
 /// [`access_wire_frame`] for the zero-copy receive path.
 pub fn from_wire_frame<T>(frame: WireFrame<'_>) -> Result<T, WireError>
 where
-    T: DataPodDecode,
+    T: DataPodDecode + DataPodValidate,
     T::Header: LeWireHeader,
 {
-    let (header, payload) = typed_wire_frame_parts_v1::<T>(frame)?;
-    T::from_wire_parts(header, payload.to_vec())
+    from_wire_frame_v1::<T>(frame)
+}
+
+/// Decode an owned datapod value from a typed archive.
+///
+/// This is the explicit Archive -> Owned path and may allocate/copy payload
+/// bytes. Prefer [`view_archive`] when a borrowed view is sufficient.
+pub fn from_archive<T>(archive: Archived<'_, T>) -> Result<T, WireError>
+where
+    T: DataPodDecode + DataPodValidate,
+    T::Header: LeWireHeader,
+{
+    archive.to_owned()
 }
 
 fn typed_wire_parts_v1<T>(type_hash: u64, bytes: &[u8]) -> Result<(T::Header, &[u8]), WireError>
@@ -1027,8 +1373,16 @@ where
         });
     }
 
-    let header = T::Header::read_le(&bytes[..header_size])?;
-    Ok((header, &bytes[header_size..]))
+    let header_bytes = bytes.get(..header_size).ok_or(WireError::ShortHeader {
+        type_name: core::any::type_name::<T>(),
+        needed: header_size,
+        got: bytes.len(),
+    })?;
+    let payload = bytes
+        .get(header_size..)
+        .ok_or_else(|| invalid_payload::<T>("typed wire payload range is out of bounds"))?;
+    let header = T::Header::read_le(header_bytes)?;
+    Ok((header, payload))
 }
 
 fn typed_wire_frame_parts_v1<T>(frame: WireFrame<'_>) -> Result<(T::Header, &[u8]), WireError>
@@ -1071,6 +1425,36 @@ pub(crate) fn invalid_payload<T: 'static>(message: impl Into<String>) -> WireErr
     }
 }
 
+fn invalid_payload_for(type_name: &'static str, message: impl Into<String>) -> WireError {
+    WireError::InvalidPayloadSize {
+        type_name,
+        message: message.into(),
+    }
+}
+
+fn checked_wire_len(
+    type_name: &'static str,
+    lhs: usize,
+    rhs: usize,
+    message: &'static str,
+) -> Result<usize, WireError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| invalid_payload_for(type_name, message))
+}
+
+fn try_reserve_wire_bytes(
+    bytes: &mut Vec<u8>,
+    additional: usize,
+    type_name: &'static str,
+) -> Result<(), WireError> {
+    bytes.try_reserve_exact(additional).map_err(|err| {
+        invalid_payload_for(
+            type_name,
+            format!("failed to reserve {additional} wire bytes: {err}"),
+        )
+    })
+}
+
 pub(crate) fn checked_product<T: 'static>(factors: &[usize]) -> Result<usize, WireError> {
     factors.iter().try_fold(1usize, |acc, factor| {
         acc.checked_mul(*factor)
@@ -1102,10 +1486,19 @@ where
             ),
         });
     }
-    Ok(payload
-        .chunks_exact(elem_size)
-        .map(bytemuck::pod_read_unaligned::<T>)
-        .collect())
+    let count = payload.len() / elem_size;
+    let mut values = Vec::new();
+    values.try_reserve_exact(count).map_err(|err| {
+        invalid_payload::<T>(format!(
+            "failed to reserve {count} decoded payload elements: {err}"
+        ))
+    })?;
+    values.extend(
+        payload
+            .chunks_exact(elem_size)
+            .map(bytemuck::pod_read_unaligned::<T>),
+    );
+    Ok(values)
 }
 
 /// Universal transport envelope. Set by the messaging layer on every

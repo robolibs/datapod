@@ -12,20 +12,22 @@ type_hash + (header_bytes || payload_bytes)
 The `type_hash` identifies the schema. The byte body is the concatenation of a
 fixed-size POD header and an optional payload byte slice.
 
-That joined byte body is the **owned convenience lane**. The performance lane is
-the borrowed frame:
+That joined byte body is the **owned/message convenience lane**. The performance
+lane is the borrowed archive:
 
 ```text
-WireFrame {
+ArchiveFrame / WireFrame {
   type_hash,
   header: borrowed header bytes,
   payload: borrowed payload bytes,
 }
 ```
 
-`WireFrame` is the primary zero-copy shape for publishers, subscribers, C ABI
-views, and Python `memoryview` users. `WireMessage { bytes: Vec<u8> }` is for
-files, tests, simple callers, or transports that require one contiguous buffer.
+`ArchiveFrame` is the primary zero-copy shape for publishers, subscribers, C
+ABI views, and Python `memoryview` users. `WireFrame` remains the compatibility
+name for the same shape. `OwnedWireMessage`/`WireMessage { bytes: Vec<u8> }` is
+for files, tests, simple callers, or transports that require one contiguous
+buffer.
 
 ## Terms
 
@@ -33,15 +35,45 @@ files, tests, simple callers, or transports that require one contiguous buffer.
   produced by `datapod::bind::type_hash::<T>()` for built-ins or
   `datapod::bind::type_hash_name("acme.type.v1")` for runtime schemas.
 - **Wire body**: the bytes after the hash: `header_bytes || payload_bytes`.
-- **Wire frame**: borrowed `type_hash + header + payload` slices; no joined
-  allocation and no payload copy.
-- **Wire message**: owned contiguous `header || payload` bytes; convenient but
-  copying.
+- **Owned**: normal Rust struct, C handle, or Python object that owns fields and
+  payload storage.
+- **Archive / wire frame**: borrowed `type_hash + header + payload` slices; no
+  joined allocation and no payload copy.
+- **View**: typed borrowed access over an archive after validation; payload
+  fields remain borrowed slices or `memoryview`s.
+- **Message / owned wire message**: owned contiguous `header || payload` bytes;
+  convenient but copying.
 - **Header**: `T::Header`, a fixed-size POD struct.
 - **Payload**: zero or more bytes, usually from a `#[dp(bytes)]` field.
 - **Checked access**: validation followed by a borrowed view.
 - **Owned decode**: allocation/reconstruction into the owning Rust/Python/C
   handle type.
+
+## Archive/View/Owned API map
+
+| Language | Archive | View | Owned decode | Message |
+| --- | --- | --- | --- | --- |
+| Rust | `value.archive(...)`, `datapod::archive(&value, ...)` | `T::view_archive(archive)`, `datapod::view_archive(archive)` | `T::from_archive(archive)`, `datapod::from_archive(archive)` | `value.to_wire_message()` |
+| C ABI | `datapod_archive_split(...)` for contiguous bytes; `datapod_fixed_value_archive(...)` for fixed values; typed owned-handle helpers such as `datapod_matrix_archive(handle, &archive)` | `datapod_<type>_view_from_archive(archive, &view)` and compatibility `datapod_<type>_view_from_frame(...)` | `datapod_fixed_value_from_archive(...)` / `datapod_<type>_from_archive(archive)` for explicit owned decode | `datapod_archive_to_message(archive, &owned_bytes)` |
+| Python | `obj.archive()` / `datapod.archive(obj)` | `Type.view_archive(archive)` / `datapod.view_archive(Type, archive)` | `Type.from_archive(archive)` / `datapod.from_archive(Type, archive)` | `obj.to_wire_message()` |
+
+Compatibility names remain available:
+
+```text
+ArchiveFrame == WireFrame
+OwnedWireMessage == WireMessage
+view_archive == view_from_wire_frame/access_wire_frame conceptually
+from_archive == from_wire_frame/DataPodDecode conceptually
+```
+
+Copy matrix:
+
+| Operation | Payload copy? | Notes |
+| --- | --- | --- |
+| Owned -> Archive | No | C stores a small encoded header cache in the handle; payload pointer is borrowed. |
+| Archive -> View | No | Header may be parsed/copied as fixed metadata; payload remains borrowed. |
+| Archive -> Owned | Yes | Explicit ownership/copying path. |
+| Archive -> Message | Yes | Joins header and payload into owned contiguous bytes. |
 
 ## Current mode: `datapod-wire-v1/le`
 
@@ -69,7 +101,16 @@ Identity rule:
 emit and accept canonical-name hashes
 ```
 
-Rust borrowed-frame helpers:
+Rust archive helpers:
+
+```rust
+datapod::archive(&value, |archive| {
+    let view = datapod::view_archive::<MyType>(archive)?;
+    transport.publish_archive(archive.frame())
+})?;
+```
+
+The compatibility borrowed-frame helpers still exist:
 
 ```rust
 datapod::with_wire_frame(&value, |frame| {
@@ -85,8 +126,8 @@ order:
 [type_hash_le, header, payload]
 ```
 
-For multi-`Vec`/sectioned datapods,
-`with_segmented_wire_frame(...)` and `with_wire_segmented_frame_slices(...)`
+For multi-`Vec`/sectioned datapods, `segmented_archive(...)`,
+`with_segmented_wire_frame(...)`, and `with_wire_segmented_frame_slices(...)`
 preserve the individual payload segments:
 
 ```text
@@ -112,11 +153,11 @@ C and Python defaults now also target v1/le. The `_v1` helpers remain as
 explicit strict aliases:
 
 - C: `datapod_header_size_v1`, `datapod_wire_message_join_v1`,
-  `datapod_wire_message_validate_v1`, `datapod_wire_message_header_v1`, and
-  `datapod_wire_message_payload_v1`.
+  `datapod_wire_message_validate_v1`, `datapod_wire_frame_validate_v1`,
+  `datapod_wire_message_header_v1`, and `datapod_wire_message_payload_v1`.
 - Python: `header_size_v1`, `validate_wire_message_v1`,
-  `is_valid_wire_message_v1`, `split_wire_message_v1`,
-  `split_wire_message_view_v1`, and decorator-generated
+  `validate_wire_frame_v1`, `is_valid_wire_message_v1`,
+  `split_wire_message_v1`, `split_wire_message_view_v1`, and decorator-generated
   `to_wire_message_v1` / `from_wire_message_v1` / `view_from_wire_v1` for
   custom declarative schemas.
 
@@ -147,7 +188,8 @@ uint64_t h = datapod_type_hash_name("acme.packet.v1");
 datapod_register_type(h, "acme.packet.v1", header_size, payload_kind);
 ```
 
-For these schemas, `type_hash == canonical_type_hash`.
+For these schemas, `type_hash == canonical_type_hash`; registration rejects a
+hash that does not equal `datapod_type_hash_name(canonical_name)`.
 
 Python custom schemas can either pass an explicit `struct` format:
 
@@ -232,9 +274,10 @@ CameraFrame::CANONICAL_NAME
 CameraFrame::TYPE_HASH
 CameraFrame::register_schema()
 camera.to_wire_message()
-camera.with_wire_frame(...)
-CameraFrame::view_from_wire_frame(...)
-CameraFrame::from_wire_frame(...)
+camera.archive(...)
+camera.segmented_archive(...)
+CameraFrame::view_archive(...)
+CameraFrame::from_archive(...)
 ```
 
 Unnamed Rust custom datapods still fall back to their Rust type-path hash. Use
@@ -244,10 +287,14 @@ Unnamed Rust custom datapods still fall back to their Rust type-path hash. Use
 
 Validation is the trust boundary for borrowed access.
 
-Generic registry validation can only prove:
+Generic registry validation uses the strongest validator known to the process:
 
 1. the type hash is known,
-2. the byte body contains at least the registered header length.
+2. the body/frame contains the exact registered v1 header length,
+3. fixed-size schemas carry no payload bytes,
+4. built-in schemas run their semantic `DataPodValidate` checks,
+5. runtime byte-payload schemas prove only registered header shape plus payload
+   kind, because their language-specific semantics live outside Rust.
 
 Built-in semantic validation can additionally prove type invariants, such as:
 
@@ -255,7 +302,7 @@ Built-in semantic validation can additionally prove type invariants, such as:
 - `DpStr` payload is UTF-8,
 - `Matrix`/`Tensor` dimensions match payload length,
 - `Grid`/`Layer` dimensions and encoding match payload length,
-- `Map`/`Set` offsets are in-bounds and sorted,
+- `Map`/`Set` offsets are in-bounds, sorted, and canonical contiguous blobs,
 - `BitVec` trailing slack bits are zero,
 - `Vecvec` offset tables are well-formed.
 
@@ -263,6 +310,15 @@ Checked borrowed access must always validate before exposing a view.
 
 Unchecked access is only for trusted bytes and must document that callers are
 responsible for all invariants.
+
+Owned Rust container mutation follows the same trust-boundary rule. Public
+`try_*` APIs such as `try_push`, `try_pop`, `try_get`, `try_set`,
+`try_insert`, `try_from_bytes`, `try_push_back`, and `try_push_front` validate
+the current owned buffer before reading or mutating it, perform checked
+u32/usize wire arithmetic, and preserve no-mutate-on-error behavior for
+validation or allocation failure. The older infallible methods are
+compatibility convenience wrappers around those fallible paths and may panic on
+invalid owned state.
 
 ## Multi-section payload policy
 
@@ -328,11 +384,20 @@ Validators for multi-section payloads must check:
 This keeps the wire C/Python friendly and avoids pointer-relative archived
 layouts.
 
+Rust `#[datapod]` can expose direct multi-`Vec` payloads as
+`SegmentedArchiveFrame` / `SegmentedArchived` so transports can publish the
+sections as scatter/gather slices without joining them. The current C runtime
+schema and Python decorator surfaces intentionally use the C/Python-friendly
+single-payload section-table pattern instead: offsets and lengths live in the
+header, and the archive/view path borrows the one payload blob as a
+`DatapodBytes` / `memoryview`. That keeps those binding surfaces declarative
+without pretending they expose true multi-payload archives yet.
+
 ## Borrowed view lifetime policy
 
 Rust views are lifetime-bound to the original byte slice.
 
-C views contain borrowed pointers into caller-owned wire bytes:
+C views contain borrowed pointers into caller-owned archive or wire bytes:
 
 ```c
 DatapodMatrixView view;
@@ -343,7 +408,7 @@ For the zero-copy fast path, C callers can split or provide a borrowed frame and
 then view it without joining or copying payload bytes:
 
 ```c
-DatapodWireFrame frame = {
+DatapodArchiveFrame archive = {
     .type_hash = matrix_hash,
     .header = header_ptr,
     .header_len = header_len,
@@ -352,8 +417,16 @@ DatapodWireFrame frame = {
 };
 
 DatapodMatrixView view;
-datapod_matrix_view_from_frame(frame, &view);
+datapod_matrix_view_from_archive(archive, &view);
 ```
+
+For typed owned C handles, the archive helpers fill a small header cache inside
+the handle and borrow the payload pointer from the handle. The archive remains
+valid until the handle is freed or the same handle is used to produce another
+archive. `datapod_<type>_from_archive(archive)` is the explicit owning/copying
+decode path. Fixed/header-only values use the generic
+`datapod_fixed_value_archive(...)` and
+`datapod_fixed_value_from_archive(...)` lane.
 
 The C ABI exposes typed borrowed views for the core raw payload families:
 `Bytes`, `Matrix`, `Tensor`, `Vector`, `BitVec`, `Vecvec`, `Map`, `Set`, and
@@ -374,18 +447,20 @@ Rules:
 - datapod does not retain the pointer after the call,
 - typed element APIs must be explicit about unaligned reads vs alignment checks.
 
-Python `WireFrame`, `wire_frame(obj)`, `view_wire_frame(type_or_hash, frame)`,
-Rust-backed `Matrix.view_from_wire_frame` / `Grid.view_from_wire_frame`, and
-decorator-generated `view_from_wire_frame` expose payloads as `memoryview`
-objects, preserving the input buffer lifetime through Python's buffer protocol.
-`from_wire_frame` is the explicit owned/copying Python decode path.
+Python `ArchiveFrame`/`WireFrame`, `archive(obj)`,
+`view_archive(type_or_hash, archive)`, Rust-backed `Matrix.view_archive` /
+`Grid.view_archive`, and decorator-generated `view_archive` expose payloads as
+`memoryview` objects, preserving the input buffer lifetime through Python's
+buffer protocol. `from_archive` is the explicit owned/copying Python decode
+path. The older `wire_frame`, `view_wire_frame`, and `from_wire_frame` names
+remain compatibility aliases.
 
 ## Benchmark policy
 
-`make bench` runs Rust, C, and Python owned-vs-borrowed benchmark scaffolds for
-64 B, 4 KiB, 1 MiB, and 64 MiB matrix payloads. The output includes
-`copied_bytes_per_op`; borrowed frame/memoryview paths must report `0`, while
-owned encode/decode paths report the header/payload bytes they copy.
+`make bench` runs Rust, C, and Python owned-vs-archive/view benchmark
+scaffolds for 64 B, 4 KiB, 1 MiB, and 64 MiB payloads. The output includes
+`copied_bytes_per_op`; archive/view/memoryview paths must report `0`, while
+owned encode/decode/message paths report the header/payload bytes they copy.
 
 ## Registry metadata
 

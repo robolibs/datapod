@@ -37,29 +37,28 @@ impl Polygon {
         if self.vertices.len() < 2 {
             return 0.0;
         }
-        let mut p = 0.0;
-        for i in 1..self.vertices.len() {
-            p += self.vertices[i - 1].distance_to(self.vertices[i]);
-        }
-        p + self
+        let p: f64 = self
             .vertices
-            .last()
-            .unwrap()
-            .distance_to(*self.vertices.first().unwrap())
+            .windows(2)
+            .map(|pair| pair[0].distance_to(pair[1]))
+            .sum();
+        match (self.vertices.last(), self.vertices.first()) {
+            (Some(last), Some(first)) => p + last.distance_to(*first),
+            _ => 0.0,
+        }
     }
 
     pub fn area(&self) -> f64 {
         if self.vertices.len() < 3 {
             return 0.0;
         }
-        let mut a = 0.0;
-        let mut j = self.vertices.len() - 1;
-        for i in 0..self.vertices.len() {
-            let pi = self.vertices[i];
-            let pj = self.vertices[j];
-            a += (pj.x + pi.x) * (pj.y - pi.y);
-            j = i;
-        }
+        let a: f64 = self
+            .vertices
+            .iter()
+            .zip(self.vertices.iter().cycle().skip(1))
+            .take(self.vertices.len())
+            .map(|(pi, pj)| (pi.x + pj.x) * (pi.y - pj.y))
+            .sum();
         (a * 0.5).abs()
     }
 
@@ -68,16 +67,17 @@ impl Polygon {
             return false;
         }
         let mut c = false;
-        let mut j = self.vertices.len() - 1;
-        for i in 0..self.vertices.len() {
-            let pi = self.vertices[i];
-            let pj = self.vertices[j];
+        for (pi, pj) in self
+            .vertices
+            .iter()
+            .zip(self.vertices.iter().cycle().skip(1))
+            .take(self.vertices.len())
+        {
             if ((pi.y > point.y) != (pj.y > point.y))
                 && (point.x < (pj.x - pi.x) * (point.y - pi.y) / (pj.y - pi.y) + pi.x)
             {
                 c = !c;
             }
-            j = i;
         }
         c
     }
@@ -86,8 +86,11 @@ impl Polygon {
         if self.vertices.is_empty() {
             return Aabb::default();
         }
-        let mut min = self.vertices[0];
-        let mut max = self.vertices[0];
+        let Some(first) = self.vertices.first().copied() else {
+            return Aabb::default();
+        };
+        let mut min = first;
+        let mut max = first;
         for p in self.vertices.iter().skip(1) {
             min.x = min.x.min(p.x);
             min.y = min.y.min(p.y);
@@ -109,7 +112,9 @@ impl Polygon {
             .fold((0.0, 0.0), |(sx, sy), p| (sx + p.x, sy + p.y));
         let cx = sx / self.vertices.len() as f64;
         let cy = sy / self.vertices.len() as f64;
-        let first = self.vertices[0];
+        let Some(first) = self.vertices.first().copied() else {
+            return Obb::default();
+        };
         let theta = (cy - first.y).atan2(cx - first.x);
         let c = theta.cos();
         let s = theta.sin();

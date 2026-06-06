@@ -1,3 +1,11 @@
+use crate::WireError;
+
+const BAND_C: u32 = 67;
+const BAND_I: u32 = 73;
+const BAND_N: u32 = 78;
+const BAND_O: u32 = 79;
+const BAND_X: u32 = 88;
+
 #[datapod::datapod]
 pub struct Utm {
     pub zone: i32,
@@ -15,7 +23,7 @@ impl Default for Utm {
     fn default() -> Self {
         Self {
             zone: 0,
-            band: b'N' as u32,
+            band: BAND_N,
             easting: 0.0,
             northing: 0.0,
             altitude: 0.0,
@@ -29,7 +37,18 @@ impl Utm {
     }
 
     pub fn set_band_char(&mut self, c: char) {
-        self.band = c as u32;
+        self.band = u32::from(c);
+    }
+
+    pub fn try_set_band_char(&mut self, c: char) -> Result<(), WireError> {
+        let band = u32::from(c);
+        if !is_valid_band_code(band) {
+            return Err(crate::wire::invalid_header::<Self>(format!(
+                "invalid UTM band {c:?}"
+            )));
+        }
+        self.band = band;
+        Ok(())
     }
 
     pub fn is_set(&self) -> bool {
@@ -45,12 +64,11 @@ impl Utm {
     }
 
     pub fn is_valid_band(&self) -> bool {
-        let b = self.band;
-        (b'C' as u32..=b'X' as u32).contains(&b) && b != b'I' as u32 && b != b'O' as u32
+        is_valid_band_code(self.band)
     }
 
     pub fn is_northern(&self) -> bool {
-        self.band >= b'N' as u32
+        self.is_valid_band() && self.band >= BAND_N
     }
 
     pub fn is_valid(&self) -> bool {
@@ -82,4 +100,8 @@ impl Utm {
     pub fn central_meridian(&self) -> f64 {
         (self.zone - 1) as f64 * 6.0 - 180.0 + 3.0
     }
+}
+
+fn is_valid_band_code(band: u32) -> bool {
+    (BAND_C..=BAND_X).contains(&band) && band != BAND_I && band != BAND_O
 }

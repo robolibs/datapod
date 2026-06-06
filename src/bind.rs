@@ -73,7 +73,14 @@ pub fn write_header<T: DataPod>(value: &T, out: &mut [u8]) -> Result<(), String>
             bytes.len()
         ));
     }
-    out[..bytes.len()].copy_from_slice(bytes);
+    let Some(slot) = out.get_mut(..bytes.len()) else {
+        return Err(format!(
+            "header output range unavailable: got {}, need {}",
+            out.len(),
+            bytes.len()
+        ));
+    };
+    slot.copy_from_slice(bytes);
     Ok(())
 }
 

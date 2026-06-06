@@ -7,7 +7,7 @@
 //! All comparison-based methods (`push`, `pop`, `sift_*`) take `T` as a
 //! type parameter. NaN comparisons collapse to `Equal` for stability.
 
-use crate::seq::assert_element_size;
+use crate::{DataPodValidate, WireError};
 use std::cmp::Ordering;
 
 /// 0 = max-heap (largest on top), 1 = min-heap (smallest on top).
@@ -62,50 +62,89 @@ pub type PriorityQueue = Heap;
 
 impl Heap {
     pub fn new<T: bytemuck::Pod>() -> Self {
-        Self {
-            element_size: std::mem::size_of::<T>() as u32,
+        Self::try_new::<T>().unwrap_or_default()
+    }
+
+    pub fn try_new<T: bytemuck::Pod>() -> Result<Self, WireError> {
+        let heap = Self {
+            element_size: super::checked_pod_element_size::<Self, T>()?,
             order: HeapOrder::Max,
             _pad: [0; 3],
             data: Vec::new(),
-        }
+        };
+        heap.validate_owned()?;
+        Ok(heap)
     }
 
     pub fn new_min<T: bytemuck::Pod>() -> Self {
-        Self {
-            element_size: std::mem::size_of::<T>() as u32,
+        Self::try_new_min::<T>().unwrap_or_default()
+    }
+
+    pub fn try_new_min<T: bytemuck::Pod>() -> Result<Self, WireError> {
+        let heap = Self {
+            element_size: super::checked_pod_element_size::<Self, T>()?,
             order: HeapOrder::Min,
             _pad: [0; 3],
             data: Vec::new(),
-        }
+        };
+        heap.validate_owned()?;
+        Ok(heap)
     }
 
     pub fn size(&self) -> usize {
-        if self.element_size == 0 {
-            0
+        self.try_size().unwrap_or(0)
+    }
+
+    /// Fallible logical element count for callers handling potentially
+    /// malformed owned buffers.
+    pub fn try_size(&self) -> Result<usize, WireError> {
+        self.validate_owned()?;
+        let element_size = self.try_element_size()?;
+        if element_size == 0 {
+            Ok(0)
         } else {
-            self.data.len() / self.element_size as usize
+            Ok(self.data.len() / element_size)
         }
     }
 
     pub fn empty(&self) -> bool {
-        self.data.is_empty()
+        self.try_empty().unwrap_or(true)
+    }
+
+    /// Fallible emptiness check for callers handling potentially malformed
+    /// owned buffers.
+    pub fn try_empty(&self) -> Result<bool, WireError> {
+        Ok(self.try_size()? == 0)
     }
 
     pub fn clear(&mut self) {
         self.data.clear();
     }
 
-    fn typed<T: bytemuck::Pod>(&self) -> &[T] {
-        bytemuck::cast_slice(&self.data)
+    fn value_at<T: bytemuck::Pod>(&self, index: usize) -> T {
+        let Ok(es) = self.try_element_size() else {
+            return bytemuck::Zeroable::zeroed();
+        };
+        let Some(start) = index.checked_mul(es) else {
+            return bytemuck::Zeroable::zeroed();
+        };
+        let Some(bytes) = start
+            .checked_add(es)
+            .and_then(|end| self.data.get(start..end))
+        else {
+            return bytemuck::Zeroable::zeroed();
+        };
+        bytemuck::pod_read_unaligned(bytes)
     }
 
-    fn typed_mut<T: bytemuck::Pod>(&mut self) -> &mut [T] {
-        bytemuck::cast_slice_mut(&mut self.data)
+    fn try_element_size(&self) -> Result<usize, WireError> {
+        super::checked_u32_to_usize::<Self>(self.element_size, "element_size")
     }
 
     fn cmp<T: bytemuck::Pod + PartialOrd>(&self, a: usize, b: usize) -> Ordering {
-        let s = self.typed::<T>();
-        let raw = s[a].partial_cmp(&s[b]).unwrap_or(Ordering::Equal);
+        let lhs = self.value_at::<T>(a);
+        let rhs = self.value_at::<T>(b);
+        let raw = lhs.partial_cmp(&rhs).unwrap_or(Ordering::Equal);
         if self.order == HeapOrder::Min {
             raw.reverse()
         } else {
@@ -114,41 +153,84 @@ impl Heap {
     }
 
     pub fn push<T: bytemuck::Pod + PartialOrd>(&mut self, value: T) {
-        assert_element_size::<T>(self.element_size);
-        self.data.extend_from_slice(bytemuck::bytes_of(&value));
-        let last = self.typed::<T>().len() - 1;
+        let _ = self.try_push(value);
+    }
+
+    pub fn try_push<T: bytemuck::Pod + PartialOrd>(&mut self, value: T) -> Result<(), WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        self.validate_typed_heap_order::<T>()?;
+        let bytes = bytemuck::bytes_of(&value);
+        self.data.try_reserve_exact(bytes.len()).map_err(|err| {
+            crate::wire::invalid_payload::<Self>(format!("heap payload allocation failed: {err}"))
+        })?;
+        self.data.extend_from_slice(bytes);
+        let last = self.try_size()?.checked_sub(1).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("heap length underflowed after push")
+        })?;
         self.sift_up::<T>(last);
+        Ok(())
     }
 
     pub fn pop<T: bytemuck::Pod + PartialOrd>(&mut self) -> Option<T> {
-        assert_element_size::<T>(self.element_size);
-        let n = self.typed::<T>().len();
+        self.try_pop().unwrap_or(None)
+    }
+
+    pub fn try_pop<T: bytemuck::Pod + PartialOrd>(&mut self) -> Result<Option<T>, WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        self.validate_typed_heap_order::<T>()?;
+        let n = self.try_size()?;
         if n == 0 {
-            return None;
+            return Ok(None);
         }
-        let top = self.typed::<T>()[0];
+        let top = self.value_at::<T>(0);
         if n == 1 {
             self.data.clear();
-            return Some(top);
+            return Ok(Some(top));
         }
-        let last = self.typed::<T>()[n - 1];
-        self.typed_mut::<T>()[0] = last;
         let es = std::mem::size_of::<T>();
-        self.data.truncate(self.data.len() - es);
-        self.sift_down::<T>(0);
-        Some(top)
+        let last_start = (n - 1).checked_mul(es).ok_or_else(|| {
+            crate::wire::invalid_payload::<Self>("last element offset overflowed")
+        })?;
+        let last_end = last_start
+            .checked_add(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("last element end overflowed"))?;
+        if self.data.get(last_start..last_end).is_none() {
+            return Err(crate::wire::invalid_payload::<Self>(
+                "last element range is out of bounds",
+            ));
+        }
+        self.data.copy_within(last_start..last_end, 0);
+        let truncate_len = self
+            .data
+            .len()
+            .checked_sub(es)
+            .ok_or_else(|| crate::wire::invalid_payload::<Self>("heap truncate underflowed"))?;
+        self.data.truncate(truncate_len);
+        self.try_sift_down::<T>(0)?;
+        Ok(Some(top))
     }
 
     pub fn top<T: bytemuck::Pod>(&self) -> Option<T> {
-        assert_element_size::<T>(self.element_size);
-        self.typed::<T>().first().copied()
+        self.try_top().unwrap_or(None)
+    }
+
+    pub fn try_top<T: bytemuck::Pod>(&self) -> Result<Option<T>, WireError> {
+        check_element_size::<Self, T>(self.element_size)?;
+        self.validate_owned()?;
+        if self.try_empty()? {
+            Ok(None)
+        } else {
+            Ok(Some(self.value_at::<T>(0)))
+        }
     }
 
     fn sift_up<T: bytemuck::Pod + PartialOrd>(&mut self, mut idx: usize) {
         while idx > 0 {
             let parent = (idx - 1) / 2;
             if self.cmp::<T>(idx, parent) == Ordering::Greater {
-                self.typed_mut::<T>().swap(idx, parent);
+                self.swap_values::<T>(idx, parent);
                 idx = parent;
             } else {
                 break;
@@ -156,11 +238,18 @@ impl Heap {
         }
     }
 
-    fn sift_down<T: bytemuck::Pod + PartialOrd>(&mut self, mut idx: usize) {
-        let n = self.typed::<T>().len();
+    fn try_sift_down<T: bytemuck::Pod + PartialOrd>(
+        &mut self,
+        mut idx: usize,
+    ) -> Result<(), WireError> {
+        let n = self.try_size()?;
         loop {
-            let l = 2 * idx + 1;
-            let r = 2 * idx + 2;
+            let Some(l) = idx.checked_mul(2).and_then(|base| base.checked_add(1)) else {
+                break;
+            };
+            let Some(r) = l.checked_add(1) else {
+                break;
+            };
             let mut best = idx;
             if l < n && self.cmp::<T>(l, best) == Ordering::Greater {
                 best = l;
@@ -171,9 +260,56 @@ impl Heap {
             if best == idx {
                 break;
             }
-            self.typed_mut::<T>().swap(idx, best);
+            self.swap_values::<T>(idx, best);
             idx = best;
         }
+        Ok(())
+    }
+
+    fn swap_values<T: bytemuck::Pod>(&mut self, a: usize, b: usize) {
+        let es = core::mem::size_of::<T>();
+        let Some(oa) = a.checked_mul(es) else {
+            return;
+        };
+        let Some(ob) = b.checked_mul(es) else {
+            return;
+        };
+        for offset in 0..es {
+            let Some(ia) = oa.checked_add(offset) else {
+                return;
+            };
+            let Some(ib) = ob.checked_add(offset) else {
+                return;
+            };
+            if ia >= self.data.len() || ib >= self.data.len() {
+                return;
+            }
+            self.data.swap(ia, ib);
+        }
+    }
+
+    fn validate_owned(&self) -> Result<(), WireError> {
+        <Self as DataPodValidate>::validate_wire_parts(
+            &HeapHeader {
+                element_size: self.element_size,
+                order: self.order,
+                _pad: self._pad,
+            },
+            &self.data,
+        )
+    }
+
+    fn validate_typed_heap_order<T: bytemuck::Pod + PartialOrd>(&self) -> Result<(), WireError> {
+        let n = self.try_size()?;
+        for child in 1..n {
+            let parent = (child - 1) / 2;
+            if self.cmp::<T>(child, parent) == Ordering::Greater {
+                return Err(crate::wire::invalid_payload::<Self>(format!(
+                    "heap invariant violated at child {child} parent {parent}"
+                )));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -184,4 +320,20 @@ impl MinHeap {
     pub fn new<T: bytemuck::Pod>() -> Heap {
         Heap::new_min::<T>()
     }
+}
+
+fn check_element_size<P: 'static, T>(stored: u32) -> Result<(), WireError> {
+    let actual = std::mem::size_of::<T>();
+    if actual == 0 {
+        return Err(crate::wire::invalid_header::<P>(
+            "zero-sized Pod elements cannot be represented in byte-counted datapod containers",
+        ));
+    }
+    let stored = super::checked_u32_to_usize::<P>(stored, "element_size")?;
+    if actual != stored {
+        return Err(crate::wire::invalid_header::<P>(format!(
+            "element size mismatch: T is {actual}, container expects {stored}"
+        )));
+    }
+    Ok(())
 }

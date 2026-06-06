@@ -3,7 +3,7 @@ use crate::motion::Pose;
 
 use super::Geometry;
 
-/// Material record. `name_id` and `texture_id` reference [`DpString`]s
+/// Material record. `name_id` and `texture_id` reference [`DpString`](crate::DpString)s
 /// shipped separately. `STRING_NONE` marks "unset".
 #[datapod::datapod]
 pub struct Material {
