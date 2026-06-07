@@ -145,6 +145,7 @@ pub fn register_python_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(validate_wire_message, m)?)?;
     m.add_function(wrap_pyfunction!(validate_wire_message_v1, m)?)?;
     m.add_function(wrap_pyfunction!(validate_wire_frame_parts_v1, m)?)?;
+    m.add_function(wrap_pyfunction!(schema_for_hash, m)?)?;
     add_declarative_layout(m)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
@@ -680,6 +681,92 @@ def describe_schema(target):
         raise ValueError("datapod schema target metadata lookup failed") from error
     cls = target if is_type_target else type(target)
     return _class_schema(cls)
+
+
+def schema_for(target):
+    """Return full built-in/runtime schema metadata for a datapod class/hash."""
+    if isinstance(target, type):
+        type_hash = _metadata_attr(target, "TYPE_HASH")
+        if type_hash is _MISSING:
+            raise ValueError(f"{_safe_type_name(target)} is not a registered datapod type")
+        return _datapod_raw_schema_for_hash(_u64_type_hash(type_hash))
+    if not isinstance(target, (int, bool, float)) and _safe_callable_attr(target, "__index__") is None:
+        type_hash = _metadata_attr(type(target), "TYPE_HASH")
+        if type_hash is _MISSING:
+            raise ValueError(f"{_safe_type_name(type(target))} is not a registered datapod type")
+        return _datapod_raw_schema_for_hash(_u64_type_hash(type_hash))
+    return _datapod_raw_schema_for_hash(_u64_type_hash(target))
+
+
+class DynamicDatapod:
+    """Borrowed dynamic view over a datapod wire message.
+
+    The view stores memoryviews over the incoming wire/header/payload. It does
+    not copy the payload; callers that pass a quicbit SHM memoryview must keep
+    the owning sample alive.
+    """
+
+    __slots__ = ("schema", "type_hash", "wire", "header", "payload", "_fields")
+
+    def __init__(self, schema, wire):
+        self.schema = schema
+        self.type_hash = _u64_type_hash(schema["type_hash"])
+        self.wire = _byte_memoryview(wire, "dynamic wire message")
+        header_size_value = _usize_header_size(schema["header_size"])
+        if len(self.wire) < header_size_value:
+            raise ValueError(
+                f"dynamic wire message too short: got {len(self.wire)}, "
+                f"need at least {header_size_value}"
+            )
+        self.header = self.wire[:header_size_value]
+        self.payload = self.wire[header_size_value:]
+        self._fields = {field["name"]: field for field in schema["fields"]}
+
+    def __getitem__(self, name):
+        field = self._fields[name]
+        if field["role"] == "payload":
+            return self.payload
+        offset = _usize_header_size(field["offset"], "field offset")
+        kind = field["kind"]
+        if kind == "scalar":
+            return _unpack_dynamic_scalar(field["scalar"], self.header, offset)
+        if kind == "array":
+            size = _usize_header_size(field["wire_size"], "field wire_size")
+            return self.header[offset:offset + size]
+        if kind == "nested":
+            nested_schema = schema_for(field["nested_type_hash"])
+            size = _usize_header_size(nested_schema["header_size"], "nested header_size")
+            return DynamicDatapod(nested_schema, self.header[offset:offset + size])
+        if kind == "payload_section":
+            return self.header[offset:offset + 8]
+        if kind == "opaque":
+            size = _usize_header_size(field["wire_size"], "field wire_size")
+            return self.header[offset:offset + size]
+        if kind == "bytes":
+            return self.payload
+        raise ValueError(f"unsupported dynamic field kind {kind!r}")
+
+    def fields(self):
+        return tuple(self._fields)
+
+
+def _unpack_dynamic_scalar(scalar, header, offset):
+    formats = {
+        "u8": "B", "u16": "H", "u32": "I", "u64": "Q",
+        "i8": "b", "i16": "h", "i32": "i", "i64": "q",
+        "f32": "f", "f64": "d",
+        "bool": "?",
+    }
+    fmt = formats.get(scalar)
+    if fmt is None:
+        raise ValueError(f"unsupported dynamic scalar {scalar!r}")
+    return _datapod_struct.unpack_from("<" + fmt, header, offset)[0]
+
+
+def dynamic_view(type_hash, wire):
+    type_hash = _u64_type_hash(type_hash)
+    validate_wire_message_v1(type_hash, wire)
+    return DynamicDatapod(schema_for(type_hash), wire)
 
 
 def _is_payload_annotation(annotation):
@@ -2158,6 +2245,10 @@ def _install_archive_aliases(datapod_module):
         "_datapod_raw_validate_wire_frame_parts_v1",
         m.getattr("validate_wire_frame_parts_v1")?,
     )?;
+    module.add(
+        "_datapod_raw_schema_for_hash",
+        m.getattr("schema_for_hash")?,
+    )?;
     module.add("_datapod_raw_decode_as", m.getattr("decode_as")?)?;
     module.add(
         "_datapod_raw_from_wire_message",
@@ -2245,6 +2336,9 @@ def _install_archive_aliases(datapod_module):
     )?;
     m.add("describe_schema", module.getattr("describe_schema")?)?;
     m.add("schema", module.getattr("describe_schema")?)?;
+    m.add("schema_for", module.getattr("schema_for")?)?;
+    m.add("dynamic_view", module.getattr("dynamic_view")?)?;
+    m.add("DynamicDatapod", module.getattr("DynamicDatapod")?)?;
     module.getattr("_install_archive_aliases")?.call1((m,))?;
     Ok(())
 }
@@ -2623,6 +2717,76 @@ fn has_owned_decode(type_hash: u64) -> PyResult<bool> {
 #[pyfunction]
 fn archive_shape(type_hash: u64) -> PyResult<&'static str> {
     Ok(type_info(type_hash)?.archive_shape.name())
+}
+
+#[pyfunction]
+fn schema_for_hash(py: Python<'_>, type_hash: u64) -> PyResult<Py<PyDict>> {
+    let schema = crate::registry::try_find_schema(type_hash)
+        .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "unknown datapod type hash: {type_hash}"
+            ))
+        })?;
+    let dict = PyDict::new(py);
+    dict.set_item("canonical_name", schema.canonical_name)?;
+    dict.set_item("type_hash", schema.type_hash)?;
+    dict.set_item("schema_hash", schema.schema_hash)?;
+    dict.set_item("header_size", schema.header_size)?;
+    dict.set_item("payload_kind", payload_kind_name(schema.payload_kind))?;
+    let field_items = schema
+        .fields
+        .iter()
+        .map(|field| {
+            let item = PyDict::new(py);
+            item.set_item("name", field.name)?;
+            item.set_item(
+                "role",
+                match field.role {
+                    crate::schema::FieldRole::Header => "header",
+                    crate::schema::FieldRole::Payload => "payload",
+                },
+            )?;
+            item.set_item("offset", field.offset)?;
+            match field.ty {
+                crate::schema::FieldType::Scalar(scalar) => {
+                    item.set_item("kind", "scalar")?;
+                    item.set_item("scalar", scalar.name())?;
+                    item.set_item("wire_size", scalar.wire_size())?;
+                }
+                crate::schema::FieldType::Array { element, len } => {
+                    item.set_item("kind", "array")?;
+                    item.set_item("scalar", element.name())?;
+                    item.set_item("len", len)?;
+                    item.set_item("wire_size", element.wire_size().saturating_mul(len))?;
+                }
+                crate::schema::FieldType::NestedArray { type_hash, len } => {
+                    item.set_item("kind", "nested_array")?;
+                    item.set_item("nested_type_hash", type_hash)?;
+                    item.set_item("len", len)?;
+                }
+                crate::schema::FieldType::Nested { type_hash } => {
+                    item.set_item("kind", "nested")?;
+                    item.set_item("nested_type_hash", type_hash)?;
+                }
+                crate::schema::FieldType::Opaque { wire_size } => {
+                    item.set_item("kind", "opaque")?;
+                    item.set_item("wire_size", wire_size)?;
+                }
+                crate::schema::FieldType::PayloadSection => {
+                    item.set_item("kind", "payload_section")?;
+                    item.set_item("wire_size", 8usize)?;
+                }
+                crate::schema::FieldType::Bytes => {
+                    item.set_item("kind", "bytes")?;
+                }
+            }
+            Ok::<_, pyo3::PyErr>(item.into_any().unbind())
+        })
+        .collect::<PyResult<Vec<_>>>()?;
+    let fields = PyTuple::new(py, field_items)?;
+    dict.set_item("fields", fields)?;
+    Ok(dict.into())
 }
 
 #[pyfunction]

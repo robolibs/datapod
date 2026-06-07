@@ -1301,12 +1301,27 @@ def main():
     assert type(rust_grid).__name__ == "Grid"
     assert (rust_grid.rows, rust_grid.cols, rust_grid.encoding_id) == (2, 2, 11)
     assert rust_grid.payload_bytes() == bytes(range(16))
+    rust_grid_schema = datapod.schema_for(rust_grid_hash)
+    assert rust_grid_schema["canonical_name"] == "datapod.grid.v1"
+    assert any(field["name"] == "rows" for field in rust_grid_schema["fields"])
+    rust_grid_view = datapod.dynamic_view(rust_grid_hash, memoryview(rust_grid_wire))
+    assert rust_grid_view.schema["canonical_name"] == "datapod.grid.v1"
+    assert rust_grid_view["rows"] == 2
+    assert rust_grid_view["cols"] == 2
+    assert rust_grid_view["resolution"] == 0.5
+    assert rust_grid_view["encoding"]["value"] == 11
+    assert rust_grid_view.payload.tobytes() == bytes(range(16))
 
     rust_matrix_hash, rust_matrix_wire = rust_encoded("encode-matrix")
     rust_matrix = datapod.from_wire_message(rust_matrix_hash, rust_matrix_wire)
     assert type(rust_matrix).__name__ == "Matrix"
     assert (rust_matrix.rows, rust_matrix.cols, rust_matrix.element_size) == (2, 3, 1)
     assert rust_matrix.payload_bytes() == bytes([1, 2, 3, 4, 5, 6])
+    rust_matrix_view = datapod.dynamic_view(rust_matrix_hash, rust_matrix_wire)
+    assert rust_matrix_view["rows"] == 2
+    assert rust_matrix_view["cols"] == 3
+    assert rust_matrix_view["element_size"] == 1
+    assert rust_matrix_view.payload.tobytes() == bytes([1, 2, 3, 4, 5, 6])
 
     py_grid = datapod.Grid(2, 2, 11, False, 0.5, [0, 0, 0, 1, 0, 0, 0], bytes(range(16)))
     py_grid_hash, py_grid_wire = datapod.to_wire_message(py_grid)

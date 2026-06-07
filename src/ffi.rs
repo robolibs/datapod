@@ -32,6 +32,7 @@ use crate::{
 thread_local! {
     static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
     static TYPE_NAME_RESULT: RefCell<Option<CString>> = const { RefCell::new(None) };
+    static FIELD_NAME_RESULT: RefCell<Option<CString>> = const { RefCell::new(None) };
 }
 
 fn clear_last_error() {
@@ -114,6 +115,10 @@ fn canonical_type_name_bytes_in<'a>(name: *const u8, name_len: usize) -> Result<
     Ok(name)
 }
 
+fn field_name_in<'a>(name: *const c_char) -> Result<&'a str, ()> {
+    canonical_type_name_in(name)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn datapod_last_error_message() -> *const c_char {
     LAST_ERROR.with(|slot| {
@@ -169,6 +174,17 @@ pub struct DatapodWireFrame {
 /// `DatapodWireFrame` remains available for compatibility. New C code can use
 /// `DatapodArchiveFrame` to make the zero-copy archive role explicit.
 pub type DatapodArchiveFrame = DatapodWireFrame;
+
+/// Generic borrowed dynamic datapod view for C ABI callers.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DatapodDynamicView {
+    pub type_hash: u64,
+    pub header: *const u8,
+    pub header_len: usize,
+    pub payload: *const u8,
+    pub payload_len: usize,
+}
 
 impl DatapodWireFrame {
     fn empty() -> Self {
@@ -1453,6 +1469,145 @@ pub extern "C" fn datapod_archive_shape(type_hash: u64) -> u32 {
             datapod_archive_shape_runtime_schema()
         }
         None => u32::MAX,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_schema_field_count(type_hash: u64) -> usize {
+    clear_last_error();
+    let Some(schema) = crate::registry::find_schema(type_hash) else {
+        set_last_error(format!("unknown datapod type hash: {type_hash}"));
+        return 0;
+    };
+    schema.fields.len()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_schema_field_name(type_hash: u64, index: usize) -> *const c_char {
+    clear_last_error();
+    let Some(schema) = crate::registry::find_schema(type_hash) else {
+        set_last_error(format!("unknown datapod type hash: {type_hash}"));
+        return ptr::null();
+    };
+    let Some(field) = schema.fields.get(index) else {
+        set_last_error(format!("schema field index {index} out of bounds"));
+        return ptr::null();
+    };
+    FIELD_NAME_RESULT.with(|slot| {
+        *slot.borrow_mut() = Some(c_string_without_nul(field.name.to_string()));
+        slot.borrow()
+            .as_ref()
+            .map_or(ptr::null(), |name| name.as_ptr())
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dynamic_view_message(
+    message: DatapodWireMessage,
+    out: *mut DatapodDynamicView,
+) -> bool {
+    clear_last_error();
+    if prepare_default_output(out, "dynamic view").is_err() {
+        return false;
+    }
+    if prevalidate_wire_message_shape(message).is_err() {
+        return false;
+    }
+    let Ok(bytes) = (unsafe { bytes_in(message.data, message.len) }) else {
+        return false;
+    };
+    if let Err(error) = crate::validate_registered_wire_v1(message.type_hash, bytes) {
+        set_last_error(error.to_string());
+        return false;
+    }
+    let header_len = datapod_header_size_v1(message.type_hash);
+    let payload_len = message.len - header_len;
+    let payload = if header_len == 0 {
+        message.data
+    } else {
+        message.data.wrapping_add(header_len)
+    };
+    unsafe {
+        *out = DatapodDynamicView {
+            type_hash: message.type_hash,
+            header: message.data,
+            header_len,
+            payload,
+            payload_len,
+        };
+    }
+    true
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dynamic_payload(view: DatapodDynamicView) -> DatapodBytes {
+    clear_last_error();
+    if dynamic_view_borrow(view).is_err() {
+        return DatapodBytes::empty();
+    }
+    DatapodBytes {
+        ptr: view.payload,
+        len: view.payload_len,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dynamic_field_u32(
+    view: DatapodDynamicView,
+    name: *const c_char,
+    out: *mut u32,
+) -> bool {
+    clear_last_error();
+    if prepare_default_output(out, "u32 output").is_err() {
+        return false;
+    }
+    let Ok(name) = field_name_in(name) else {
+        return false;
+    };
+    let Ok(dynamic) = dynamic_view_borrow(view) else {
+        return false;
+    };
+    match dynamic.field(name).and_then(|value| value.as_u32()) {
+        Ok(value) => {
+            unsafe {
+                *out = value;
+            }
+            true
+        }
+        Err(error) => {
+            set_last_error(error.to_string());
+            false
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn datapod_dynamic_field_f64(
+    view: DatapodDynamicView,
+    name: *const c_char,
+    out: *mut f64,
+) -> bool {
+    clear_last_error();
+    if prepare_default_output(out, "f64 output").is_err() {
+        return false;
+    }
+    let Ok(name) = field_name_in(name) else {
+        return false;
+    };
+    let Ok(dynamic) = dynamic_view_borrow(view) else {
+        return false;
+    };
+    match dynamic.field(name).and_then(|value| value.as_f64()) {
+        Ok(value) => {
+            unsafe {
+                *out = value;
+            }
+            true
+        }
+        Err(error) => {
+            set_last_error(error.to_string());
+            false
+        }
     }
 }
 
@@ -3035,6 +3190,25 @@ fn prevalidate_wire_frame_shape(frame: DatapodWireFrame) -> Result<(), ()> {
         return Err(());
     }
     Ok(())
+}
+
+fn dynamic_view_borrow(
+    view: DatapodDynamicView,
+) -> Result<crate::dynamic::DynamicView<'static>, ()> {
+    let frame = DatapodWireFrame {
+        type_hash: view.type_hash,
+        header: view.header,
+        header_len: view.header_len,
+        payload: view.payload,
+        payload_len: view.payload_len,
+    };
+    if prevalidate_wire_frame_shape(frame).is_err() {
+        return Err(());
+    }
+    let archive = unsafe { wire_frame_in(frame) }?;
+    crate::dynamic::view_frame(archive).map_err(|error| {
+        set_last_error(error.to_string());
+    })
 }
 
 fn prevalidate_wire_message_shape(message: DatapodWireMessage) -> Result<(), ()> {

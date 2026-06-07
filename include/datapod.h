@@ -431,6 +431,17 @@ typedef struct {
 } DatapodBytes;
 
 /**
+ * Generic borrowed dynamic datapod view for C ABI callers.
+ */
+typedef struct {
+  uint64_t type_hash;
+  const uint8_t *header;
+  uintptr_t header_len;
+  const uint8_t *payload;
+  uintptr_t payload_len;
+} DatapodDynamicView;
+
+/**
  * FFI-safe point value.
  */
 typedef struct {
@@ -1210,6 +1221,18 @@ bool datapod_has_view(uint64_t type_hash);
 bool datapod_has_owned_decode(uint64_t type_hash);
 
 uint32_t datapod_archive_shape(uint64_t type_hash);
+
+uintptr_t datapod_schema_field_count(uint64_t type_hash);
+
+const char *datapod_schema_field_name(uint64_t type_hash, uintptr_t index);
+
+bool datapod_dynamic_view_message(DatapodWireMessage message, DatapodDynamicView *out);
+
+DatapodBytes datapod_dynamic_payload(DatapodDynamicView view);
+
+bool datapod_dynamic_field_u32(DatapodDynamicView view, const char *name, uint32_t *out);
+
+bool datapod_dynamic_field_f64(DatapodDynamicView view, const char *name, double *out);
 
 bool datapod_point_to_wire(DatapodPoint value, DatapodOwnedBytes *out);
 

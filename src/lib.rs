@@ -62,6 +62,7 @@ pub use wire::{
 };
 
 pub mod bind;
+pub mod dynamic;
 pub mod ffi;
 #[cfg(feature = "python")]
 pub mod python;
@@ -74,6 +75,7 @@ pub mod motion;
 pub mod raster;
 pub mod registry;
 pub mod robot;
+pub mod schema;
 pub mod seq;
 pub mod world;
 

@@ -44,6 +44,12 @@ impl crate::LeWireHeader for HeapOrder {
     }
 }
 
+impl crate::schema::SchemaFieldType for HeapOrder {
+    fn field_type() -> crate::schema::FieldType {
+        crate::schema::FieldType::Scalar(crate::schema::ScalarType::U8)
+    }
+}
+
 #[datapod::datapod]
 #[dp(manual_access)]
 #[derive(Default)]
