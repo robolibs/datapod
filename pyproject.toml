@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "robolibs-datapod"
-version = "0.4.0"
+version = "0.4.1"
 description = "Python bindings for the robolibs datapod wire-contract library"
 readme = "README.md"
 license = { text = "MIT" }

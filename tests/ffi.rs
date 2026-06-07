@@ -67,6 +67,16 @@ fn ffi_dynamic_schema_and_view_read_grid_without_copying_payload() {
         &mut resolution
     ));
     assert_eq!(resolution, 0.5);
+
+    let bad_field_name = std::ffi::CString::new("bad field").unwrap();
+    rows = 123;
+    assert!(!datapod_dynamic_field_u32(
+        view,
+        bad_field_name.as_ptr(),
+        &mut rows
+    ));
+    assert_eq!(rows, 0);
+    assert!(last_error_string().unwrap().contains("datapod field name"));
 }
 
 #[test]

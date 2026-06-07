@@ -729,19 +729,28 @@ class DynamicDatapod:
         offset = _usize_header_size(field["offset"], "field offset")
         kind = field["kind"]
         if kind == "scalar":
-            return _unpack_dynamic_scalar(field["scalar"], self.header, offset)
+            return _unpack_dynamic_scalar(field["scalar"], self.header, offset, field["name"])
         if kind == "array":
             size = _usize_header_size(field["wire_size"], "field wire_size")
-            return self.header[offset:offset + size]
+            return _dynamic_header_slice(self.header, offset, size, field["name"])
+        if kind == "nested_array":
+            nested_schema = schema_for(field["nested_type_hash"])
+            nested_size = _usize_header_size(nested_schema["header_size"], "nested header_size")
+            count = _usize_header_size(field["len"], "nested array length")
+            size = _checked_usize_mul(nested_size, count, f"dynamic field {field['name']!r}")
+            return _dynamic_header_slice(self.header, offset, size, field["name"])
         if kind == "nested":
             nested_schema = schema_for(field["nested_type_hash"])
             size = _usize_header_size(nested_schema["header_size"], "nested header_size")
-            return DynamicDatapod(nested_schema, self.header[offset:offset + size])
+            return DynamicDatapod(
+                nested_schema,
+                _dynamic_header_slice(self.header, offset, size, field["name"]),
+            )
         if kind == "payload_section":
-            return self.header[offset:offset + 8]
+            return _dynamic_header_slice(self.header, offset, 8, field["name"])
         if kind == "opaque":
             size = _usize_header_size(field["wire_size"], "field wire_size")
-            return self.header[offset:offset + size]
+            return _dynamic_header_slice(self.header, offset, size, field["name"])
         if kind == "bytes":
             return self.payload
         raise ValueError(f"unsupported dynamic field kind {kind!r}")
@@ -750,16 +759,39 @@ class DynamicDatapod:
         return tuple(self._fields)
 
 
-def _unpack_dynamic_scalar(scalar, header, offset):
+def _checked_usize_mul(a, b, label):
+    value = a * b
+    _usize_header_size(value, f"{label} byte length")
+    return value
+
+
+def _dynamic_header_slice(header, offset, size, name):
+    end = offset + size
+    if offset > len(header) or size > len(header) - offset:
+        raise ValueError(
+            f"dynamic field {name!r} exceeds header bounds: "
+            f"offset={offset}, size={size}, header_len={len(header)}"
+        )
+    return header[offset:end]
+
+
+def _unpack_dynamic_scalar(scalar, header, offset, name):
     formats = {
         "u8": "B", "u16": "H", "u32": "I", "u64": "Q",
+        "u128": None,
         "i8": "b", "i16": "h", "i32": "i", "i64": "q",
+        "i128": None,
         "f32": "f", "f64": "d",
         "bool": "?",
     }
     fmt = formats.get(scalar)
+    if scalar == "u128":
+        return int.from_bytes(_dynamic_header_slice(header, offset, 16, name), "little")
+    if scalar == "i128":
+        return int.from_bytes(_dynamic_header_slice(header, offset, 16, name), "little", signed=True)
     if fmt is None:
         raise ValueError(f"unsupported dynamic scalar {scalar!r}")
+    _dynamic_header_slice(header, offset, _datapod_struct.calcsize("<" + fmt), name)
     return _datapod_struct.unpack_from("<" + fmt, header, offset)[0]
 
 

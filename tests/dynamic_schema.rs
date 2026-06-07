@@ -81,3 +81,18 @@ fn grid_dynamic_view_reads_nested_encoding_and_borrows_payload() {
     }
     assert_eq!(view.payload(), &(0_u8..16).collect::<Vec<_>>());
 }
+
+#[test]
+fn schema_field_type_wire_size_reports_overflow_instead_of_saturating() {
+    let huge_array = datapod::schema::FieldType::Array {
+        element: datapod::schema::ScalarType::U128,
+        len: usize::MAX,
+    };
+    assert_eq!(huge_array.wire_size(), None);
+
+    let huge_nested = datapod::schema::FieldType::NestedArray {
+        type_hash: datapod::bind::type_hash::<Pose>(),
+        len: usize::MAX,
+    };
+    assert_eq!(huge_nested.wire_size(), None);
+}

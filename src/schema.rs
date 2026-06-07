@@ -74,9 +74,9 @@ impl FieldType {
     pub fn wire_size(self) -> Option<usize> {
         match self {
             Self::Scalar(scalar) => Some(scalar.wire_size()),
-            Self::Array { element, len } => Some(element.wire_size() * len),
+            Self::Array { element, len } => element.wire_size().checked_mul(len),
             Self::NestedArray { type_hash, len } => crate::registry::find_schema(type_hash)
-                .map(|schema| schema.header_size.saturating_mul(len)),
+                .and_then(|schema| schema.header_size.checked_mul(len)),
             Self::Nested { .. } | Self::PayloadSection => None,
             Self::Opaque { wire_size } => Some(wire_size),
             Self::Bytes => None,

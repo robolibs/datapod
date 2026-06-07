@@ -73,15 +73,20 @@ fn c_string_without_nul(message: String) -> CString {
     unsafe { CString::from_vec_unchecked(bytes) }
 }
 
-fn canonical_type_name_in<'a>(name: *const c_char) -> Result<&'a str, ()> {
-    if name.is_null() {
-        set_last_error("null datapod canonical type name");
+fn c_string_in<'a>(ptr: *const c_char, label: &str) -> Result<&'a str, ()> {
+    if ptr.is_null() {
+        set_last_error(format!("null datapod {label}"));
         return Err(());
     }
-    let Ok(name) = (unsafe { CStr::from_ptr(name) }).to_str() else {
-        set_last_error("datapod canonical type name is not utf-8");
+    let Ok(value) = (unsafe { CStr::from_ptr(ptr) }).to_str() else {
+        set_last_error(format!("datapod {label} is not utf-8"));
         return Err(());
     };
+    Ok(value)
+}
+
+fn canonical_type_name_in<'a>(name: *const c_char) -> Result<&'a str, ()> {
+    let name = c_string_in(name, "canonical type name")?;
     if name.is_empty() {
         set_last_error("datapod canonical type name is empty");
         return Err(());
@@ -116,7 +121,19 @@ fn canonical_type_name_bytes_in<'a>(name: *const u8, name_len: usize) -> Result<
 }
 
 fn field_name_in<'a>(name: *const c_char) -> Result<&'a str, ()> {
-    canonical_type_name_in(name)
+    let name = c_string_in(name, "field name")?;
+    if name.is_empty() {
+        set_last_error("datapod field name is empty");
+        return Err(());
+    }
+    if !name
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+    {
+        set_last_error(format!("datapod field name {name:?} is invalid"));
+        return Err(());
+    }
+    Ok(name)
 }
 
 #[unsafe(no_mangle)]

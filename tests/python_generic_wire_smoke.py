@@ -1311,6 +1311,22 @@ def main():
     assert rust_grid_view["resolution"] == 0.5
     assert rust_grid_view["encoding"]["value"] == 11
     assert rust_grid_view.payload.tobytes() == bytes(range(16))
+    truncated_grid_schema = dict(rust_grid_view.schema)
+    truncated_grid_schema["fields"] = (
+        {
+            "name": "past_end",
+            "role": "header",
+            "offset": len(rust_grid_wire),
+            "kind": "array",
+            "wire_size": 8,
+        },
+    )
+    truncated_grid_view = datapod.DynamicDatapod(truncated_grid_schema, memoryview(rust_grid_wire))
+    try:
+        truncated_grid_view["past_end"]
+        raise AssertionError("dynamic header field past the end should fail instead of truncating")
+    except ValueError as exc:
+        assert "exceeds header bounds" in str(exc)
 
     rust_matrix_hash, rust_matrix_wire = rust_encoded("encode-matrix")
     rust_matrix = datapod.from_wire_message(rust_matrix_hash, rust_matrix_wire)
