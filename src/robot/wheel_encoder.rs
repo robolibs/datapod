@@ -5,13 +5,13 @@
 #[datapod::datapod]
 #[derive(Default)]
 pub struct WheelEncoder {
-    pub wheel_id: u8,
+    pub wheel_id: u64,
     pub angle_rad: f64,
     pub velocity_rad_s: f64,
 }
 
 impl WheelEncoder {
-    pub fn new(wheel_id: u8, angle_rad: f64, velocity_rad_s: f64) -> Self {
+    pub fn new(wheel_id: u64, angle_rad: f64, velocity_rad_s: f64) -> Self {
         Self {
             wheel_id,
             angle_rad,

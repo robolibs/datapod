@@ -1371,8 +1371,13 @@ fn header_offset_expr(previous_tys: &[Type]) -> TokenStream2 {
 }
 
 fn schema_payload_field_type_expr(elem_ty: &Type) -> TokenStream2 {
-    let _ = elem_ty;
-    quote! { ::datapod::schema::FieldType::Bytes }
+    quote! {
+        ::datapod::schema::FieldType::BytesElements {
+            type_hash: ::datapod::schema::bytes_element_type_hash(
+                <#elem_ty as ::datapod::schema::SchemaFieldType>::field_type(),
+            ),
+        }
+    }
 }
 
 fn schema_field_type_expr(ty: &Type) -> TokenStream2 {

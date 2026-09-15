@@ -1,3 +1,4 @@
+use datapod::dynamic::{DynamicValue, view_message};
 use datapod::{
     Acceleration, Imu, Quaternion, TurnRadius, Velocity, WheelEncoder, WheelEncoders,
     from_wire_message, to_wire_message,
@@ -21,6 +22,23 @@ fn wheel_encoders_round_trip_over_the_wire() {
         assert_eq!(a.angle_rad, b.angle_rad);
         assert_eq!(a.velocity_rad_s, b.velocity_rad_s);
     }
+}
+
+#[test]
+fn wheel_encoders_reflect_generically_by_element_schema() {
+    let readings = WheelEncoders::new(vec![
+        WheelEncoder::new(0, 1.5, 0.4),
+        WheelEncoder::new(1, 1.6, 0.42),
+    ]);
+    let msg = to_wire_message(&readings);
+    let view = view_message(msg.type_hash, &msg.bytes).expect("dynamic view");
+
+    let DynamicValue::NestedList(wheels) = view.field("wheels").expect("wheels field") else {
+        panic!("expected wheels payload to reflect as a nested list");
+    };
+    assert_eq!(wheels.len(), 2);
+    assert_eq!(wheels[0].get_f64("angle_rad").unwrap(), 1.5);
+    assert_eq!(wheels[1].get_f64("velocity_rad_s").unwrap(), 0.42);
 }
 
 #[test]

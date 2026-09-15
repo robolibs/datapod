@@ -3,7 +3,7 @@
 //! This module does not decode owned datapod values. It borrows the incoming
 //! header/payload bytes and reads fields by schema offset.
 
-use crate::schema::{FieldRole, FieldType, ScalarType, SchemaDescriptor, SchemaField};
+use crate::schema::{FieldType, ScalarType, SchemaDescriptor, SchemaField};
 use crate::{WireError, WireFrame, split_wire_parts, validate_registered_wire_frame};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,6 +28,7 @@ pub enum DynamicValue<'a> {
         bytes: &'a [u8],
     },
     Nested(DynamicView<'a>),
+    NestedList(Vec<DynamicView<'a>>),
 }
 
 impl DynamicValue<'_> {
@@ -104,11 +105,6 @@ impl<'a> DynamicView<'a> {
     }
 
     fn field_value(&self, field: &SchemaField) -> Result<DynamicValue<'a>, WireError> {
-        match field.role {
-            FieldRole::Payload => return Ok(DynamicValue::Bytes(self.payload)),
-            FieldRole::Header => {}
-        }
-
         match field.ty {
             FieldType::Scalar(scalar) => {
                 let bytes = self.header_field(field.offset, scalar.wire_size())?;
@@ -166,6 +162,27 @@ impl<'a> DynamicView<'a> {
                 Ok(DynamicValue::Bytes(bytes))
             }
             FieldType::Bytes => Ok(DynamicValue::Bytes(self.payload)),
+            FieldType::BytesElements { type_hash } => {
+                let elem_schema =
+                    (type_hash != 0).then(|| crate::registry::find_schema(type_hash)).flatten();
+                let Some(elem_schema) = elem_schema else {
+                    return Ok(DynamicValue::Bytes(self.payload));
+                };
+                let elem_size = elem_schema.header_size;
+                if elem_size == 0 || self.payload.len() % elem_size != 0 {
+                    return Ok(DynamicValue::Bytes(self.payload));
+                }
+                let views = self
+                    .payload
+                    .chunks_exact(elem_size)
+                    .map(|chunk| DynamicView {
+                        schema: elem_schema.clone(),
+                        header: chunk,
+                        payload: &[],
+                    })
+                    .collect();
+                Ok(DynamicValue::NestedList(views))
+            }
         }
     }
 
