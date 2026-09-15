@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.0] - 2026-09-15
+
+### <!-- 0 -->⛰️  Features
+
+- Reflect Vec<T> payload elements generically
+
 ## [0.5.0] - 2026-09-15
 
 ### <!-- 0 -->⛰️  Features
