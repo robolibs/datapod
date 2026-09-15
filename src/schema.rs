@@ -68,6 +68,10 @@ pub enum FieldType {
     Opaque { wire_size: usize },
     PayloadSection,
     Bytes,
+    /// A heap-bearing `Vec<T>` payload whose element `T` is itself a
+    /// registered datapod type. `type_hash` is zero when `T` is a bare
+    /// scalar, so readers fall back to raw bytes.
+    BytesElements { type_hash: u64 },
 }
 
 impl FieldType {
@@ -79,8 +83,18 @@ impl FieldType {
                 .and_then(|schema| schema.header_size.checked_mul(len)),
             Self::Nested { .. } | Self::PayloadSection => None,
             Self::Opaque { wire_size } => Some(wire_size),
-            Self::Bytes => None,
+            Self::Bytes | Self::BytesElements { .. } => None,
         }
+    }
+}
+
+/// Extracts the element type hash a `Vec<T>` payload field carries, given
+/// `T`'s own [`SchemaFieldType::field_type`]. Non-`DataPod` elements (bare
+/// scalars) yield zero, meaning "no element schema, treat as raw bytes".
+pub fn bytes_element_type_hash(element: FieldType) -> u64 {
+    match element {
+        FieldType::Nested { type_hash } => type_hash,
+        _ => 0,
     }
 }
 
@@ -230,6 +244,7 @@ fn field_type_hash(ty: FieldType) -> u64 {
         FieldType::Opaque { wire_size } => 250 ^ wire_size as u64,
         FieldType::PayloadSection => 300,
         FieldType::Bytes => 400,
+        FieldType::BytesElements { type_hash } => 500 ^ type_hash,
     }
 }
 
