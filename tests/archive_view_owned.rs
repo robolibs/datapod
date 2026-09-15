@@ -3,14 +3,14 @@ use datapod::{
     BoxShape, Bytes, Circle, Collision, CylinderShape, DataPod, DataPodAccess, DataPodDecode,
     DataPodValidate, Deque, DpStr, DpString, Encoding, Envelope, Euler, ForwardList, GaussianBox,
     GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Geometry, GeometryKind, Grid, Heap,
-    Identity, IndexedHeap, Inertial, Ip, Joint, JointCalibration, JointDynamics, JointLimits,
+    Identity, Imu, IndexedHeap, Inertial, Ip, Joint, JointCalibration, JointDynamics, JointLimits,
     JointMimic, JointSafetyController, JointType, KV, Layer, LeWireHeader, Line, Linestring, Link,
     List, Loc, MacAddr, Map, Material, Matrix, MatrixHeader, MeshShape, Model, MultiPoint, Obb,
     Odom, PagedVecvec, Path, Point, PointKey, Polygon, Pose, Quaternion, Queue, Rectangle, Ring,
     Robot, Segment, Sensor, Set, Size, SphereShape, Square, Stack, State, Tensor, Trajectory,
-    Transform, Transmission, TransmissionJoint, Triangle, Twist, Utm, Uuid, Vector, Vecvec,
-    Velocity, Visual, Wrench, archive, bytemuck, datapod, from_archive, segmented_archive,
-    split_wire_frame, to_wire_message, view_archive,
+    Transform, Transmission, TransmissionJoint, Triangle, TurnRadius, Twist, Utm, Uuid, Vector,
+    Vecvec, Velocity, Visual, WheelEncoder, WheelEncoders, Wrench, archive, bytemuck, datapod,
+    from_archive, segmented_archive, split_wire_frame, to_wire_message, view_archive,
 };
 
 fn assert_archive_view_owned<T>()
@@ -110,6 +110,10 @@ macro_rules! all_builtin_archive_datapods {
         $m!(Actuator);
         $m!(TransmissionJoint);
         $m!(Transmission);
+        $m!(WheelEncoder);
+        $m!(WheelEncoders);
+        $m!(Imu);
+        $m!(TurnRadius);
     };
 }
 

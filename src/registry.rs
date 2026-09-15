@@ -281,7 +281,11 @@ macro_rules! datapod_types {
             ("datapod.robot.v1", crate::Robot),
             ("datapod.actuator.v1", crate::Actuator),
             ("datapod.transmission_joint.v1", crate::TransmissionJoint),
-            ("datapod.transmission.v1", crate::Transmission)
+            ("datapod.transmission.v1", crate::Transmission),
+            ("datapod.wheel_encoder.v1", crate::WheelEncoder),
+            ("datapod.wheel_encoders.v1", crate::WheelEncoders),
+            ("datapod.imu.v1", crate::Imu),
+            ("datapod.turn_radius.v1", crate::TurnRadius)
         }
     };
 }

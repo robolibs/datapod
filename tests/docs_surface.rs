@@ -146,7 +146,7 @@ fn runtime_sources_avoid_direct_range_indexing_regressions() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut files = Vec::new();
     visit_rs_files(&root.join("src"), &mut files);
-    visit_rs_files(&root.join("macros/src"), &mut files);
+    visit_rs_files(&root.join("crates/datapod-macros/src"), &mut files);
 
     let mut hits = Vec::new();
     for path in files {
@@ -1507,8 +1507,8 @@ fn ffi_archive_owned_decode_cleanup_preserves_decode_errors() {
 #[test]
 fn proc_macro_source_avoids_obvious_panic_shortcuts() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let source = std::fs::read_to_string(root.join("macros/src/lib.rs"))
-        .unwrap_or_else(|err| panic!("failed to read macros/src/lib.rs: {err}"));
+    let source = std::fs::read_to_string(root.join("crates/datapod-macros/src/lib.rs"))
+        .unwrap_or_else(|err| panic!("failed to read crates/datapod-macros/src/lib.rs: {err}"));
     let forbidden = [
         concat!(".expect", "("),
         concat!("unwrap", "()"),
@@ -1521,7 +1521,7 @@ fn proc_macro_source_avoids_obvious_panic_shortcuts() {
     for needle in forbidden {
         assert!(
             !source.contains(needle),
-            "macros/src/lib.rs still contains panic shortcut {needle:?}"
+            "crates/datapod-macros/src/lib.rs still contains panic shortcut {needle:?}"
         );
     }
 }
@@ -1676,7 +1676,7 @@ fn datapod_default_payload_writer_uses_fallible_reservation() {
 
 #[test]
 fn sectioned_macro_overrides_fallible_payload_writer() {
-    const MACROS_RS: &str = include_str!("../macros/src/lib.rs");
+    const MACROS_RS: &str = include_str!("../crates/datapod-macros/src/lib.rs");
 
     let start = MACROS_RS
         .find("fn try_write_payload_bytes")

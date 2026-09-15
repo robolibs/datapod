@@ -2,6 +2,7 @@ mod accel;
 mod collision;
 mod geometry;
 mod identity;
+mod imu;
 mod inertial;
 mod joint;
 mod kv;
@@ -11,14 +12,17 @@ mod odom;
 mod robot;
 mod sensor;
 mod transmission;
+mod turn_radius;
 mod twist;
 mod visual;
+mod wheel_encoder;
 mod wrench;
 
 pub use accel::Accel;
 pub use collision::Collision;
 pub use geometry::{BoxShape, CylinderShape, Geometry, GeometryKind, MeshShape, SphereShape};
 pub use identity::Identity;
+pub use imu::Imu;
 pub use inertial::Inertial;
 pub use joint::{
     INVALID_ID, JOINT_PROP_CAP, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
@@ -33,6 +37,8 @@ pub use sensor::Sensor;
 pub use transmission::{
     Actuator, TRANSMISSION_ACTUATOR_CAP, TRANSMISSION_JOINT_CAP, Transmission, TransmissionJoint,
 };
+pub use turn_radius::TurnRadius;
 pub use twist::Twist;
 pub use visual::{Material, Visual};
+pub use wheel_encoder::{WheelEncoder, WheelEncoders};
 pub use wrench::Wrench;

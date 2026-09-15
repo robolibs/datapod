@@ -9,10 +9,10 @@ use datapod::{
     Aabb, Accel, Acceleration, BoundingSphere, Box, Circle, Encoding, Envelope, Euler, GaussianBox,
     GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Grid, INVALID_ID, Identity, Inertial,
     Ip, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic, JointSafetyController,
-    Layer, Line, Linestring, Link, Loc, MacAddr, Material, MeshShape, Model, MultiPoint, Obb, Odom,
-    Path, Point, PointKey, Polygon, Pose, Quaternion, Rectangle, Ring, Robot, Segment, Sensor,
-    Size, SphereShape, Square, State, Trajectory, Transform, Triangle, Twist, Utm, Uuid, Velocity,
-    Visual, Wrench,
+    Imu, Layer, Line, Linestring, Link, Loc, MacAddr, Material, MeshShape, Model, MultiPoint, Obb,
+    Odom, Path, Point, PointKey, Polygon, Pose, Quaternion, Rectangle, Ring, Robot, Segment,
+    Sensor, Size, SphereShape, Square, State, Trajectory, Transform, Triangle, TurnRadius, Twist,
+    Utm, Uuid, Velocity, Visual, WheelEncoder, WheelEncoders, Wrench,
 };
 
 #[test]
@@ -87,6 +87,10 @@ fn robot_surface_compiles() {
     let _twist = Twist::default();
     let _wrench = Wrench::default();
     let _odom = Odom::default();
+    let _imu = Imu::default();
+    let _turn_radius = TurnRadius::default();
+    let _wheel_encoder = WheelEncoder::default();
+    let _wheel_encoders = WheelEncoders::default();
     let _sensor = Sensor::default();
     let _visual = Visual::default();
     let _material = Material::default();
