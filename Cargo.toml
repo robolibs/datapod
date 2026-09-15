@@ -3,7 +3,7 @@ members = [".", "crates/datapod-macros"]
 
 [package]
 name = "datapod"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2024"
 description = "Rust robotics data types and POD-oriented containers"
 license = "MIT"
