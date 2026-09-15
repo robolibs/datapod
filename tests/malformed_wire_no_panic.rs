@@ -504,6 +504,10 @@ macro_rules! all_builtin_datapods {
         $m!(datapod::Actuator);
         $m!(datapod::TransmissionJoint);
         $m!(datapod::Transmission);
+        $m!(datapod::WheelEncoder);
+        $m!(datapod::WheelEncoders);
+        $m!(datapod::Imu);
+        $m!(datapod::TurnRadius);
     };
 }
 

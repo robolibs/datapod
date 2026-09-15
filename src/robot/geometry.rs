@@ -85,6 +85,17 @@ impl crate::DataPod for GeometryKind {
     }
 }
 
+impl crate::schema::DataPodSchema for GeometryKind {
+    fn schema_fields() -> Vec<crate::schema::SchemaField> {
+        vec![crate::schema::SchemaField {
+            name: "value",
+            role: crate::schema::FieldRole::Header,
+            offset: 0,
+            ty: crate::schema::FieldType::Scalar(crate::schema::ScalarType::U32),
+        }]
+    }
+}
+
 impl crate::DataPodDecode for GeometryKind {
     fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, crate::WireError> {
         <Self as crate::DataPodValidate>::validate_wire_parts(&header, &payload)?;

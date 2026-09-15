@@ -62,6 +62,7 @@ pub use wire::{
 };
 
 pub mod bind;
+pub mod dynamic;
 pub mod ffi;
 #[cfg(feature = "python")]
 pub mod python;
@@ -74,6 +75,7 @@ pub mod motion;
 pub mod raster;
 pub mod registry;
 pub mod robot;
+pub mod schema;
 pub mod seq;
 pub mod world;
 
@@ -118,7 +120,8 @@ pub use layout::{
 
 pub use robot::{
     Accel, Actuator, BoxShape, Collision, CylinderShape, Geometry, GeometryKind, INVALID_ID,
-    Identity, Inertial, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
+    Identity, Imu, Inertial, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
     JointSafetyController, JointType, KV, Link, Material, MeshShape, Model, Odom, Robot, Sensor,
-    SphereShape, Transmission, TransmissionJoint, Twist, Visual, Wrench,
+    SphereShape, Transmission, TransmissionJoint, TurnRadius, Twist, Visual, WheelEncoder,
+    WheelEncoders, Wrench,
 };

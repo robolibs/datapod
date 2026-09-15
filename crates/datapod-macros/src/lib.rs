@@ -124,6 +124,7 @@ fn expand_fixed(
     let name = input.ident.clone();
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let le_wire_impl = le_wire_impl_for_item_struct(&name, &input.generics, &input.fields)?;
+    let schema_fields = schema_fields_for_named_fields(&input.fields, &[]);
     let reserved_field_validation = fixed_reserved_field_validation(&input.fields, &name);
     let datapod_canonical_const = datapod_canonical_const(args);
     let inherent_archive_api = inherent_archive_api(&name, &input.generics);
@@ -225,6 +226,12 @@ fn expand_fixed(
             }
         }
 
+        impl #impl_generics ::datapod::schema::DataPodSchema for #name #ty_generics #where_clause {
+            fn schema_fields() -> ::std::vec::Vec<::datapod::schema::SchemaField> {
+                ::std::vec![#(#schema_fields),*]
+            }
+        }
+
         #le_wire_impl
 
         #inherent_archive_api
@@ -319,6 +326,10 @@ fn expand_heap(
         .collect::<Result<_, Error>>()?;
     let header_le_impl =
         le_wire_impl_for_type(&header_name, &Generics::default(), &header_le_fields);
+    let schema_fields = schema_fields_for_header_and_payload(
+        &header_le_fields,
+        &[(bytes_field_ident.clone(), bytes_element_ty.clone())],
+    );
     let header_field_idents: Vec<syn::Ident> = header_le_fields
         .iter()
         .map(|(ident, _)| ident.clone())
@@ -498,6 +509,12 @@ fn expand_heap(
             }
         }
 
+        impl ::datapod::schema::DataPodSchema for #name {
+            fn schema_fields() -> ::std::vec::Vec<::datapod::schema::SchemaField> {
+                ::std::vec![#(#schema_fields),*]
+            }
+        }
+
         #access_impl
     })
 }
@@ -587,6 +604,13 @@ fn expand_sectioned_heap(
     );
     let header_le_impl =
         le_wire_impl_for_type(&header_name, &Generics::default(), &header_le_fields);
+    let schema_fields = schema_fields_for_header_and_payload(
+        &header_le_fields,
+        &bytes_fields
+            .iter()
+            .map(|(ident, _, elem_ty)| (ident.clone(), elem_ty.clone()))
+            .collect::<Vec<_>>(),
+    );
 
     let regular_header_decodes = regular_header_fields.iter().map(|(ident, _)| {
         quote! { #ident: header.#ident }
@@ -885,6 +909,12 @@ fn expand_sectioned_heap(
                     #(#regular_header_decodes,)*
                     #(#section_decodes),*
                 })
+            }
+        }
+
+        impl ::datapod::schema::DataPodSchema for #name {
+            fn schema_fields() -> ::std::vec::Vec<::datapod::schema::SchemaField> {
+                ::std::vec![#(#schema_fields),*]
             }
         }
 
@@ -1283,6 +1313,73 @@ fn is_payload_section_type(ty: &Type) -> bool {
         .segments
         .last()
         .is_some_and(|segment| segment.ident == "PayloadSection")
+}
+
+fn schema_fields_for_named_fields(
+    fields: &Fields,
+    payloads: &[(syn::Ident, Type)],
+) -> Vec<TokenStream2> {
+    let header_fields: Vec<(syn::Ident, Type)> = match fields {
+        Fields::Named(FieldsNamed { named, .. }) => named
+            .iter()
+            .filter_map(|field| Some((field.ident.clone()?, field.ty.clone())))
+            .collect(),
+        _ => Vec::new(),
+    };
+    schema_fields_for_header_and_payload(&header_fields, payloads)
+}
+
+fn schema_fields_for_header_and_payload(
+    header_fields: &[(syn::Ident, Type)],
+    payloads: &[(syn::Ident, Type)],
+) -> Vec<TokenStream2> {
+    let mut fields = Vec::new();
+    for (index, (ident, ty)) in header_fields.iter().enumerate() {
+        let previous_tys = header_fields
+            .iter()
+            .take(index)
+            .map(|(_, ty)| ty.clone())
+            .collect::<Vec<_>>();
+        let offset = header_offset_expr(&previous_tys);
+        let field_type = schema_field_type_expr(ty);
+        fields.push(quote! {
+            ::datapod::schema::SchemaField {
+                name: ::core::stringify!(#ident),
+                role: ::datapod::schema::FieldRole::Header,
+                offset: #offset,
+                ty: #field_type,
+            }
+        });
+    }
+    for (ident, elem_ty) in payloads {
+        let field_type = schema_payload_field_type_expr(elem_ty);
+        fields.push(quote! {
+            ::datapod::schema::SchemaField {
+                name: ::core::stringify!(#ident),
+                role: ::datapod::schema::FieldRole::Payload,
+                offset: 0usize,
+                ty: #field_type,
+            }
+        });
+    }
+    fields
+}
+
+fn header_offset_expr(previous_tys: &[Type]) -> TokenStream2 {
+    let tys: Vec<_> = previous_tys.iter().collect();
+    quote! { 0usize #( + <#tys as ::datapod::LeWireHeader>::LE_WIRE_SIZE )* }
+}
+
+fn schema_payload_field_type_expr(elem_ty: &Type) -> TokenStream2 {
+    let _ = elem_ty;
+    quote! { ::datapod::schema::FieldType::Bytes }
+}
+
+fn schema_field_type_expr(ty: &Type) -> TokenStream2 {
+    if is_payload_section_type(ty) {
+        return quote! { ::datapod::schema::FieldType::PayloadSection };
+    }
+    quote! { <#ty as ::datapod::schema::SchemaFieldType>::field_type() }
 }
 
 fn has_repr_c(attrs: &[Attribute]) -> bool {

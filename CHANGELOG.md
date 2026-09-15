@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0] - 2026-09-15
+
+### <!-- 0 -->⛰️  Features
+
+- Add IMU, wheel encoder, and turn radius sensor types
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Migrate to oslo config, clean up layout
+
 ## [0.4.0] - 2026-06-06
 
 ### <!-- 0 -->⛰️  Features

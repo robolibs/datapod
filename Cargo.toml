@@ -1,9 +1,9 @@
 [workspace]
-members = [".", "macros"]
+members = [".", "crates/datapod-macros"]
 
 [package]
 name = "datapod"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 description = "Rust robotics data types and POD-oriented containers"
 license = "MIT"
@@ -34,8 +34,16 @@ bytemuck = { version = "1", features = ["derive"] }
 
 # datapod-macros provides #[derive(DataPod)] and #[dp(bytes)]. Re-exported
 # from the crate root so users write `use datapod::DataPod;`.
-datapod-macros = { path = "macros", version = "0.0.1" }
+datapod-macros = { path = "crates/datapod-macros", version = "0.0.1" }
 pyo3 = { version = "0.23", optional = true, features = [
     "abi3-py39",
     "extension-module",
 ] }
+
+[[example]]
+name = "wire_bench_scaffold"
+path = "examples/rust/wire_bench_scaffold.rs"
+
+[[example]]
+name = "wire_fixture"
+path = "examples/rust/wire_fixture.rs"

@@ -15,6 +15,71 @@ fn last_error_string() -> Option<String> {
 }
 
 #[test]
+fn ffi_dynamic_schema_and_view_read_grid_without_copying_payload() {
+    let grid = datapod::Grid::new(
+        2,
+        2,
+        datapod::Encoding::Rgba8,
+        0.5,
+        false,
+        datapod::Pose::default(),
+        (0_u8..16).collect(),
+    );
+    let message = datapod::to_wire_message(&grid);
+    let header_len = datapod_header_size_v1(message.type_hash);
+    let payload_ptr = message.bytes[header_len..].as_ptr();
+    let borrowed = datapod_wire_message_borrow(
+        message.type_hash,
+        message.bytes.as_ptr(),
+        message.bytes.len(),
+    );
+
+    assert!(datapod_schema_field_count(message.type_hash) >= 7);
+    let first_name = datapod_schema_field_name(message.type_hash, 0);
+    assert!(!first_name.is_null());
+    assert_eq!(
+        unsafe { std::ffi::CStr::from_ptr(first_name) }
+            .to_str()
+            .unwrap(),
+        "rows"
+    );
+
+    let mut view = DatapodDynamicView::default();
+    assert!(datapod_dynamic_view_message(borrowed, &mut view));
+    let payload = datapod_dynamic_payload(view);
+    assert_eq!(payload.ptr, payload_ptr);
+    assert_eq!(payload.len, 16);
+
+    let rows_name = std::ffi::CString::new("rows").unwrap();
+    let mut rows = 0;
+    assert!(datapod_dynamic_field_u32(
+        view,
+        rows_name.as_ptr(),
+        &mut rows
+    ));
+    assert_eq!(rows, 2);
+
+    let resolution_name = std::ffi::CString::new("resolution").unwrap();
+    let mut resolution = 0.0;
+    assert!(datapod_dynamic_field_f64(
+        view,
+        resolution_name.as_ptr(),
+        &mut resolution
+    ));
+    assert_eq!(resolution, 0.5);
+
+    let bad_field_name = std::ffi::CString::new("bad field").unwrap();
+    rows = 123;
+    assert!(!datapod_dynamic_field_u32(
+        view,
+        bad_field_name.as_ptr(),
+        &mut rows
+    ));
+    assert_eq!(rows, 0);
+    assert!(last_error_string().unwrap().contains("datapod field name"));
+}
+
+#[test]
 fn ffi_point_geo_segment_values_work() {
     let a = datapod_point_new(0.0, 0.0, 0.0);
     let b = datapod_point_new(3.0, 4.0, 0.0);

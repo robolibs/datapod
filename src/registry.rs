@@ -281,7 +281,11 @@ macro_rules! datapod_types {
             ("datapod.robot.v1", crate::Robot),
             ("datapod.actuator.v1", crate::Actuator),
             ("datapod.transmission_joint.v1", crate::TransmissionJoint),
-            ("datapod.transmission.v1", crate::Transmission)
+            ("datapod.transmission.v1", crate::Transmission),
+            ("datapod.wheel_encoder.v1", crate::WheelEncoder),
+            ("datapod.wheel_encoders.v1", crate::WheelEncoders),
+            ("datapod.imu.v1", crate::Imu),
+            ("datapod.turn_radius.v1", crate::TurnRadius)
         }
     };
 }
@@ -324,6 +328,42 @@ pub fn all_type_infos() -> Vec<TypeInfo> {
 
 pub fn find_type_info(type_hash: u64) -> Option<TypeInfo> {
     try_find_type_info(type_hash).unwrap_or(None)
+}
+
+pub fn find_schema(type_hash: u64) -> Option<crate::schema::SchemaDescriptor> {
+    try_find_schema(type_hash).unwrap_or(None)
+}
+
+pub fn try_find_schema(
+    type_hash: u64,
+) -> Result<Option<crate::schema::SchemaDescriptor>, RegistryError> {
+    macro_rules! find {
+        ($(($canonical:literal, $ty:ty)),* $(,)?) => {{
+            $(
+                if crate::bind::type_hash::<$ty>() == type_hash {
+                    return Ok(Some(crate::schema::describe::<$ty>($canonical)));
+                }
+            )*
+            None
+        }};
+    }
+    if let Some(schema) = datapod_types!(find) {
+        return Ok(Some(schema));
+    }
+
+    // Runtime schemas currently have registry metadata only. A later custom
+    // schema-distribution phase will store full imported descriptors here.
+    let Some(info) = try_find_type_info(type_hash)? else {
+        return Ok(None);
+    };
+    Ok(Some(crate::schema::SchemaDescriptor {
+        canonical_name: info.canonical_name,
+        type_hash: info.type_hash,
+        schema_hash: crate::schema::schema_hash("<runtime>", info.type_hash, info.header_size, &[]),
+        header_size: info.header_size,
+        payload_kind: info.payload_kind,
+        fields: Vec::new(),
+    }))
 }
 
 pub fn try_find_type_info(type_hash: u64) -> Result<Option<TypeInfo>, RegistryError> {

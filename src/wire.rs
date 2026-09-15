@@ -1564,6 +1564,53 @@ impl DataPod for Envelope {
     }
 }
 
+impl crate::schema::DataPodSchema for Envelope {
+    fn schema_fields() -> Vec<crate::schema::SchemaField> {
+        use crate::schema::{FieldRole, FieldType, ScalarType, SchemaField};
+        vec![
+            SchemaField {
+                name: "seq",
+                role: FieldRole::Header,
+                offset: 0,
+                ty: FieldType::Scalar(ScalarType::U64),
+            },
+            SchemaField {
+                name: "stamp_ns",
+                role: FieldRole::Header,
+                offset: 8,
+                ty: FieldType::Scalar(ScalarType::U64),
+            },
+            SchemaField {
+                name: "source_id",
+                role: FieldRole::Header,
+                offset: 16,
+                ty: FieldType::Array {
+                    element: ScalarType::U8,
+                    len: 32,
+                },
+            },
+            SchemaField {
+                name: "topic_hash",
+                role: FieldRole::Header,
+                offset: 48,
+                ty: FieldType::Scalar(ScalarType::U64),
+            },
+            SchemaField {
+                name: "kind",
+                role: FieldRole::Header,
+                offset: 56,
+                ty: FieldType::Scalar(ScalarType::U32),
+            },
+            SchemaField {
+                name: "flags",
+                role: FieldRole::Header,
+                offset: 60,
+                ty: FieldType::Scalar(ScalarType::U32),
+            },
+        ]
+    }
+}
+
 impl DataPodDecode for Envelope {
     fn from_wire_parts(header: Self::Header, payload: Vec<u8>) -> Result<Self, WireError> {
         if !payload.is_empty() {
@@ -1659,6 +1706,17 @@ impl DataPod for Encoding {
     }
     fn payload_bytes(&self) -> &[u8] {
         &[]
+    }
+}
+
+impl crate::schema::DataPodSchema for Encoding {
+    fn schema_fields() -> Vec<crate::schema::SchemaField> {
+        vec![crate::schema::SchemaField {
+            name: "value",
+            role: crate::schema::FieldRole::Header,
+            offset: 0,
+            ty: crate::schema::FieldType::Scalar(crate::schema::ScalarType::U32),
+        }]
     }
 }
 
