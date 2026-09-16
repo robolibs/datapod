@@ -119,9 +119,9 @@ pub use layout::{
 };
 
 pub use robot::{
-    Accel, Actuator, BoxShape, Collision, CylinderShape, Geometry, GeometryKind, INVALID_ID,
-    Identity, Imu, Inertial, Joint, JointCalibration, JointDynamics, JointLimits, JointMimic,
-    JointSafetyController, JointType, KV, Link, Material, MeshShape, Model, Odom, Robot, Sensor,
-    SphereShape, Transmission, TransmissionJoint, TurnRadius, Twist, Visual, WheelEncoder,
-    WheelEncoders, Wrench,
+    Accel, Actuator, BoxShape, Collision, CylinderShape, Geometry, GeometryKind, Gnss,
+    INVALID_ID, Identity, Imu, Inertial, Joint, JointCalibration, JointDynamics, JointLimits,
+    JointMimic, JointSafetyController, JointType, KV, Link, Material, MeshShape, Model, Odom,
+    Robot, Sensor, SphereShape, Transmission, TransmissionJoint, TurnRadius, Twist, Visual,
+    WheelEncoder, WheelEncoders, Wrench,
 };

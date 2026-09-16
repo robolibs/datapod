@@ -1,6 +1,6 @@
 use datapod::dynamic::{DynamicValue, view_message};
 use datapod::{
-    Acceleration, Imu, Quaternion, TurnRadius, Velocity, WheelEncoder, WheelEncoders,
+    Acceleration, Geo, Gnss, Imu, Quaternion, TurnRadius, Velocity, WheelEncoder, WheelEncoders,
     from_wire_message, to_wire_message,
 };
 
@@ -85,4 +85,18 @@ fn turn_radius_default_is_straight() {
     let msg = to_wire_message(&curving);
     let decoded: TurnRadius = from_wire_message(&msg).expect("turn radius decode");
     assert_eq!(decoded.radius_m, 5.5);
+}
+
+#[test]
+fn gnss_round_trip_over_the_wire() {
+    let gnss = Gnss::new(Geo::new(52.370216, 4.895168, 1.5), 1.5708);
+
+    let msg = to_wire_message(&gnss);
+    let decoded: Gnss = from_wire_message(&msg).expect("gnss decode");
+
+    assert_eq!(decoded.fix.latitude, 52.370216);
+    assert_eq!(decoded.fix.longitude, 4.895168);
+    assert_eq!(decoded.fix.altitude, 1.5);
+    assert_eq!(decoded.heading_rad, 1.5708);
+    assert!(decoded.is_set());
 }

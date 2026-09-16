@@ -1,6 +1,7 @@
 mod accel;
 mod collision;
 mod geometry;
+mod gnss;
 mod identity;
 mod imu;
 mod inertial;
@@ -21,6 +22,7 @@ mod wrench;
 pub use accel::Accel;
 pub use collision::Collision;
 pub use geometry::{BoxShape, CylinderShape, Geometry, GeometryKind, MeshShape, SphereShape};
+pub use gnss::Gnss;
 pub use identity::Identity;
 pub use imu::Imu;
 pub use inertial::Inertial;
