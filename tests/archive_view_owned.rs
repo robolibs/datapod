@@ -2,8 +2,9 @@ use datapod::{
     Aabb, Accel, Acceleration, Actuator, Archived, BitVec, BoundingSphere, Box as DatapodBox,
     BoxShape, Bytes, Circle, Collision, CylinderShape, DataPod, DataPodAccess, DataPodDecode,
     DataPodValidate, Deque, DpStr, DpString, Encoding, Envelope, Euler, ForwardList, GaussianBox,
-    GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Geometry, GeometryKind, Grid, Heap,
-    Identity, Imu, IndexedHeap, Inertial, Ip, Joint, JointCalibration, JointDynamics, JointLimits,
+    GaussianCircle, GaussianPoint, GaussianRectangle, Geo, Geometry, GeometryKind, Gnss, Grid,
+    Heap, Identity, Imu, IndexedHeap, Inertial, Ip, Joint, JointCalibration, JointDynamics,
+    JointLimits,
     JointMimic, JointSafetyController, JointType, KV, Layer, LeWireHeader, Line, Linestring, Link,
     List, Loc, MacAddr, Map, Material, Matrix, MatrixHeader, MeshShape, Model, MultiPoint, Obb,
     Odom, PagedVecvec, Path, Point, PointKey, Polygon, Pose, Quaternion, Queue, Rectangle, Ring,
@@ -114,6 +115,7 @@ macro_rules! all_builtin_archive_datapods {
         $m!(WheelEncoders);
         $m!(Imu);
         $m!(TurnRadius);
+        $m!(Gnss);
     };
 }
 

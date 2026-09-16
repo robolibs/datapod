@@ -100,3 +100,16 @@ fn gnss_round_trip_over_the_wire() {
     assert_eq!(decoded.heading_rad, 1.5708);
     assert!(decoded.is_set());
 }
+
+#[test]
+fn gnss_reflects_generically_via_the_type_registry() {
+    let gnss = Gnss::new(Geo::new(52.370216, 4.895168, 1.5), 1.5708);
+    let msg = to_wire_message(&gnss);
+    let view = view_message(msg.type_hash, &msg.bytes).expect("dynamic view: is Gnss registered?");
+
+    let DynamicValue::Nested(fix) = view.field("fix").expect("fix field") else {
+        panic!("expected fix to reflect as a nested struct");
+    };
+    assert_eq!(fix.get_f64("latitude").unwrap(), 52.370216);
+    assert_eq!(view.get_f64("heading_rad").unwrap(), 1.5708);
+}

@@ -285,7 +285,8 @@ macro_rules! datapod_types {
             ("datapod.wheel_encoder.v1", crate::WheelEncoder),
             ("datapod.wheel_encoders.v1", crate::WheelEncoders),
             ("datapod.imu.v1", crate::Imu),
-            ("datapod.turn_radius.v1", crate::TurnRadius)
+            ("datapod.turn_radius.v1", crate::TurnRadius),
+            ("datapod.gnss.v1", crate::Gnss)
         }
     };
 }

@@ -508,6 +508,7 @@ macro_rules! all_builtin_datapods {
         $m!(datapod::WheelEncoders);
         $m!(datapod::Imu);
         $m!(datapod::TurnRadius);
+        $m!(datapod::Gnss);
     };
 }
 
